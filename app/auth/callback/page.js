@@ -57,7 +57,7 @@ function CallbackInner() {
         }
 
         router.replace("/staff");
-      } catch (err: any) {
+      } catch (err) {
         console.error("callback unexpected error:", err);
         setErrorText(err?.message || "未知登入錯誤");
       }
@@ -71,6 +71,7 @@ function CallbackInner() {
       <main className="min-h-screen bg-[#0f0b1f] text-white flex items-center justify-center px-4">
         <div className="max-w-lg rounded-3xl border border-red-500/30 bg-red-500/10 p-6">
           <h1 className="text-xl font-bold">登入失敗</h1>
+
           <p className="mt-4 whitespace-pre-wrap text-sm text-red-200">
             {errorText}
           </p>
@@ -89,7 +90,7 @@ function CallbackInner() {
   return <Loading text="登入確認中..." />;
 }
 
-function Loading({ text }: { text: string }) {
+function Loading({ text }) {
   return (
     <main className="min-h-screen bg-[#0f0b1f] text-white flex items-center justify-center">
       <div className="text-center">
