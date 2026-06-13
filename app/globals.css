@@ -1,28 +1,146 @@
 @import "tailwindcss";
 
 :root {
-  color-scheme: dark;
+  --background: #fff7fb;
+  --foreground: #3f2947;
+
+  --qiunai-pink: #f9a8d4;
+  --qiunai-pink-soft: #ffe4f1;
+  --qiunai-purple: #c084fc;
+  --qiunai-purple-soft: #f3e8ff;
+  --qiunai-cream: #fffaf3;
+  --qiunai-card: rgba(255, 255, 255, 0.78);
+  --qiunai-border: rgba(244, 114, 182, 0.22);
 }
 
 * {
   box-sizing: border-box;
 }
 
-html,
+html {
+  scroll-behavior: smooth;
+}
+
 body {
-  margin: 0;
-  min-height: 100%;
-  background: #0f0b1f;
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 12% 10%, rgba(249, 168, 212, 0.42), transparent 28%),
+    radial-gradient(circle at 85% 12%, rgba(192, 132, 252, 0.34), transparent 30%),
+    radial-gradient(circle at 50% 90%, rgba(251, 207, 232, 0.55), transparent 32%),
+    linear-gradient(135deg, #fff7fb 0%, #fffaf3 42%, #fdf2f8 100%);
+  color: var(--foreground);
 }
 
 button,
 input,
 select,
 textarea {
-  font: inherit;
+  font-family: inherit;
 }
 
-option {
-  background: #1a102d;
+::selection {
+  background: rgba(249, 168, 212, 0.45);
+  color: #3f2947;
+}
+
+.qiunai-page {
+  min-height: 100vh;
+  position: relative;
+  overflow: hidden;
+  color: #3f2947;
+}
+
+.qiunai-page::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    radial-gradient(circle, rgba(244, 114, 182, 0.18) 1px, transparent 1px),
+    radial-gradient(circle, rgba(192, 132, 252, 0.14) 1px, transparent 1px);
+  background-size: 34px 34px, 58px 58px;
+  background-position: 0 0, 18px 22px;
+  opacity: 0.75;
+}
+
+.qiunai-glow {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(40px);
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.qiunai-card {
+  border: 1px solid var(--qiunai-border);
+  background: var(--qiunai-card);
+  box-shadow:
+    0 24px 80px rgba(244, 114, 182, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(18px);
+}
+
+.qiunai-input {
+  width: 100%;
+  border-radius: 18px;
+  border: 1px solid rgba(244, 114, 182, 0.24);
+  background: rgba(255, 255, 255, 0.72);
+  padding: 12px 16px;
+  color: #3f2947;
+  outline: none;
+  transition: 0.18s ease;
+}
+
+.qiunai-input::placeholder {
+  color: rgba(107, 79, 113, 0.52);
+}
+
+.qiunai-input:focus {
+  border-color: rgba(236, 72, 153, 0.55);
+  box-shadow: 0 0 0 4px rgba(249, 168, 212, 0.22);
+}
+
+.qiunai-button {
+  border-radius: 20px;
+  background: linear-gradient(135deg, #fb7185 0%, #f472b6 45%, #c084fc 100%);
   color: white;
+  box-shadow: 0 16px 34px rgba(236, 72, 153, 0.28);
+  transition: 0.18s ease;
+}
+
+.qiunai-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 20px 42px rgba(236, 72, 153, 0.34);
+}
+
+.qiunai-button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.qiunai-soft-button {
+  border-radius: 18px;
+  border: 1px solid rgba(244, 114, 182, 0.24);
+  background: rgba(255, 255, 255, 0.68);
+  color: #7c3aed;
+  transition: 0.18s ease;
+}
+
+.qiunai-soft-button:hover {
+  background: rgba(253, 242, 248, 0.9);
+}
+
+.qiunai-badge {
+  border-radius: 999px;
+  border: 1px solid rgba(244, 114, 182, 0.24);
+  background: rgba(253, 242, 248, 0.82);
+  color: #be185d;
+}
+
+.qiunai-title-gradient {
+  background: linear-gradient(135deg, #be185d 0%, #db2777 42%, #7c3aed 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
 }

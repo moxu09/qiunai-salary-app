@@ -8,6 +8,8 @@ import {
   CircleDot,
   Gamepad2,
   WalletCards,
+  Heart,
+  Sparkles,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
@@ -78,158 +80,38 @@ type ServiceOption = {
 };
 
 const SERVICE_OPTIONS: ServiceOption[] = [
-  // 特戰英豪
-  {
-    key: "valorant_god",
-    name: "大神陪玩",
-    group: "特戰英豪",
-  },
-  {
-    key: "valorant_skill",
-    name: "技術陪玩",
-    group: "特戰英豪",
-  },
-  {
-    key: "valorant_entertainment",
-    name: "娛樂陪玩",
-    group: "特戰英豪",
-  },
+  { key: "valorant_god", name: "大神陪玩", group: "特戰英豪" },
+  { key: "valorant_skill", name: "技術陪玩", group: "特戰英豪" },
+  { key: "valorant_entertainment", name: "娛樂陪玩", group: "特戰英豪" },
 
-  // 三角洲行動
-  {
-    key: "delta_pc",
-    name: "電腦版",
-    group: "三角洲行動",
-  },
-  {
-    key: "delta_mobile",
-    name: "手機版",
-    group: "三角洲行動",
-  },
-  {
-    key: "delta_entertainment",
-    name: "娛樂",
-    group: "三角洲行動",
-  },
-  {
-    key: "delta_basic_guard",
-    name: "基本單護",
-    group: "三角洲行動",
-  },
-  {
-    key: "delta_secret_double_guard",
-    name: "機密雙護",
-    group: "三角洲行動",
-  },
-  {
-    key: "delta_attack_guard",
-    name: "猛攻護航",
-    group: "三角洲行動",
-  },
+  { key: "delta_pc", name: "電腦版", group: "三角洲行動" },
+  { key: "delta_mobile", name: "手機版", group: "三角洲行動" },
+  { key: "delta_entertainment", name: "娛樂", group: "三角洲行動" },
+  { key: "delta_basic_guard", name: "基本單護", group: "三角洲行動" },
+  { key: "delta_secret_double_guard", name: "機密雙護", group: "三角洲行動" },
+  { key: "delta_attack_guard", name: "猛攻護航", group: "三角洲行動" },
 
-  // Apex
-  {
-    key: "apex_god",
-    name: "大神陪玩",
-    group: "Apex",
-  },
-  {
-    key: "apex_skill",
-    name: "技術陪玩",
-    group: "Apex",
-  },
-  {
-    key: "apex_entertainment",
-    name: "娛樂陪玩",
-    group: "Apex",
-  },
+  { key: "apex_god", name: "大神陪玩", group: "Apex" },
+  { key: "apex_skill", name: "技術陪玩", group: "Apex" },
+  { key: "apex_entertainment", name: "娛樂陪玩", group: "Apex" },
 
-  // 英雄聯盟
-  {
-    key: "lol_main",
-    name: "英雄聯盟",
-    group: "英雄聯盟",
-    hint: "模式",
-  },
-  {
-    key: "lol_aram",
-    name: "ARAM",
-    group: "英雄聯盟",
-    hint: "模式",
-  },
-  {
-    key: "lol_tft",
-    name: "聯盟戰棋",
-    group: "英雄聯盟",
-    hint: "模式",
-  },
-  {
-    key: "lol_god",
-    name: "大神陪玩",
-    group: "英雄聯盟",
-    hint: "類型",
-  },
-  {
-    key: "lol_skill",
-    name: "技術陪玩",
-    group: "英雄聯盟",
-    hint: "類型",
-  },
-  {
-    key: "lol_entertainment",
-    name: "娛樂陪玩",
-    group: "英雄聯盟",
-    hint: "類型",
-  },
+  { key: "lol_main", name: "英雄聯盟", group: "英雄聯盟", hint: "模式" },
+  { key: "lol_aram", name: "ARAM", group: "英雄聯盟", hint: "模式" },
+  { key: "lol_tft", name: "聯盟戰棋", group: "英雄聯盟", hint: "模式" },
+  { key: "lol_god", name: "大神陪玩", group: "英雄聯盟", hint: "類型" },
+  { key: "lol_skill", name: "技術陪玩", group: "英雄聯盟", hint: "類型" },
+  { key: "lol_entertainment", name: "娛樂陪玩", group: "英雄聯盟", hint: "類型" },
 
-  // Steam
-  {
-    key: "steam_roguelike",
-    name: "肉鴿遊戲",
-    group: "Steam",
-  },
-  {
-    key: "steam_survival",
-    name: "生存遊戲",
-    group: "Steam",
-  },
-  {
-    key: "steam_horror",
-    name: "恐怖遊戲",
-    group: "Steam",
-  },
-  {
-    key: "steam_party",
-    name: "派對遊戲",
-    group: "Steam",
-  },
+  { key: "steam_roguelike", name: "肉鴿遊戲", group: "Steam" },
+  { key: "steam_survival", name: "生存遊戲", group: "Steam" },
+  { key: "steam_horror", name: "恐怖遊戲", group: "Steam" },
+  { key: "steam_party", name: "派對遊戲", group: "Steam" },
 
-  // 其他項目
-  {
-    key: "pubgm",
-    name: "PUBG M",
-    group: "其他項目",
-  },
-  {
-    key: "naraka",
-    name: "NARAKA",
-    group: "其他項目",
-  },
-  {
-    key: "minecraft",
-    name: "Minecraft",
-    group: "其他項目",
-  },
-  {
-    key: "voice_chat",
-    name: "語音聊天",
-    group: "其他項目",
-  },
-  {
-    key: "song_request",
-    name: "點歌服務",
-    group: "其他項目",
-  },
+  { key: "pubgm", name: "PUBG M", group: "其他項目" },
+  { key: "naraka", name: "NARAKA", group: "其他項目" },
+  { key: "minecraft", name: "Minecraft", group: "其他項目" },
+  { key: "voice_chat", name: "語音聊天", group: "其他項目" },
+  { key: "song_request", name: "點歌服務", group: "其他項目" },
 ];
 
 export default function StaffPage() {
@@ -551,9 +433,7 @@ export default function StaffPage() {
         return {
           discord_id: staff.discord_id,
           service_key: key,
-          service_name: option
-            ? `${option.group}｜${option.name}`
-            : key,
+          service_name: option ? `${option.group}｜${option.name}` : key,
           enabled: true,
           updated_at: new Date().toISOString(),
         };
@@ -589,10 +469,10 @@ export default function StaffPage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-[#0f0b1f] text-white flex items-center justify-center">
-        <div className="text-center">
-          <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-4 border-violet-300 border-t-transparent" />
-          <p className="text-sm text-zinc-300">載入員工資料中...</p>
+      <main className="qiunai-page flex items-center justify-center px-4">
+        <div className="qiunai-card rounded-[32px] p-8 text-center">
+          <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-4 border-pink-300 border-t-transparent" />
+          <p className="text-sm text-[#8b5a8f]">載入員工資料中...</p>
         </div>
       </main>
     );
@@ -600,25 +480,27 @@ export default function StaffPage() {
 
   if (pageError) {
     return (
-      <main className="min-h-screen bg-[#0f0b1f] text-white flex items-center justify-center px-4">
-        <div className="w-full max-w-lg rounded-3xl border border-red-500/30 bg-red-500/10 p-6">
-          <h1 className="text-xl font-bold">無法進入員工薪資網</h1>
+      <main className="qiunai-page flex items-center justify-center px-4">
+        <div className="qiunai-card w-full max-w-lg rounded-[32px] p-6">
+          <h1 className="text-xl font-black text-rose-600">
+            無法進入員工薪資網
+          </h1>
 
-          <p className="mt-4 whitespace-pre-wrap text-sm text-red-200">
+          <p className="mt-4 whitespace-pre-wrap text-sm leading-7 text-rose-500">
             {pageError}
           </p>
 
           <div className="mt-6 flex gap-3">
             <button
               onClick={() => router.replace("/")}
-              className="rounded-xl bg-white/10 px-4 py-2 text-sm hover:bg-white/20"
+              className="qiunai-soft-button px-4 py-2 text-sm font-semibold"
             >
               回登入頁
             </button>
 
             <button
               onClick={logout}
-              className="rounded-xl bg-red-500 px-4 py-2 text-sm hover:bg-red-400"
+              className="rounded-2xl bg-rose-400 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-500"
             >
               登出
             </button>
@@ -633,24 +515,35 @@ export default function StaffPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#0f0b1f] text-white">
-      <header className="border-b border-white/10 bg-white/5">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-5">
+    <main className="qiunai-page">
+      <div className="qiunai-glow left-[-90px] top-[-90px] h-72 w-72 bg-pink-300" />
+      <div className="qiunai-glow right-[-100px] top-32 h-80 w-80 bg-purple-300" />
+      <div className="qiunai-glow bottom-[-120px] left-1/2 h-80 w-80 -translate-x-1/2 bg-rose-200" />
+
+      <header className="relative z-10 border-b border-pink-200/50 bg-white/45 backdrop-blur-xl">
+        <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-5 md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-4">
             {staff.avatar_url ? (
               <img
                 src={staff.avatar_url}
                 alt=""
-                className="h-12 w-12 rounded-full border border-white/10"
+                className="h-14 w-14 rounded-[22px] border border-pink-200 bg-white object-cover shadow-lg"
               />
             ) : (
-              <div className="h-12 w-12 rounded-full bg-white/10" />
+              <div className="flex h-14 w-14 items-center justify-center rounded-[22px] bg-gradient-to-br from-pink-300 to-violet-300 text-white shadow-lg">
+                <Heart size={24} fill="currentColor" />
+              </div>
             )}
 
             <div>
-              <p className="text-sm text-violet-300">Qiunai Staff</p>
-              <h1 className="text-2xl font-bold">秋奈電競｜員工薪資中心</h1>
-              <p className="mt-1 text-sm text-zinc-400">
+              <p className="flex items-center gap-1 text-sm font-semibold text-pink-500">
+                <Sparkles size={14} />
+                Qiunai Staff
+              </p>
+              <h1 className="qiunai-title-gradient text-2xl font-black">
+                秋奈電競｜員工薪資中心
+              </h1>
+              <p className="mt-1 text-sm text-[#8b5a8f]">
                 {staff.display_name || staff.discord_name || staff.discord_id}
               </p>
             </div>
@@ -659,7 +552,7 @@ export default function StaffPage() {
           <div className="flex gap-3">
             <button
               onClick={refreshData}
-              className="flex items-center gap-2 rounded-xl border border-white/10 px-4 py-2 text-sm hover:bg-white/10"
+              className="qiunai-soft-button flex items-center gap-2 px-4 py-2 text-sm font-semibold"
             >
               <RefreshCw size={16} />
               重新整理
@@ -667,16 +560,18 @@ export default function StaffPage() {
 
             <button
               onClick={logout}
-              className="flex items-center gap-2 rounded-xl bg-red-500/80 px-4 py-2 text-sm hover:bg-red-400"
+              className="rounded-[18px] bg-rose-400 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-rose-200/70 hover:bg-rose-500"
             >
-              <LogOut size={16} />
-              登出
+              <span className="flex items-center gap-2">
+                <LogOut size={16} />
+                登出
+              </span>
             </button>
           </div>
         </div>
       </header>
 
-      <section className="mx-auto max-w-7xl px-4 py-8">
+      <section className="relative z-10 mx-auto max-w-7xl px-4 py-8">
         <div className="grid gap-4 md:grid-cols-4">
           <Stat title="本月訂單" value={`${totals.orderCount} 筆`} />
           <Stat
@@ -695,20 +590,22 @@ export default function StaffPage() {
 
         <div className="mt-6 grid gap-6 lg:grid-cols-[420px_1fr]">
           <div className="space-y-6">
-            <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
+            <Card>
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="text-xl font-bold">接單狀態</h2>
-                  <p className="mt-1 text-sm text-zinc-400">
+                  <h2 className="text-xl font-black text-[#5b3768]">
+                    接單狀態
+                  </h2>
+                  <p className="mt-1 text-sm text-[#8b5a8f]">
                     客人選陪陪時會看到你的狀態。
                   </p>
                 </div>
 
                 <span
-                  className={`flex items-center gap-2 rounded-full px-3 py-1 text-sm ${
+                  className={`flex items-center gap-2 rounded-full px-3 py-1 text-sm font-semibold ${
                     staff.is_online
-                      ? "bg-emerald-500/20 text-emerald-300"
-                      : "bg-zinc-500/20 text-zinc-300"
+                      ? "bg-emerald-100 text-emerald-600"
+                      : "bg-zinc-100 text-zinc-500"
                   }`}
                 >
                   <CircleDot size={14} />
@@ -719,10 +616,10 @@ export default function StaffPage() {
               <button
                 onClick={toggleOnline}
                 disabled={savingOnline}
-                className={`mt-5 w-full rounded-2xl px-5 py-3 font-semibold disabled:opacity-50 ${
+                className={`mt-5 w-full rounded-[22px] px-5 py-3 font-bold text-white shadow-lg disabled:opacity-50 ${
                   staff.is_online
-                    ? "bg-zinc-600 hover:bg-zinc-500"
-                    : "bg-emerald-500 hover:bg-emerald-400"
+                    ? "bg-zinc-400 shadow-zinc-200 hover:bg-zinc-500"
+                    : "bg-emerald-400 shadow-emerald-100 hover:bg-emerald-500"
                 }`}
               >
                 {savingOnline
@@ -731,12 +628,12 @@ export default function StaffPage() {
                   ? "切換為下線"
                   : "切換為上線"}
               </button>
-            </div>
+            </Card>
 
-            <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
+            <Card>
               <div className="flex items-center gap-2">
-                <WalletCards className="text-violet-300" size={20} />
-                <h2 className="text-xl font-bold">個人資料</h2>
+                <WalletCards className="text-pink-400" size={20} />
+                <h2 className="text-xl font-black text-[#5b3768]">個人資料</h2>
               </div>
 
               <div className="mt-5 space-y-4">
@@ -755,14 +652,16 @@ export default function StaffPage() {
                 />
 
                 <label className="block">
-                  <span className="text-sm text-zinc-300">性別</span>
+                  <span className="text-sm font-semibold text-[#7b4f85]">
+                    性別
+                  </span>
 
                   <select
                     value={profileForm.gender}
                     onChange={(e) =>
                       updateProfileField("gender", e.target.value)
                     }
-                    className="mt-2 w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-white outline-none"
+                    className="qiunai-input mt-2"
                   >
                     <option value="">未填</option>
                     <option value="女">女</option>
@@ -796,25 +695,27 @@ export default function StaffPage() {
                 <button
                   onClick={saveProfile}
                   disabled={savingProfile}
-                  className="flex w-full items-center justify-center gap-2 rounded-2xl bg-violet-500 px-5 py-3 font-semibold hover:bg-violet-400 disabled:opacity-50"
+                  className="qiunai-button flex w-full items-center justify-center gap-2 px-5 py-3 font-bold"
                 >
                   <Save size={18} />
                   {savingProfile ? "儲存中..." : "儲存個人資料"}
                 </button>
               </div>
-            </div>
+            </Card>
 
-            <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
+            <Card>
               <div className="flex items-center gap-2">
-                <Gamepad2 className="text-violet-300" size={20} />
-                <h2 className="text-xl font-bold">可接遊戲 / 服務</h2>
+                <Gamepad2 className="text-pink-400" size={20} />
+                <h2 className="text-xl font-black text-[#5b3768]">
+                  可接遊戲 / 服務
+                </h2>
               </div>
 
-              <p className="mt-2 text-sm text-zinc-400">
+              <p className="mt-2 text-sm leading-6 text-[#8b5a8f]">
                 請勾選你可以接的項目。客人下單對應項目時，系統會依這裡篩選員工。
               </p>
 
-              <p className="mt-2 rounded-xl border border-yellow-500/20 bg-yellow-500/10 px-4 py-3 text-sm text-yellow-200">
+              <p className="mt-3 rounded-[22px] border border-pink-200 bg-pink-50/80 px-4 py-3 text-sm leading-6 text-pink-600">
                 英雄聯盟類型需要同時勾「模式」和「陪玩類型」。
                 例如：要接 ARAM｜大神陪玩，就要勾 ARAM + 大神陪玩。
               </p>
@@ -823,29 +724,31 @@ export default function StaffPage() {
                 {Object.entries(groupedServices).map(([groupName, services]) => (
                   <div
                     key={groupName}
-                    className="rounded-2xl border border-white/10 bg-black/20 p-4"
+                    className="rounded-[26px] border border-pink-200/70 bg-white/55 p-4"
                   >
-                    <h3 className="font-bold text-violet-200">{groupName}</h3>
+                    <h3 className="font-black text-pink-500">{groupName}</h3>
 
                     <div className="mt-3 grid gap-3">
                       {services.map((service) => (
                         <label
                           key={service.key}
-                          className="flex cursor-pointer items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/5 px-4 py-3 hover:bg-white/10"
+                          className="flex cursor-pointer items-center justify-between gap-3 rounded-[20px] border border-pink-100 bg-white/70 px-4 py-3 transition hover:bg-pink-50"
                         >
                           <div className="flex items-center gap-3">
                             <input
                               type="checkbox"
                               checked={selectedServices.includes(service.key)}
                               onChange={() => toggleService(service.key)}
-                              className="h-5 w-5 accent-violet-500"
+                              className="h-5 w-5 accent-pink-400"
                             />
 
-                            <span className="text-sm">{service.name}</span>
+                            <span className="text-sm font-semibold text-[#6b4f71]">
+                              {service.name}
+                            </span>
                           </div>
 
                           {service.hint ? (
-                            <span className="rounded-full bg-violet-500/20 px-2 py-1 text-xs text-violet-200">
+                            <span className="rounded-full bg-violet-100 px-2 py-1 text-xs font-semibold text-violet-500">
                               {service.hint}
                             </span>
                           ) : null}
@@ -859,130 +762,144 @@ export default function StaffPage() {
               <button
                 onClick={saveStaffServices}
                 disabled={savingServices}
-                className="mt-5 w-full rounded-2xl bg-violet-500 px-5 py-3 font-semibold hover:bg-violet-400 disabled:opacity-50"
+                className="qiunai-button mt-5 w-full px-5 py-3 font-bold"
               >
                 {savingServices ? "儲存中..." : "儲存可接遊戲"}
               </button>
-            </div>
+            </Card>
           </div>
 
           <div className="space-y-6">
-            <div className="overflow-x-auto rounded-3xl border border-white/10 bg-white/5">
-              <div className="border-b border-white/10 p-5">
-                <h2 className="text-xl font-bold">本月訂單</h2>
-                <p className="mt-1 text-sm text-zinc-400">
+            <Card noPadding>
+              <div className="border-b border-pink-100 p-5">
+                <h2 className="text-xl font-black text-[#5b3768]">
+                  本月訂單
+                </h2>
+                <p className="mt-1 text-sm text-[#8b5a8f]">
                   顯示本月 1 號到現在的訂單。
                 </p>
               </div>
 
               {orders.length === 0 ? (
-                <div className="p-8 text-center text-zinc-400">
+                <div className="p-8 text-center text-[#a36b9e]">
                   目前沒有本月訂單
                 </div>
               ) : (
-                <table className="min-w-[900px] w-full text-left text-sm">
-                  <thead className="bg-white/10 text-zinc-300">
-                    <tr>
-                      <th className="px-4 py-3">完成時間</th>
-                      <th className="px-4 py-3">客人</th>
-                      <th className="px-4 py-3">服務</th>
-                      <th className="px-4 py-3">訂單金額</th>
-                      <th className="px-4 py-3">薪資</th>
-                      <th className="px-4 py-3">獎金</th>
-                      <th className="px-4 py-3">狀態</th>
-                      <th className="px-4 py-3">發薪時間</th>
-                    </tr>
-                  </thead>
-
-                  <tbody>
-                    {orders.map((order) => (
-                      <tr key={order.id} className="border-t border-white/10">
-                        <td className="px-4 py-3 text-zinc-300">
-                          {formatDateTime(order.order_finished_at)}
-                        </td>
-
-                        <td className="px-4 py-3">
-                          {order.customer_name || "-"}
-                        </td>
-
-                        <td className="px-4 py-3">
-                          {order.service_name || "-"}
-                        </td>
-
-                        <td className="px-4 py-3">
-                          ${Number(order.order_amount || 0).toLocaleString()}
-                        </td>
-
-                        <td className="px-4 py-3 text-violet-300">
-                          ${Number(order.staff_salary || 0).toLocaleString()}
-                        </td>
-
-                        <td className="px-4 py-3">
-                          ${Number(order.bonus_amount || 0).toLocaleString()}
-                        </td>
-
-                        <td className="px-4 py-3">
-                          <span
-                            className={`rounded-full px-3 py-1 text-xs ${
-                              order.status === "已發薪"
-                                ? "bg-emerald-500/20 text-emerald-300"
-                                : "bg-yellow-500/20 text-yellow-300"
-                            }`}
-                          >
-                            {order.status || "未發薪"}
-                          </span>
-                        </td>
-
-                        <td className="px-4 py-3 text-zinc-300">
-                          {order.paid_at ? formatDateTime(order.paid_at) : "-"}
-                        </td>
+                <div className="overflow-x-auto">
+                  <table className="min-w-[900px] w-full text-left text-sm">
+                    <thead className="bg-pink-50 text-[#8b5a8f]">
+                      <tr>
+                        <th className="px-4 py-3">完成時間</th>
+                        <th className="px-4 py-3">客人</th>
+                        <th className="px-4 py-3">服務</th>
+                        <th className="px-4 py-3">訂單金額</th>
+                        <th className="px-4 py-3">薪資</th>
+                        <th className="px-4 py-3">獎金</th>
+                        <th className="px-4 py-3">狀態</th>
+                        <th className="px-4 py-3">發薪時間</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </div>
+                    </thead>
 
-            <div className="overflow-x-auto rounded-3xl border border-white/10 bg-white/5">
-              <div className="border-b border-white/10 p-5">
-                <h2 className="text-xl font-bold">本月額外獎金</h2>
+                    <tbody>
+                      {orders.map((order) => (
+                        <tr key={order.id} className="border-t border-pink-100">
+                          <td className="px-4 py-3 text-[#8b5a8f]">
+                            {formatDateTime(order.order_finished_at)}
+                          </td>
+
+                          <td className="px-4 py-3 text-[#5b3768]">
+                            {order.customer_name || "-"}
+                          </td>
+
+                          <td className="px-4 py-3 text-[#5b3768]">
+                            {order.service_name || "-"}
+                          </td>
+
+                          <td className="px-4 py-3 text-[#5b3768]">
+                            ${Number(order.order_amount || 0).toLocaleString()}
+                          </td>
+
+                          <td className="px-4 py-3 font-bold text-pink-500">
+                            ${Number(order.staff_salary || 0).toLocaleString()}
+                          </td>
+
+                          <td className="px-4 py-3 text-[#5b3768]">
+                            ${Number(order.bonus_amount || 0).toLocaleString()}
+                          </td>
+
+                          <td className="px-4 py-3">
+                            <span
+                              className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                                order.status === "已發薪"
+                                  ? "bg-emerald-100 text-emerald-600"
+                                  : "bg-yellow-100 text-yellow-600"
+                              }`}
+                            >
+                              {order.status || "未發薪"}
+                            </span>
+                          </td>
+
+                          <td className="px-4 py-3 text-[#8b5a8f]">
+                            {order.paid_at
+                              ? formatDateTime(order.paid_at)
+                              : "-"}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </Card>
+
+            <Card noPadding>
+              <div className="border-b border-pink-100 p-5">
+                <h2 className="text-xl font-black text-[#5b3768]">
+                  本月額外獎金
+                </h2>
               </div>
 
               {bonusList.length === 0 ? (
-                <div className="p-8 text-center text-zinc-400">
+                <div className="p-8 text-center text-[#a36b9e]">
                   目前沒有額外獎金
                 </div>
               ) : (
-                <table className="min-w-[700px] w-full text-left text-sm">
-                  <thead className="bg-white/10 text-zinc-300">
-                    <tr>
-                      <th className="px-4 py-3">時間</th>
-                      <th className="px-4 py-3">獎金名稱</th>
-                      <th className="px-4 py-3">金額</th>
-                      <th className="px-4 py-3">備註</th>
-                    </tr>
-                  </thead>
-
-                  <tbody>
-                    {bonusList.map((bonus) => (
-                      <tr key={bonus.id} className="border-t border-white/10">
-                        <td className="px-4 py-3 text-zinc-300">
-                          {formatDateTime(bonus.created_at)}
-                        </td>
-
-                        <td className="px-4 py-3">{bonus.title}</td>
-
-                        <td className="px-4 py-3 text-violet-300">
-                          ${Number(bonus.amount || 0).toLocaleString()}
-                        </td>
-
-                        <td className="px-4 py-3">{bonus.note || "-"}</td>
+                <div className="overflow-x-auto">
+                  <table className="min-w-[700px] w-full text-left text-sm">
+                    <thead className="bg-pink-50 text-[#8b5a8f]">
+                      <tr>
+                        <th className="px-4 py-3">時間</th>
+                        <th className="px-4 py-3">獎金名稱</th>
+                        <th className="px-4 py-3">金額</th>
+                        <th className="px-4 py-3">備註</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+
+                    <tbody>
+                      {bonusList.map((bonus) => (
+                        <tr key={bonus.id} className="border-t border-pink-100">
+                          <td className="px-4 py-3 text-[#8b5a8f]">
+                            {formatDateTime(bonus.created_at)}
+                          </td>
+
+                          <td className="px-4 py-3 text-[#5b3768]">
+                            {bonus.title}
+                          </td>
+
+                          <td className="px-4 py-3 font-bold text-pink-500">
+                            ${Number(bonus.amount || 0).toLocaleString()}
+                          </td>
+
+                          <td className="px-4 py-3 text-[#5b3768]">
+                            {bonus.note || "-"}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               )}
-            </div>
+            </Card>
           </div>
         </div>
       </section>
@@ -990,11 +907,29 @@ export default function StaffPage() {
   );
 }
 
+function Card({
+  children,
+  noPadding = false,
+}: {
+  children: React.ReactNode;
+  noPadding?: boolean;
+}) {
+  return (
+    <div
+      className={`qiunai-card overflow-hidden rounded-[32px] ${
+        noPadding ? "" : "p-6"
+      }`}
+    >
+      {children}
+    </div>
+  );
+}
+
 function Stat({ title, value }: { title: string; value: string }) {
   return (
-    <div className="rounded-3xl border border-white/10 bg-white/5 p-5">
-      <p className="text-sm text-zinc-400">{title}</p>
-      <p className="mt-2 text-2xl font-bold">{value}</p>
+    <div className="qiunai-card rounded-[28px] p-5">
+      <p className="text-sm font-semibold text-[#8b5a8f]">{title}</p>
+      <p className="qiunai-title-gradient mt-2 text-2xl font-black">{value}</p>
     </div>
   );
 }
@@ -1014,14 +949,14 @@ function Input({
 }) {
   return (
     <label className="block">
-      <span className="text-sm text-zinc-300">{label}</span>
+      <span className="text-sm font-semibold text-[#7b4f85]">{label}</span>
 
       <input
         type={type}
         value={value || ""}
         placeholder={placeholder}
         onChange={(e) => onChange(e.target.value)}
-        className="mt-2 w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-white outline-none placeholder:text-zinc-600 focus:border-violet-400"
+        className="qiunai-input mt-2"
       />
     </label>
   );

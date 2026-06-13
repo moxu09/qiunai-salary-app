@@ -82,7 +82,9 @@ export default function AdminStaffPage() {
 
   const [loading, setLoading] = useState(true);
   const [staffList, setStaffList] = useState<Staff[]>([]);
-  const [staffServiceMap, setStaffServiceMap] = useState<Record<string, string[]>>({});
+  const [staffServiceMap, setStaffServiceMap] = useState<
+    Record<string, string[]>
+  >({});
   const [savingId, setSavingId] = useState<string | null>(null);
 
   const groupedServices = useMemo(() => {
@@ -141,7 +143,7 @@ export default function AdminStaffPage() {
 
     const nextServiceMap: Record<string, string[]> = {};
 
-    for (const row of ((serviceData || []) as StaffService[])) {
+    for (const row of (serviceData || []) as StaffService[]) {
       if (!nextServiceMap[row.discord_id]) {
         nextServiceMap[row.discord_id] = [];
       }
@@ -259,24 +261,35 @@ export default function AdminStaffPage() {
 
   if (adminLoading || !isAdmin) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-[#0f0b1f] text-white">
-        <p className="text-sm text-zinc-300">檢查後台權限中...</p>
+      <main className="qiunai-page flex items-center justify-center px-4">
+        <div className="qiunai-card rounded-[32px] p-8 text-center">
+          <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-4 border-pink-300 border-t-transparent" />
+          <p className="text-sm text-[#8b5a8f]">檢查後台權限中...</p>
+        </div>
       </main>
     );
   }
 
   return (
-    <main className="min-h-screen bg-[#0f0b1f] text-white">
-      <header className="border-b border-white/10 bg-white/5">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-5">
+    <main className="qiunai-page">
+      <div className="qiunai-glow left-[-90px] top-[-90px] h-72 w-72 bg-pink-300" />
+      <div className="qiunai-glow right-[-100px] top-32 h-80 w-80 bg-purple-300" />
+      <div className="qiunai-glow bottom-[-120px] left-1/2 h-80 w-80 -translate-x-1/2 bg-rose-200" />
+
+      <header className="relative z-10 border-b border-pink-200/50 bg-white/45 backdrop-blur-xl">
+        <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-5 md:flex-row md:items-center md:justify-between">
           <div>
-            <p className="text-sm text-violet-300">Qiunai Admin</p>
-            <h1 className="text-2xl font-bold">秋奈電競｜員工管理</h1>
+            <p className="text-sm font-semibold text-pink-500">
+              Qiunai Admin
+            </p>
+            <h1 className="qiunai-title-gradient text-2xl font-black">
+              秋奈電競｜員工管理
+            </h1>
           </div>
 
           <button
             onClick={loadStaff}
-            className="flex items-center gap-2 rounded-xl border border-white/10 px-4 py-2 text-sm hover:bg-white/10"
+            className="qiunai-soft-button flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold"
           >
             <RefreshCw size={16} />
             重新整理
@@ -284,7 +297,7 @@ export default function AdminStaffPage() {
         </div>
       </header>
 
-      <section className="mx-auto max-w-7xl px-4 py-8">
+      <section className="relative z-10 mx-auto max-w-7xl px-4 py-8">
         <div className="grid gap-4 md:grid-cols-4">
           <Stat title="員工總數" value={`${totals.total} 人`} />
           <Stat title="上線中" value={`${totals.online} 人`} />
@@ -293,11 +306,11 @@ export default function AdminStaffPage() {
         </div>
 
         {loading ? (
-          <div className="mt-6 rounded-3xl border border-white/10 bg-white/5 p-8 text-center text-zinc-400">
+          <div className="qiunai-card mt-6 rounded-[32px] p-8 text-center text-[#8b5a8f]">
             載入中...
           </div>
         ) : staffList.length === 0 ? (
-          <div className="mt-6 rounded-3xl border border-white/10 bg-white/5 p-8 text-center text-zinc-400">
+          <div className="qiunai-card mt-6 rounded-[32px] p-8 text-center text-[#8b5a8f]">
             目前沒有員工資料
           </div>
         ) : (
@@ -308,33 +321,33 @@ export default function AdminStaffPage() {
               return (
                 <div
                   key={staff.id}
-                  className="rounded-3xl border border-white/10 bg-white/5 p-6"
+                  className="qiunai-card rounded-[34px] p-6"
                 >
-                  <div className="flex flex-col gap-4 border-b border-white/10 pb-5 md:flex-row md:items-center md:justify-between">
+                  <div className="flex flex-col gap-4 border-b border-pink-100 pb-5 md:flex-row md:items-center md:justify-between">
                     <div className="flex items-center gap-4">
                       {staff.avatar_url ? (
                         <img
                           src={staff.avatar_url}
                           alt=""
-                          className="h-12 w-12 rounded-full border border-white/10"
+                          className="h-14 w-14 rounded-[22px] border border-pink-200 bg-white object-cover shadow-lg"
                         />
                       ) : (
-                        <div className="h-12 w-12 rounded-full bg-white/10" />
+                        <div className="h-14 w-14 rounded-[22px] bg-gradient-to-br from-pink-300 to-violet-300 shadow-lg" />
                       )}
 
                       <div>
-                        <p className="font-bold">
+                        <p className="text-lg font-black text-[#5b3768]">
                           {staff.display_name ||
                             staff.real_name ||
                             staff.discord_name ||
                             "未知員工"}
                         </p>
 
-                        <p className="text-sm text-zinc-400">
+                        <p className="text-sm text-[#8b5a8f]">
                           Discord：{staff.discord_name || "未知"}
                         </p>
 
-                        <p className="text-xs text-zinc-500">
+                        <p className="text-xs text-[#a36b9e]">
                           ID：{staff.discord_id}
                         </p>
                       </div>
@@ -343,7 +356,7 @@ export default function AdminStaffPage() {
                     <button
                       onClick={() => saveStaff(staff)}
                       disabled={savingId === staff.id}
-                      className="flex items-center justify-center gap-2 rounded-xl bg-violet-500 px-5 py-3 font-semibold hover:bg-violet-400 disabled:opacity-50"
+                      className="qiunai-button flex items-center justify-center gap-2 px-5 py-3 font-bold"
                     >
                       <Save size={18} />
                       {savingId === staff.id ? "儲存中..." : "儲存此員工"}
@@ -368,13 +381,16 @@ export default function AdminStaffPage() {
                     />
 
                     <label className="block">
-                      <span className="text-sm text-zinc-300">性別</span>
+                      <span className="text-sm font-semibold text-[#7b4f85]">
+                        性別
+                      </span>
+
                       <select
                         value={staff.gender || ""}
                         onChange={(e) =>
                           updateLocalStaff(staff.id, "gender", e.target.value)
                         }
-                        className="mt-2 w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-white outline-none"
+                        className="qiunai-input mt-2"
                       >
                         <option value="">未填</option>
                         <option value="女">女</option>
@@ -445,14 +461,17 @@ export default function AdminStaffPage() {
                     />
                   </div>
 
-                  <div className="mt-6 rounded-2xl border border-white/10 bg-black/20 p-5">
+                  <div className="mt-6 rounded-[28px] border border-pink-200/70 bg-white/55 p-5">
                     <div className="flex items-center gap-2">
-                      <Gamepad2 className="text-violet-300" size={20} />
-                      <h3 className="font-bold">可接遊戲 / 服務</h3>
+                      <Gamepad2 className="text-pink-400" size={20} />
+                      <h3 className="font-black text-[#5b3768]">
+                        可接遊戲 / 服務
+                      </h3>
                     </div>
 
-                    <p className="mt-2 text-sm text-zinc-400">
-                      後台可協助員工調整可接項目。英雄聯盟若要接 ARAM｜大神陪玩，需同時勾 ARAM 與大神陪玩。
+                    <p className="mt-2 text-sm leading-6 text-[#8b5a8f]">
+                      後台可協助員工調整可接項目。英雄聯盟若要接
+                      ARAM｜大神陪玩，需同時勾 ARAM 與大神陪玩。
                     </p>
 
                     <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -460,9 +479,9 @@ export default function AdminStaffPage() {
                         ([groupName, services]) => (
                           <div
                             key={groupName}
-                            className="rounded-2xl border border-white/10 bg-white/5 p-4"
+                            className="rounded-[24px] border border-pink-100 bg-white/70 p-4"
                           >
-                            <h4 className="font-bold text-violet-200">
+                            <h4 className="font-black text-pink-500">
                               {groupName}
                             </h4>
 
@@ -470,7 +489,7 @@ export default function AdminStaffPage() {
                               {services.map((service) => (
                                 <label
                                   key={service.key}
-                                  className="flex cursor-pointer items-center justify-between gap-3 rounded-xl border border-white/10 bg-black/20 px-3 py-2 hover:bg-white/10"
+                                  className="flex cursor-pointer items-center justify-between gap-3 rounded-[18px] border border-pink-100 bg-white/70 px-3 py-2 transition hover:bg-pink-50"
                                 >
                                   <div className="flex items-center gap-3">
                                     <input
@@ -484,16 +503,16 @@ export default function AdminStaffPage() {
                                           service.key
                                         )
                                       }
-                                      className="h-5 w-5 accent-violet-500"
+                                      className="h-5 w-5 accent-pink-400"
                                     />
 
-                                    <span className="text-sm">
+                                    <span className="text-sm font-semibold text-[#6b4f71]">
                                       {service.name}
                                     </span>
                                   </div>
 
                                   {service.hint ? (
-                                    <span className="rounded-full bg-violet-500/20 px-2 py-1 text-xs text-violet-200">
+                                    <span className="rounded-full bg-violet-100 px-2 py-1 text-xs font-semibold text-violet-500">
                                       {service.hint}
                                     </span>
                                   ) : null}
@@ -517,9 +536,9 @@ export default function AdminStaffPage() {
 
 function Stat({ title, value }: { title: string; value: string }) {
   return (
-    <div className="rounded-3xl border border-white/10 bg-white/5 p-5">
-      <p className="text-sm text-zinc-400">{title}</p>
-      <p className="mt-2 text-2xl font-bold">{value}</p>
+    <div className="qiunai-card rounded-[28px] p-5">
+      <p className="text-sm font-semibold text-[#8b5a8f]">{title}</p>
+      <p className="qiunai-title-gradient mt-2 text-2xl font-black">{value}</p>
     </div>
   );
 }
@@ -539,14 +558,14 @@ function AdminInput({
 }) {
   return (
     <label className="block">
-      <span className="text-sm text-zinc-300">{label}</span>
+      <span className="text-sm font-semibold text-[#7b4f85]">{label}</span>
 
       <input
         type={type}
         value={value || ""}
         placeholder={placeholder}
         onChange={(e) => onChange(e.target.value)}
-        className="mt-2 w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-white outline-none placeholder:text-zinc-600 focus:border-violet-400"
+        className="qiunai-input mt-2"
       />
     </label>
   );
@@ -562,15 +581,15 @@ function CheckBox({
   onChange: (value: boolean) => void;
 }) {
   return (
-    <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-white/10 bg-black/20 px-4 py-3 hover:bg-white/10">
+    <label className="flex cursor-pointer items-center gap-3 rounded-[20px] border border-pink-100 bg-white/65 px-4 py-3 transition hover:bg-pink-50">
       <input
         type="checkbox"
         checked={!!checked}
         onChange={(e) => onChange(e.target.checked)}
-        className="h-5 w-5 accent-violet-500"
+        className="h-5 w-5 accent-pink-400"
       />
 
-      <span className="text-sm">{label}</span>
+      <span className="text-sm font-semibold text-[#6b4f71]">{label}</span>
     </label>
   );
 }
