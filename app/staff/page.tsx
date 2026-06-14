@@ -30,6 +30,8 @@ type Staff = {
   can_take_order: boolean;
   role_checked: boolean;
   is_active: boolean;
+  commission_tier: string | null;
+  commission_note: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -44,11 +46,14 @@ type SalaryOrder = {
   order_amount: number | null;
   staff_salary: number | null;
   bonus_amount: number | null;
+  salary_rate: number | null;
+  salary_level: string | null;
   platform_income: number | null;
   platform_expense: number | null;
   status: string | null;
   paid_at: string | null;
   order_finished_at: string | null;
+  is_deleted: boolean | null;
   created_at: string;
 };
 
@@ -122,6 +127,7 @@ export default function StaffPage() {
 
   const [staff, setStaff] = useState<Staff | null>(null);
   const [orders, setOrders] = useState<SalaryOrder[]>([]);
+  const [allSalaryOrders, setAllSalaryOrders] = useState<SalaryOrder[]>([]);
   const [bonusList, setBonusList] = useState<BonusItem[]>([]);
 
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
@@ -194,6 +200,109 @@ export default function StaffPage() {
       unpaidSalary,
     };
   }, [orders, bonusList]);
+
+  const commissionInfo = useMemo(() => {
+    if (!staff) {
+      return {
+        currentRate: 80,
+        currentLabel: "尚未判定",
+        totalOrderAmount: 0,
+        thisYearSalary: 0,
+        progress85: 0,
+        progress90: 0,
+        remaining85: 10000,
+        remaining90: 100000,
+      };
+    }
+
+    const now = new Date();
+    const openingEnd = new Date("2026-09-01T00:00:00+08:00");
+
+    const totalOrderAmount = allSalaryOrders.reduce(
+      (sum, order) => sum + Number(order.order_amount || 0),
+      0
+    );
+
+    const thisYear = now.getFullYear();
+
+    const thisYearSalary = allSalaryOrders
+      .filter((order) => {
+        const sourceDate = order.order_finished_at || order.created_at;
+        const year = new Date(sourceDate).getFullYear();
+
+        return year === thisYear;
+      })
+      .reduce((sum, order) => sum + Number(order.staff_salary || 0), 0);
+
+    const previousYear = thisYear - 1;
+
+    const previousYearSalary = allSalaryOrders
+      .filter((order) => {
+        const sourceDate = order.order_finished_at || order.created_at;
+        const year = new Date(sourceDate).getFullYear();
+
+        return year === previousYear;
+      })
+      .reduce((sum, order) => sum + Number(order.staff_salary || 0), 0);
+
+    const progress85 = Math.min(
+      100,
+      Math.round((totalOrderAmount / 10000) * 100)
+    );
+
+    const progress90 = Math.min(
+      100,
+      Math.round((thisYearSalary / 100000) * 100)
+    );
+
+    let currentRate = 80;
+    let currentLabel = "九月後預設 80%";
+
+    if (now < openingEnd) {
+      currentRate = 90;
+      currentLabel = "開幕期固定 90%";
+    } else {
+      const manualRate = getManualCommissionRate(staff.commission_tier);
+
+      if (manualRate) {
+        currentRate = manualRate;
+        currentLabel =
+          manualRate === 95
+            ? "主管津貼 95%"
+            : `後台設定 ${manualRate}%`;
+      } else if (previousYearSalary >= 100000) {
+        currentRate = 90;
+        currentLabel = "去年薪資達標｜今年 90%";
+      } else if (is85ActiveThisMonth(allSalaryOrders)) {
+        currentRate = 85;
+        currentLabel = "累積接單滿 10,000｜85%";
+      }
+    }
+
+    const latestOrderWithRate = [...allSalaryOrders]
+      .filter((order) => order.salary_rate)
+      .sort(
+        (a, b) =>
+          new Date(b.order_finished_at || b.created_at).getTime() -
+          new Date(a.order_finished_at || a.created_at).getTime()
+      )[0];
+
+    if (latestOrderWithRate && staff.commission_tier === "auto") {
+      currentRate = Number(latestOrderWithRate.salary_rate || currentRate);
+      currentLabel = latestOrderWithRate.salary_level || currentLabel;
+    }
+
+    return {
+      currentRate,
+      currentLabel,
+      totalOrderAmount,
+      thisYearSalary,
+      progress85,
+      progress90,
+      remaining85: Math.max(0, 10000 - totalOrderAmount),
+      remaining90: Math.max(0, 100000 - thisYearSalary),
+    };
+  }, [staff, allSalaryOrders]);
 
   async function init() {
     setLoading(true);
@@ -291,12 +400,24 @@ export default function StaffPage() {
       .from("qiunai_salary_orders")
       .select("*")
       .eq("discord_id", discordId)
+      .or("is_deleted.eq.false,is_deleted.is.null")
       .gte("order_finished_at", startIso)
       .lte("order_finished_at", endIso)
       .order("order_finished_at", { ascending: false });
 
     if (orderError) {
       console.error("load salary orders error:", orderError);
+    }
+
+    const { data: allOrderData, error: allOrderError } = await supabase
+      .from("qiunai_salary_orders")
+      .select("*")
+      .eq("discord_id", discordId)
+      .or("is_deleted.eq.false,is_deleted.is.null")
+      .order("order_finished_at", { ascending: false });
+
+    if (allOrderError) {
+      console.error("load all salary orders error:", allOrderError);
     }
 
     const { data: bonusData, error: bonusError } = await supabase
@@ -312,6 +433,7 @@ export default function StaffPage() {
     }
 
     setOrders((orderData || []) as SalaryOrder[]);
+    setAllSalaryOrders((allOrderData || []) as SalaryOrder[]);
     setBonusList((bonusData || []) as BonusItem[]);
   }
 
@@ -588,6 +710,59 @@ export default function StaffPage() {
           />
         </div>
 
+        <div className="mt-6">
+          <Card>
+            <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+              <div>
+                <p className="flex items-center gap-1 text-sm font-semibold text-pink-500">
+                  <Sparkles size={14} />
+                  我的抽成檔位
+                </p>
+
+                <div className="mt-3 flex items-end gap-3">
+                  <p className="qiunai-title-gradient text-5xl font-black">
+                    {commissionInfo.currentRate}%
+                  </p>
+
+                  <p className="pb-2 text-sm font-semibold text-[#8b5a8f]">
+                    {commissionInfo.currentLabel}
+                  </p>
+                </div>
+
+                <p className="mt-3 text-sm leading-6 text-[#8b5a8f]">
+                  85% 依累積接單金額判定；90% 依今年薪資進度，達標後隔年整年適用。
+                </p>
+              </div>
+
+              <div className="grid flex-1 gap-4 lg:max-w-2xl">
+                <ProgressBlock
+                  title="升級 85% 進度"
+                  percent={commissionInfo.progress85}
+                  current={commissionInfo.totalOrderAmount}
+                  target={10000}
+                  note={
+                    commissionInfo.remaining85 === 0
+                      ? "已達 10,000，依規則下個月開始可進入 85%"
+                      : `還差 $${commissionInfo.remaining85.toLocaleString()}`
+                  }
+                />
+
+                <ProgressBlock
+                  title="升級隔年 90% 進度"
+                  percent={commissionInfo.progress90}
+                  current={commissionInfo.thisYearSalary}
+                  target={100000}
+                  note={
+                    commissionInfo.remaining90 === 0
+                      ? "今年薪資已達 100,000，隔年可適用 90%"
+                      : `還差 $${commissionInfo.remaining90.toLocaleString()}`
+                  }
+                />
+              </div>
+            </div>
+          </Card>
+        </div>
+
         <div className="mt-6 grid gap-6 lg:grid-cols-[420px_1fr]">
           <div className="space-y-6">
             <Card>
@@ -786,7 +961,7 @@ export default function StaffPage() {
                 </div>
               ) : (
                 <div className="overflow-x-auto">
-                  <table className="min-w-[900px] w-full text-left text-sm">
+                  <table className="min-w-[1000px] w-full text-left text-sm">
                     <thead className="bg-pink-50 text-[#8b5a8f]">
                       <tr>
                         <th className="px-4 py-3">完成時間</th>
@@ -794,6 +969,7 @@ export default function StaffPage() {
                         <th className="px-4 py-3">服務</th>
                         <th className="px-4 py-3">訂單金額</th>
                         <th className="px-4 py-3">薪資</th>
+                        <th className="px-4 py-3">抽成</th>
                         <th className="px-4 py-3">獎金</th>
                         <th className="px-4 py-3">狀態</th>
                         <th className="px-4 py-3">發薪時間</th>
@@ -821,6 +997,15 @@ export default function StaffPage() {
 
                           <td className="px-4 py-3 font-bold text-pink-500">
                             ${Number(order.staff_salary || 0).toLocaleString()}
+                          </td>
+
+                          <td className="px-4 py-3 text-[#5b3768]">
+                            <p>
+                              {order.salary_rate ? `${order.salary_rate}%` : "-"}
+                            </p>
+                            <p className="text-xs text-[#a36b9e]">
+                              {order.salary_level || ""}
+                            </p>
                           </td>
 
                           <td className="px-4 py-3 text-[#5b3768]">
@@ -934,6 +1119,47 @@ function Stat({ title, value }: { title: string; value: string }) {
   );
 }
 
+function ProgressBlock({
+  title,
+  percent,
+  current,
+  target,
+  note,
+}: {
+  title: string;
+  percent: number;
+  current: number;
+  target: number;
+  note: string;
+}) {
+  return (
+    <div className="rounded-[24px] border border-pink-200/70 bg-white/60 p-4">
+      <div className="flex items-center justify-between gap-3">
+        <p className="font-black text-[#5b3768]">{title}</p>
+        <p className="text-sm font-bold text-pink-500">{percent}%</p>
+      </div>
+
+      <div className="mt-3 h-3 overflow-hidden rounded-full bg-pink-100">
+        <div
+          className="h-full rounded-full bg-gradient-to-r from-pink-300 via-fuchsia-300 to-violet-300"
+          style={{
+            width: `${percent}%`,
+          }}
+        />
+      </div>
+
+      <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-[#8b5a8f]">
+        <span>
+          ${Number(current || 0).toLocaleString()} / $
+          {Number(target || 0).toLocaleString()}
+        </span>
+
+        <span>{note}</span>
+      </div>
+    </div>
+  );
+}
+
 function Input({
   label,
   value,
@@ -960,6 +1186,53 @@ function Input({
       />
     </label>
   );
+}
+
+function getManualCommissionRate(tier: string | null) {
+  if (tier === "rate_80") return 80;
+  if (tier === "rate_85") return 85;
+  if (tier === "rate_90") return 90;
+  if (tier === "manager_95") return 95;
+
+  return null;
+}
+
+function is85ActiveThisMonth(orders: SalaryOrder[]) {
+  const sortedOrders = [...orders].sort(
+    (a, b) =>
+      new Date(a.order_finished_at || a.created_at).getTime() -
+      new Date(b.order_finished_at || b.created_at).getTime()
+  );
+
+  let total = 0;
+  let firstReachDate: string | null = null;
+
+  for (const order of sortedOrders) {
+    total += Number(order.order_amount || 0);
+
+    if (total >= 10000) {
+      firstReachDate = order.order_finished_at || order.created_at;
+      break;
+    }
+  }
+
+  if (!firstReachDate) return false;
+
+  const reachNextMonth = getNextMonthText(firstReachDate);
+  const currentMonth = getMonthText(new Date());
+
+  return currentMonth >= reachNextMonth;
+}
+
+function getNextMonthText(dateText: string) {
+  const date = new Date(dateText);
+  const next = new Date(date.getFullYear(), date.getMonth() + 1, 1);
+
+  return `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function getMonthText(date: Date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
 }
 
 function getMonthStartIso() {

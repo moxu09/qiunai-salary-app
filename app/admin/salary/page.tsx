@@ -19,6 +19,8 @@ type Staff = {
   display_name: string | null;
   real_name: string | null;
   is_active: boolean;
+  commission_tier: string | null;
+  commission_note: string | null;
 };
 
 type SalaryOrder = {
@@ -31,11 +33,15 @@ type SalaryOrder = {
   order_amount: number | null;
   staff_salary: number | null;
   bonus_amount: number | null;
+  salary_rate: number | null;
+  salary_level: string | null;
   platform_income: number | null;
   platform_expense: number | null;
   status: string | null;
   paid_at: string | null;
   order_finished_at: string | null;
+  admin_note: string | null;
+  is_deleted: boolean | null;
   created_at: string;
 };
 
@@ -56,25 +62,23 @@ export default function AdminSalaryPage() {
   const [orders, setOrders] = useState<SalaryOrder[]>([]);
   const [bonusList, setBonusList] = useState<BonusItem[]>([]);
   const [staffList, setStaffList] = useState<Staff[]>([]);
+  const [editingOrder, setEditingOrder] = useState<SalaryOrder | null>(null);
 
-  // 查詢預設：本月初～現在
   const [filter, setFilter] = useState({
     start: getMonthStartInput(),
     end: getNowInput(),
   });
 
-  // 新增訂單預設：現在
   const [orderForm, setOrderForm] = useState({
     discord_id: "",
     customer_name: "",
     service_name: "",
     order_amount: "",
-    staff_salary: "",
+    salary_rate: getDefaultSalaryRateInput(),
     bonus_amount: "0",
     order_finished_at: getNowInput(),
   });
 
-  // 新增獎金預設：現在
   const [bonusForm, setBonusForm] = useState({
     discord_id: "",
     title: "",
@@ -83,7 +87,6 @@ export default function AdminSalaryPage() {
     created_at: getNowInput(),
   });
 
-  // 發薪預設：上個月整個月，發薪時間現在
   const [payForm, setPayForm] = useState({
     discord_id: "all",
     start: getPreviousMonthStartInput(),
@@ -156,6 +159,7 @@ export default function AdminSalaryPage() {
     let orderQuery = supabase
       .from("qiunai_salary_orders")
       .select("*")
+      .or("is_deleted.eq.false,is_deleted.is.null")
       .order("order_finished_at", { ascending: false });
 
     if (startIso) {
@@ -195,7 +199,9 @@ export default function AdminSalaryPage() {
 
     const { data: staffData, error: staffError } = await supabase
       .from("qiunai_staff")
-      .select("id, discord_id, discord_name, display_name, real_name, is_active")
+      .select(
+        "id, discord_id, discord_name, display_name, real_name, is_active, commission_tier, commission_note"
+      )
       .eq("is_active", true)
       .order("created_at", { ascending: false });
 
@@ -233,16 +239,17 @@ export default function AdminSalaryPage() {
     }
 
     const orderAmount = Number(orderForm.order_amount);
-    const staffSalary = Number(orderForm.staff_salary);
+    const salaryRate = Number(orderForm.salary_rate || 80);
     const bonusAmount = Number(orderForm.bonus_amount || 0);
+    const staffSalary = Math.round(orderAmount * (salaryRate / 100));
 
     if (!orderAmount || orderAmount <= 0) {
       alert("請輸入正確訂單金額");
       return;
     }
 
-    if (Number.isNaN(staffSalary) || staffSalary < 0) {
-      alert("請輸入正確員工薪資");
+    if (Number.isNaN(salaryRate) || salaryRate <= 0) {
+      alert("請選擇正確抽成檔位");
       return;
     }
 
@@ -265,10 +272,13 @@ export default function AdminSalaryPage() {
       order_amount: orderAmount,
       staff_salary: staffSalary,
       bonus_amount: bonusAmount,
+      salary_rate: salaryRate,
+      salary_level: `後台手動新增 ${salaryRate}%`,
       platform_income: orderAmount,
       platform_expense: staffSalary + bonusAmount,
       status: "未發薪",
       order_finished_at: finishedAt,
+      is_deleted: false,
     });
 
     if (error) {
@@ -282,7 +292,7 @@ export default function AdminSalaryPage() {
       customer_name: "",
       service_name: "",
       order_amount: "",
-      staff_salary: "",
+      salary_rate: getDefaultSalaryRateInput(),
       bonus_amount: "0",
       order_finished_at: getNowInput(),
     });
@@ -396,6 +406,7 @@ export default function AdminSalaryPage() {
         status: "已發薪",
         paid_at: paidAt,
       })
+      .or("is_deleted.eq.false,is_deleted.is.null")
       .gte("order_finished_at", startIso)
       .lte("order_finished_at", endIso)
       .neq("status", "已發薪");
@@ -413,6 +424,114 @@ export default function AdminSalaryPage() {
     }
 
     alert("已完成批次發薪");
+    await loadAll();
+  }
+
+  async function updateSalaryOrder(
+    orderId: string,
+    payload: {
+      service_name?: string | null;
+      customer_name?: string | null;
+      order_amount?: number | null;
+      bonus_amount?: number | null;
+      salary_rate?: number | null;
+      admin_note?: string | null;
+    }
+  ) {
+    const orderAmount = Number(payload.order_amount || 0);
+    const salaryRate = Number(payload.salary_rate || 80);
+    const bonusAmount = Number(payload.bonus_amount || 0);
+    const staffSalary = Math.round(orderAmount * (salaryRate / 100));
+
+    if (!orderAmount || orderAmount <= 0) {
+      alert("訂單金額錯誤");
+      return false;
+    }
+
+    if (Number.isNaN(salaryRate) || salaryRate <= 0) {
+      alert("抽成比例錯誤");
+      return false;
+    }
+
+    if (Number.isNaN(bonusAmount) || bonusAmount < 0) {
+      alert("訂單獎金錯誤");
+      return false;
+    }
+
+    const { error } = await supabase
+      .from("qiunai_salary_orders")
+      .update({
+        service_name: payload.service_name || null,
+        customer_name: payload.customer_name || null,
+        order_amount: orderAmount,
+        bonus_amount: bonusAmount,
+        salary_rate: salaryRate,
+        staff_salary: staffSalary,
+        platform_income: orderAmount,
+        platform_expense: staffSalary + bonusAmount,
+        salary_level: `後台手動修改 ${salaryRate}%`,
+        admin_note: payload.admin_note || null,
+        edited_at: new Date().toISOString(),
+        edited_by: "admin",
+      })
+      .eq("id", orderId);
+
+    if (error) {
+      console.error("修改訂單失敗:", error);
+      alert("修改訂單失敗");
+      return false;
+    }
+
+    alert("已修改訂單");
+    return true;
+  }
+
+  async function deleteSalaryOrder(orderId: string) {
+    const reason = window.prompt("請輸入刪除原因：") || "後台刪除";
+
+    const ok = window.confirm(
+      "確定要刪除這筆薪資訂單嗎？刪除後陪陪端不會再看到。"
+    );
+
+    if (!ok) return false;
+
+    const { error } = await supabase
+      .from("qiunai_salary_orders")
+      .update({
+        is_deleted: true,
+        deleted_at: new Date().toISOString(),
+        deleted_reason: reason,
+        edited_at: new Date().toISOString(),
+        edited_by: "admin",
+      })
+      .eq("id", orderId);
+
+    if (error) {
+      console.error("刪除訂單失敗:", error);
+      alert("刪除訂單失敗");
+      return false;
+    }
+
+    alert("已刪除訂單");
+    return true;
+  }
+
+  async function updateStaffCommissionTier(staffId: string, tier: string) {
+    const { error } = await supabase
+      .from("qiunai_staff")
+      .update({
+        commission_tier: tier,
+        commission_note: tier === "auto" ? "自動判定" : "後台手動設定",
+      })
+      .eq("id", staffId);
+
+    if (error) {
+      console.error("更新抽成檔位失敗:", error);
+      alert("更新抽成檔位失敗");
+      return;
+    }
+
+    alert("已更新抽成檔位");
     await loadAll();
   }
 
@@ -493,13 +612,54 @@ export default function AdminSalaryPage() {
         </div>
 
         <div className="mt-6 rounded-3xl border border-white/10 bg-white/5 p-6">
+          <h2 className="text-xl font-bold">員工抽成檔位</h2>
+
+          <p className="mt-2 text-sm text-zinc-400">
+            九月前系統預設 90%。九月後可手動設定 80%、85%、90% 或主管津貼 95%。
+          </p>
+
+          <div className="mt-5 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {staffList.map((staff) => (
+              <div
+                key={staff.id}
+                className="rounded-2xl border border-white/10 bg-black/20 p-4"
+              >
+                <p className="font-bold">{getDisplayStaffName(staff)}</p>
+
+                <p className="mt-1 text-xs text-zinc-500">
+                  {staff.discord_id}
+                </p>
+
+                <label className="mt-3 block">
+                  <span className="text-sm text-zinc-300">抽成檔位</span>
+
+                  <select
+                    className="mt-2 w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-white outline-none"
+                    value={staff.commission_tier || "auto"}
+                    onChange={(e) =>
+                      updateStaffCommissionTier(staff.id, e.target.value)
+                    }
+                  >
+                    <option value="auto">自動判定</option>
+                    <option value="rate_80">80% 一般陪陪</option>
+                    <option value="rate_85">85% 進階陪陪</option>
+                    <option value="rate_90">90% 年度高階</option>
+                    <option value="manager_95">95% 主管津貼</option>
+                  </select>
+                </label>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="mt-6 rounded-3xl border border-white/10 bg-white/5 p-6">
           <div className="flex items-center gap-2">
             <ClipboardList className="text-violet-300" size={20} />
             <h2 className="text-xl font-bold">新增訂單</h2>
           </div>
 
           <p className="mt-2 text-sm text-zinc-400">
-            完成時間預設為現在，可自行修改。
+            完成時間預設為現在，可自行修改。員工薪資會依照抽成比例自動計算。
           </p>
 
           <div className="mt-5 grid gap-4 md:grid-cols-4">
@@ -551,14 +711,29 @@ export default function AdminSalaryPage() {
               }
             />
 
-            <Input
-              label="員工薪資"
-              type="number"
-              value={orderForm.staff_salary}
-              onChange={(value) =>
-                setOrderForm((prev) => ({ ...prev, staff_salary: value }))
-              }
-            />
+            <label className="block">
+              <span className="text-sm text-zinc-300">抽成檔位</span>
+
+              <select
+                value={orderForm.salary_rate}
+                onChange={(e) =>
+                  setOrderForm((prev) => ({
+                    ...prev,
+                    salary_rate: e.target.value,
+                  }))
+                }
+                className="mt-2 w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-white outline-none"
+              >
+                <option value="80">80% 一般陪陪</option>
+                <option value="85">85% 進階陪陪</option>
+                <option value="90">90% 年度高階</option>
+                <option value="95">95% 主管津貼</option>
+              </select>
+
+              <p className="mt-1 text-xs text-zinc-500">
+                九月前預設 90%，九月後預設 80%
+              </p>
+            </label>
 
             <Input
               label="訂單獎金"
@@ -720,7 +895,7 @@ export default function AdminSalaryPage() {
               此時間範圍內沒有薪資訂單
             </div>
           ) : (
-            <table className="min-w-[1200px] w-full text-left text-sm">
+            <table className="min-w-[1350px] w-full text-left text-sm">
               <thead className="bg-white/10 text-zinc-300">
                 <tr>
                   <th className="px-4 py-3">完成時間</th>
@@ -729,6 +904,7 @@ export default function AdminSalaryPage() {
                   <th className="px-4 py-3">服務</th>
                   <th className="px-4 py-3">訂單金額</th>
                   <th className="px-4 py-3">員工薪資</th>
+                  <th className="px-4 py-3">抽成</th>
                   <th className="px-4 py-3">獎金</th>
                   <th className="px-4 py-3">平台收入</th>
                   <th className="px-4 py-3">平台支出</th>
@@ -753,7 +929,14 @@ export default function AdminSalaryPage() {
                     </td>
 
                     <td className="px-4 py-3">{order.customer_name || "-"}</td>
-                    <td className="px-4 py-3">{order.service_name || "-"}</td>
+                    <td className="px-4 py-3">
+                      <p>{order.service_name || "-"}</p>
+                      {order.admin_note ? (
+                        <p className="mt-1 text-xs text-zinc-500">
+                          備註：{order.admin_note}
+                        </p>
+                      ) : null}
+                    </td>
 
                     <td className="px-4 py-3">
                       ${Number(order.order_amount || 0).toLocaleString()}
@@ -761,6 +944,13 @@ export default function AdminSalaryPage() {
 
                     <td className="px-4 py-3 text-violet-300">
                       ${Number(order.staff_salary || 0).toLocaleString()}
+                    </td>
+
+                    <td className="px-4 py-3">
+                      <p>{order.salary_rate ? `${order.salary_rate}%` : "-"}</p>
+                      <p className="text-xs text-zinc-500">
+                        {order.salary_level || "-"}
+                      </p>
                     </td>
 
                     <td className="px-4 py-3">
@@ -800,17 +990,39 @@ export default function AdminSalaryPage() {
                     </td>
 
                     <td className="px-4 py-3">
-                      {order.status === "已發薪" ? (
-                        <span className="text-xs text-zinc-500">已完成</span>
-                      ) : (
+                      <div className="flex flex-col gap-2">
+                        {order.status === "已發薪" ? (
+                          <span className="text-xs text-zinc-500">已完成</span>
+                        ) : (
+                          <button
+                            onClick={() => markPaid(order)}
+                            className="flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 py-2 font-semibold hover:bg-emerald-400"
+                          >
+                            <CheckCircle2 size={16} />
+                            已發薪
+                          </button>
+                        )}
+
                         <button
-                          onClick={() => markPaid(order)}
-                          className="flex items-center gap-2 rounded-xl bg-emerald-500 px-4 py-2 font-semibold hover:bg-emerald-400"
+                          onClick={() => setEditingOrder(order)}
+                          className="rounded-xl bg-blue-500 px-4 py-2 font-semibold hover:bg-blue-400"
                         >
-                          <CheckCircle2 size={16} />
-                          已發薪
+                          修改細節
                         </button>
-                      )}
+
+                        <button
+                          onClick={async () => {
+                            const ok = await deleteSalaryOrder(order.id);
+
+                            if (ok) {
+                              await loadAll();
+                            }
+                          }}
+                          className="rounded-xl bg-red-500 px-4 py-2 font-semibold hover:bg-red-400"
+                        >
+                          刪除
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -867,6 +1079,127 @@ export default function AdminSalaryPage() {
             </table>
           )}
         </div>
+
+        {editingOrder && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+            <div className="w-full max-w-lg rounded-3xl border border-white/10 bg-[#171026] p-6 text-white shadow-2xl">
+              <h2 className="text-xl font-bold">修改薪資訂單</h2>
+
+              <p className="mt-2 text-sm text-zinc-400">
+                修改後會重新依照抽成比例計算員工薪資與平台支出。
+              </p>
+
+              <div className="mt-5 space-y-4">
+                <Input
+                  label="服務項目"
+                  value={editingOrder.service_name || ""}
+                  onChange={(value) =>
+                    setEditingOrder({
+                      ...editingOrder,
+                      service_name: value,
+                    })
+                  }
+                />
+
+                <Input
+                  label="客人名稱"
+                  value={editingOrder.customer_name || ""}
+                  onChange={(value) =>
+                    setEditingOrder({
+                      ...editingOrder,
+                      customer_name: value,
+                    })
+                  }
+                />
+
+                <Input
+                  label="訂單金額"
+                  type="number"
+                  value={String(editingOrder.order_amount || 0)}
+                  onChange={(value) =>
+                    setEditingOrder({
+                      ...editingOrder,
+                      order_amount: Number(value),
+                    })
+                  }
+                />
+
+                <Input
+                  label="訂單獎金"
+                  type="number"
+                  value={String(editingOrder.bonus_amount || 0)}
+                  onChange={(value) =>
+                    setEditingOrder({
+                      ...editingOrder,
+                      bonus_amount: Number(value),
+                    })
+                  }
+                />
+
+                <label className="block">
+                  <span className="text-sm text-zinc-300">抽成檔位</span>
+
+                  <select
+                    value={String(editingOrder.salary_rate || 80)}
+                    onChange={(e) =>
+                      setEditingOrder({
+                        ...editingOrder,
+                        salary_rate: Number(e.target.value),
+                      })
+                    }
+                    className="mt-2 w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-white outline-none"
+                  >
+                    <option value="80">80% 一般陪陪</option>
+                    <option value="85">85% 進階陪陪</option>
+                    <option value="90">90% 年度高階</option>
+                    <option value="95">95% 主管津貼</option>
+                  </select>
+                </label>
+
+                <Input
+                  label="後台備註"
+                  value={editingOrder.admin_note || ""}
+                  onChange={(value) =>
+                    setEditingOrder({
+                      ...editingOrder,
+                      admin_note: value,
+                    })
+                  }
+                />
+              </div>
+
+              <div className="mt-6 flex gap-3">
+                <button
+                  onClick={async () => {
+                    const ok = await updateSalaryOrder(editingOrder.id, {
+                      service_name: editingOrder.service_name,
+                      customer_name: editingOrder.customer_name,
+                      order_amount: Number(editingOrder.order_amount || 0),
+                      bonus_amount: Number(editingOrder.bonus_amount || 0),
+                      salary_rate: Number(editingOrder.salary_rate || 80),
+                      admin_note: editingOrder.admin_note,
+                    });
+
+                    if (ok) {
+                      setEditingOrder(null);
+                      await loadAll();
+                    }
+                  }}
+                  className="flex-1 rounded-xl bg-emerald-500 px-4 py-3 font-bold hover:bg-emerald-400"
+                >
+                  儲存修改
+                </button>
+
+                <button
+                  onClick={() => setEditingOrder(null)}
+                  className="flex-1 rounded-xl bg-zinc-700 px-4 py-3 font-bold hover:bg-zinc-600"
+                >
+                  取消
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </section>
     </main>
   );
@@ -995,4 +1328,15 @@ function formatDateTime(value: string | null) {
     hour: "2-digit",
     minute: "2-digit",
   });
+}
+
+function getDefaultSalaryRateInput() {
+  const now = new Date();
+  const openingEnd = new Date("2026-09-01T00:00:00+08:00");
+
+  if (now < openingEnd) {
+    return "90";
+  }
+
+  return "80";
 }
