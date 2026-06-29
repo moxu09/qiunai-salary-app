@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Users, WalletCards, Settings } from "lucide-react";
+import { Users, WalletCards, Settings, Trophy } from "lucide-react";
 import { useQiunaiAdminGuard } from "@/lib/useQiunaiAdminGuard";
 
 export default function AdminHomePage() {
@@ -21,7 +21,7 @@ export default function AdminHomePage() {
         <p className="text-sm text-violet-300">Qiunai Admin</p>
         <h1 className="mt-2 text-3xl font-bold">秋奈電競｜管理後台</h1>
 
-        <div className="mt-8 grid gap-4 md:grid-cols-3">
+        <div className="mt-8 grid gap-4 md:grid-cols-2">
           <AdminCard
             href="/admin/staff"
             title="員工管理"
@@ -34,6 +34,13 @@ export default function AdminHomePage() {
             title="薪資總表"
             desc="查看收入、支出、獎金、發薪狀態"
             icon={<WalletCards size={26} />}
+          />
+
+          <AdminCard
+            href="/admin/ranking"
+            title="排行榜"
+            desc="查看每位陪陪薪資排行，可依薪水升冪或降冪排序"
+            icon={<Trophy size={26} />}
           />
 
           <AdminCard

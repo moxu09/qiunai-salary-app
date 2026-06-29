@@ -8,6 +8,9 @@ import {
   Plus,
   CalendarDays,
   ClipboardList,
+  Search,
+  UserRound,
+  WalletCards,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useQiunaiAdminGuard } from "@/lib/useQiunaiAdminGuard";
@@ -55,6 +58,18 @@ type BonusItem = {
   created_at: string;
 };
 
+type StaffSalarySummary = {
+  staff: Staff;
+  orderCount: number;
+  orderAmount: number;
+  orderSalary: number;
+  orderBonus: number;
+  extraBonus: number;
+  totalSalary: number;
+  unpaidCount: number;
+  unpaidSalary: number;
+};
+
 export default function AdminSalaryPage() {
   const { adminLoading, isAdmin } = useQiunaiAdminGuard();
 
@@ -63,6 +78,7 @@ export default function AdminSalaryPage() {
   const [bonusList, setBonusList] = useState<BonusItem[]>([]);
   const [staffList, setStaffList] = useState<Staff[]>([]);
   const [editingOrder, setEditingOrder] = useState<SalaryOrder | null>(null);
+  const [selectedDetailDiscordId, setSelectedDetailDiscordId] = useState("");
 
   const [filter, setFilter] = useState({
     start: getMonthStartInput(),
@@ -150,6 +166,92 @@ export default function AdminSalaryPage() {
     };
   }, [orders, bonusList]);
 
+  const staffSalarySummaries = useMemo(() => {
+    return staffList.map((staff) => {
+      const staffOrders = orders.filter(
+        (order) => order.discord_id === staff.discord_id
+      );
+
+      const staffBonuses = bonusList.filter(
+        (bonus) => bonus.discord_id === staff.discord_id
+      );
+
+      const orderAmount = staffOrders.reduce(
+        (sum, order) => sum + Number(order.order_amount || 0),
+        0
+      );
+
+      const orderSalary = staffOrders.reduce(
+        (sum, order) => sum + Number(order.staff_salary || 0),
+        0
+      );
+
+      const orderBonus = staffOrders.reduce(
+        (sum, order) => sum + Number(order.bonus_amount || 0),
+        0
+      );
+
+      const extraBonus = staffBonuses.reduce(
+        (sum, bonus) => sum + Number(bonus.amount || 0),
+        0
+      );
+
+      const unpaidOrders = staffOrders.filter(
+        (order) => order.status !== "已發薪"
+      );
+
+      const unpaidSalary =
+        unpaidOrders.reduce(
+          (sum, order) =>
+            sum +
+            Number(order.staff_salary || 0) +
+            Number(order.bonus_amount || 0),
+          0
+        ) + extraBonus;
+
+      return {
+        staff,
+        orderCount: staffOrders.length,
+        orderAmount,
+        orderSalary,
+        orderBonus,
+        extraBonus,
+        totalSalary: orderSalary + orderBonus + extraBonus,
+        unpaidCount: unpaidOrders.length,
+        unpaidSalary,
+      };
+    });
+  }, [staffList, orders, bonusList]);
+
+  const selectedDetailStaff = useMemo(() => {
+    return (
+      staffList.find((staff) => staff.discord_id === selectedDetailDiscordId) ||
+      null
+    );
+  }, [staffList, selectedDetailDiscordId]);
+
+  const selectedDetailSummary = useMemo(() => {
+    return (
+      staffSalarySummaries.find(
+        (row) => row.staff.discord_id === selectedDetailDiscordId
+      ) || null
+    );
+  }, [staffSalarySummaries, selectedDetailDiscordId]);
+
+  const selectedDetailOrders = useMemo(() => {
+    if (!selectedDetailDiscordId) return [];
+
+    return orders.filter((order) => order.discord_id === selectedDetailDiscordId);
+  }, [orders, selectedDetailDiscordId]);
+
+  const selectedDetailBonuses = useMemo(() => {
+    if (!selectedDetailDiscordId) return [];
+
+    return bonusList.filter(
+      (bonus) => bonus.discord_id === selectedDetailDiscordId
+    );
+  }, [bonusList, selectedDetailDiscordId]);
+
   async function loadAll() {
     setLoading(true);
 
@@ -210,9 +312,16 @@ export default function AdminSalaryPage() {
       alert("讀取員工資料失敗");
     }
 
+    const nextStaffList = (staffData || []) as Staff[];
+
     setOrders((orderData || []) as SalaryOrder[]);
     setBonusList((bonusData || []) as BonusItem[]);
-    setStaffList((staffData || []) as Staff[]);
+    setStaffList(nextStaffList);
+
+    if (!selectedDetailDiscordId && nextStaffList.length > 0) {
+      setSelectedDetailDiscordId(nextStaffList[0].discord_id);
+    }
+
     setLoading(false);
   }
 
@@ -287,6 +396,8 @@ export default function AdminSalaryPage() {
       return;
     }
 
+    setSelectedDetailDiscordId(orderForm.discord_id);
+
     setOrderForm({
       discord_id: "",
       customer_name: "",
@@ -336,6 +447,8 @@ export default function AdminSalaryPage() {
       alert("新增獎金失敗");
       return;
     }
+
+    setSelectedDetailDiscordId(bonusForm.discord_id);
 
     setBonusForm({
       discord_id: "",
@@ -612,6 +725,201 @@ export default function AdminSalaryPage() {
         </div>
 
         <div className="mt-6 rounded-3xl border border-white/10 bg-white/5 p-6">
+          <div className="flex items-center gap-2">
+            <WalletCards className="text-violet-300" size={20} />
+            <h2 className="text-xl font-bold">陪陪個人薪資明細</h2>
+          </div>
+
+          <p className="mt-2 text-sm text-zinc-400">
+            選擇單一陪陪後，可以查看此時間範圍內的訂單、薪資、獎金與未發薪。
+          </p>
+
+          <div className="mt-5 grid gap-4 md:grid-cols-[1.1fr_2fr]">
+            <SearchableStaffSelect
+              label="搜尋 / 選擇陪陪"
+              value={selectedDetailDiscordId}
+              staffList={staffList}
+              onChange={setSelectedDetailDiscordId}
+            />
+
+            <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+              {selectedDetailStaff && selectedDetailSummary ? (
+                <div>
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-violet-500/20 text-violet-200">
+                      <UserRound size={22} />
+                    </div>
+
+                    <div>
+                      <p className="text-lg font-black">
+                        {getDisplayStaffName(selectedDetailStaff)}
+                      </p>
+
+                      <p className="text-xs text-zinc-500">
+                        {selectedDetailStaff.discord_id}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mt-5 grid gap-3 md:grid-cols-3">
+                    <MiniStat
+                      title="訂單數"
+                      value={`${selectedDetailSummary.orderCount} 筆`}
+                    />
+                    <MiniStat
+                      title="接單金額"
+                      value={`$${selectedDetailSummary.orderAmount.toLocaleString()}`}
+                    />
+                    <MiniStat
+                      title="訂單薪資"
+                      value={`$${selectedDetailSummary.orderSalary.toLocaleString()}`}
+                    />
+                    <MiniStat
+                      title="總獎金"
+                      value={`$${(
+                        selectedDetailSummary.orderBonus +
+                        selectedDetailSummary.extraBonus
+                      ).toLocaleString()}`}
+                    />
+                    <MiniStat
+                      title="總薪資"
+                      value={`$${selectedDetailSummary.totalSalary.toLocaleString()}`}
+                    />
+                    <MiniStat
+                      title="未發薪"
+                      value={`$${selectedDetailSummary.unpaidSalary.toLocaleString()}`}
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div className="py-8 text-center text-sm text-zinc-400">
+                  請選擇一位陪陪
+                </div>
+              )}
+            </div>
+          </div>
+
+          {selectedDetailStaff ? (
+            <div className="mt-6 grid gap-6 xl:grid-cols-2">
+              <div className="overflow-x-auto rounded-2xl border border-white/10 bg-black/20">
+                <div className="border-b border-white/10 p-4">
+                  <h3 className="font-bold">此陪陪訂單明細</h3>
+                </div>
+
+                {selectedDetailOrders.length === 0 ? (
+                  <div className="p-8 text-center text-sm text-zinc-400">
+                    此時間範圍內沒有訂單
+                  </div>
+                ) : (
+                  <table className="min-w-[850px] w-full text-left text-sm">
+                    <thead className="bg-white/10 text-zinc-300">
+                      <tr>
+                        <th className="px-4 py-3">完成時間</th>
+                        <th className="px-4 py-3">客人</th>
+                        <th className="px-4 py-3">服務</th>
+                        <th className="px-4 py-3">金額</th>
+                        <th className="px-4 py-3">薪資</th>
+                        <th className="px-4 py-3">獎金</th>
+                        <th className="px-4 py-3">狀態</th>
+                      </tr>
+                    </thead>
+
+                    <tbody>
+                      {selectedDetailOrders.map((order) => (
+                        <tr key={order.id} className="border-t border-white/10">
+                          <td className="px-4 py-3 text-zinc-300">
+                            {formatDateTime(order.order_finished_at)}
+                          </td>
+
+                          <td className="px-4 py-3">
+                            {order.customer_name || "-"}
+                          </td>
+
+                          <td className="px-4 py-3">
+                            <p>{order.service_name || "-"}</p>
+
+                            {order.admin_note ? (
+                              <p className="mt-1 text-xs text-zinc-500">
+                                備註：{order.admin_note}
+                              </p>
+                            ) : null}
+                          </td>
+
+                          <td className="px-4 py-3">
+                            ${Number(order.order_amount || 0).toLocaleString()}
+                          </td>
+
+                          <td className="px-4 py-3 text-violet-300">
+                            ${Number(order.staff_salary || 0).toLocaleString()}
+                          </td>
+
+                          <td className="px-4 py-3">
+                            ${Number(order.bonus_amount || 0).toLocaleString()}
+                          </td>
+
+                          <td className="px-4 py-3">
+                            <span
+                              className={`rounded-full px-3 py-1 text-xs ${
+                                order.status === "已發薪"
+                                  ? "bg-emerald-500/20 text-emerald-300"
+                                  : "bg-yellow-500/20 text-yellow-300"
+                              }`}
+                            >
+                              {order.status || "未發薪"}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+
+              <div className="overflow-x-auto rounded-2xl border border-white/10 bg-black/20">
+                <div className="border-b border-white/10 p-4">
+                  <h3 className="font-bold">此陪陪額外獎金</h3>
+                </div>
+
+                {selectedDetailBonuses.length === 0 ? (
+                  <div className="p-8 text-center text-sm text-zinc-400">
+                    此時間範圍內沒有額外獎金
+                  </div>
+                ) : (
+                  <table className="min-w-[650px] w-full text-left text-sm">
+                    <thead className="bg-white/10 text-zinc-300">
+                      <tr>
+                        <th className="px-4 py-3">時間</th>
+                        <th className="px-4 py-3">獎金名稱</th>
+                        <th className="px-4 py-3">金額</th>
+                        <th className="px-4 py-3">備註</th>
+                      </tr>
+                    </thead>
+
+                    <tbody>
+                      {selectedDetailBonuses.map((bonus) => (
+                        <tr key={bonus.id} className="border-t border-white/10">
+                          <td className="px-4 py-3 text-zinc-300">
+                            {formatDateTime(bonus.created_at)}
+                          </td>
+
+                          <td className="px-4 py-3">{bonus.title}</td>
+
+                          <td className="px-4 py-3 text-violet-300">
+                            ${Number(bonus.amount || 0).toLocaleString()}
+                          </td>
+
+                          <td className="px-4 py-3">{bonus.note || "-"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            </div>
+          ) : null}
+        </div>
+
+        <div className="mt-6 rounded-3xl border border-white/10 bg-white/5 p-6">
           <h2 className="text-xl font-bold">員工抽成檔位</h2>
 
           <p className="mt-2 text-sm text-zinc-400">
@@ -663,7 +971,7 @@ export default function AdminSalaryPage() {
           </p>
 
           <div className="mt-5 grid gap-4 md:grid-cols-4">
-            <SelectStaff
+            <SearchableStaffSelect
               label="員工"
               value={orderForm.discord_id}
               staffList={staffList}
@@ -765,7 +1073,7 @@ export default function AdminSalaryPage() {
           </p>
 
           <div className="mt-5 grid gap-4 md:grid-cols-5">
-            <SelectStaff
+            <SearchableStaffSelect
               label="員工"
               value={bonusForm.discord_id}
               staffList={staffList}
@@ -922,10 +1230,15 @@ export default function AdminSalaryPage() {
                     </td>
 
                     <td className="px-4 py-3">
-                      <p>{order.staff_name || "未知員工"}</p>
-                      <p className="text-xs text-zinc-500">
-                        {order.discord_id}
-                      </p>
+                      <button
+                        onClick={() => setSelectedDetailDiscordId(order.discord_id)}
+                        className="text-left hover:text-violet-300"
+                      >
+                        <p>{order.staff_name || "未知員工"}</p>
+                        <p className="text-xs text-zinc-500">
+                          {order.discord_id}
+                        </p>
+                      </button>
                     </td>
 
                     <td className="px-4 py-3">{order.customer_name || "-"}</td>
@@ -1060,10 +1373,15 @@ export default function AdminSalaryPage() {
                     </td>
 
                     <td className="px-4 py-3">
-                      <p>{bonus.staff_name || bonus.discord_id}</p>
-                      <p className="text-xs text-zinc-500">
-                        {bonus.discord_id}
-                      </p>
+                      <button
+                        onClick={() => setSelectedDetailDiscordId(bonus.discord_id)}
+                        className="text-left hover:text-violet-300"
+                      >
+                        <p>{bonus.staff_name || bonus.discord_id}</p>
+                        <p className="text-xs text-zinc-500">
+                          {bonus.discord_id}
+                        </p>
+                      </button>
                     </td>
 
                     <td className="px-4 py-3">{bonus.title}</td>
@@ -1214,6 +1532,15 @@ function Stat({ title, value }: { title: string; value: string }) {
   );
 }
 
+function MiniStat({ title, value }: { title: string; value: string }) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+      <p className="text-xs text-zinc-400">{title}</p>
+      <p className="mt-2 text-lg font-black text-violet-200">{value}</p>
+    </div>
+  );
+}
+
 function Input({
   label,
   value,
@@ -1242,7 +1569,7 @@ function Input({
   );
 }
 
-function SelectStaff({
+function SearchableStaffSelect({
   label,
   value,
   onChange,
@@ -1253,24 +1580,110 @@ function SelectStaff({
   onChange: (value: string) => void;
   staffList: Staff[];
 }) {
+  const selectedStaff =
+    staffList.find((staff) => staff.discord_id === value) || null;
+
+  const [keyword, setKeyword] = useState("");
+
+  const filteredStaff = useMemo(() => {
+    const key = keyword.trim().toLowerCase();
+
+    if (!key) return staffList.slice(0, 12);
+
+    return staffList
+      .filter((staff) => {
+        const text = [
+          staff.discord_id,
+          staff.discord_name,
+          staff.display_name,
+          staff.real_name,
+          getDisplayStaffName(staff),
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase();
+
+        return text.includes(key);
+      })
+      .slice(0, 20);
+  }, [keyword, staffList]);
+
   return (
-    <label className="block">
+    <div className="block">
       <span className="text-sm text-zinc-300">{label}</span>
 
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="mt-2 w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-white outline-none"
-      >
-        <option value="">請選擇員工</option>
+      <div className="mt-2 flex items-center gap-2 rounded-xl border border-white/10 bg-black/30 px-4 py-3 focus-within:border-violet-400">
+        <Search size={16} className="text-violet-300" />
 
-        {staffList.map((staff) => (
-          <option key={staff.id} value={staff.discord_id}>
-            {getDisplayStaffName(staff)}
-          </option>
-        ))}
-      </select>
-    </label>
+        <input
+          value={keyword}
+          onChange={(e) => setKeyword(e.target.value)}
+          placeholder={
+            selectedStaff
+              ? `已選擇：${getDisplayStaffName(selectedStaff)}`
+              : "輸入陪陪名字 / Discord ID"
+          }
+          className="w-full bg-transparent text-white outline-none placeholder:text-zinc-600"
+        />
+      </div>
+
+      {selectedStaff ? (
+        <div className="mt-2 flex items-center justify-between gap-3 rounded-xl border border-violet-400/30 bg-violet-500/10 px-4 py-3">
+          <div>
+            <p className="text-sm font-bold text-violet-200">
+              {getDisplayStaffName(selectedStaff)}
+            </p>
+            <p className="text-xs text-zinc-500">{selectedStaff.discord_id}</p>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => {
+              onChange("");
+              setKeyword("");
+            }}
+            className="rounded-lg border border-white/10 px-3 py-1 text-xs text-zinc-300 hover:bg-white/10"
+          >
+            清除
+          </button>
+        </div>
+      ) : null}
+
+      <div className="mt-2 max-h-56 overflow-y-auto rounded-xl border border-white/10 bg-black/30">
+        {filteredStaff.length === 0 ? (
+          <div className="px-4 py-4 text-sm text-zinc-500">
+            找不到符合的陪陪
+          </div>
+        ) : (
+          filteredStaff.map((staff) => (
+            <button
+              key={staff.id}
+              type="button"
+              onClick={() => {
+                onChange(staff.discord_id);
+                setKeyword("");
+              }}
+              className={`flex w-full items-center gap-3 border-b border-white/5 px-4 py-3 text-left last:border-b-0 hover:bg-white/10 ${
+                value === staff.discord_id ? "bg-violet-500/20" : ""
+              }`}
+            >
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-500/20 text-violet-200">
+                <UserRound size={18} />
+              </div>
+
+              <div className="min-w-0">
+                <p className="truncate text-sm font-bold text-white">
+                  {getDisplayStaffName(staff)}
+                </p>
+                <p className="truncate text-xs text-zinc-500">
+                  {staff.discord_name || staff.discord_id}
+                </p>
+              </div>
+            </button>
+          ))
+        )}
+      </div>
+    </div>
   );
 }
 

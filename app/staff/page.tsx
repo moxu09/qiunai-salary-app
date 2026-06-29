@@ -533,38 +533,46 @@ export default function StaffPage() {
 
   async function saveStaffServices() {
     if (!staff) return;
-
     setSavingServices(true);
-
+    const allowedServices =
+      selectedServices.map((key) => getAllowedServiceNameByKey(key));
+    const { error: updateStaffError } = await supabase
+      .from("qiunai_staff")
+      .update({
+        allowed_services: allowedServices,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("discord_id", staff.discord_id);
+    if (updateStaffError) {
+      console.error("update allowed_services error:", updateStaffError);
+      alert("更新可接服務失敗");
+      setSavingServices(false);
+      return;
+    }
     const { error: deleteError } = await supabase
       .from("qiunai_staff_services")
       .delete()
       .eq("discord_id", staff.discord_id);
-
     if (deleteError) {
       console.error("delete services error:", deleteError);
       alert("更新可接遊戲失敗");
       setSavingServices(false);
       return;
     }
-
     if (selectedServices.length > 0) {
       const rows = selectedServices.map((key) => {
         const option = SERVICE_OPTIONS.find((item) => item.key === key);
-
         return {
           discord_id: staff.discord_id,
           service_key: key,
-          service_name: option ? `${option.group}｜${option.name}` : key,
+          service_name: getAllowedServiceNameByKey(key),
           enabled: true,
           updated_at: new Date().toISOString(),
         };
       });
-
       const { error: insertError } = await supabase
         .from("qiunai_staff_services")
         .insert(rows);
-
       if (insertError) {
         console.error("insert services error:", insertError);
         alert("儲存可接遊戲失敗");
@@ -572,11 +580,9 @@ export default function StaffPage() {
         return;
       }
     }
-
     setSavingServices(false);
     alert("可接遊戲已儲存");
   }
-
   async function logout() {
     await supabase.auth.signOut();
     router.replace("/");
@@ -1187,7 +1193,42 @@ function Input({
     </label>
   );
 }
+function getAllowedServiceNameByKey(key: string) {
+  if (key === "valorant_god") return "特戰英豪大神陪玩";
+  if (key === "valorant_skill") return "特戰英豪技術陪玩";
+  if (key === "valorant_entertainment") return "特戰英豪娛樂陪玩";
 
+  if (key === "delta_pc") return "三角洲行動電腦版";
+  if (key === "delta_mobile") return "三角洲行動手機版";
+  if (key === "delta_entertainment") return "三角洲行動娛樂陪玩";
+  if (key === "delta_basic_guard") return "三角洲行動基本單護";
+  if (key === "delta_secret_double_guard") return "三角洲行動機密雙護";
+  if (key === "delta_attack_guard") return "三角洲行動猛攻護航";
+
+  if (key === "apex_god") return "Apex大神陪玩";
+  if (key === "apex_skill") return "Apex技術陪玩";
+  if (key === "apex_entertainment") return "Apex娛樂陪玩";
+
+  if (key === "lol_main") return "英雄聯盟";
+  if (key === "lol_aram") return "ARAM";
+  if (key === "lol_tft") return "聯盟戰棋";
+  if (key === "lol_god") return "英雄聯盟大神陪玩";
+  if (key === "lol_skill") return "英雄聯盟技術陪玩";
+  if (key === "lol_entertainment") return "英雄聯盟娛樂陪玩";
+
+  if (key === "steam_roguelike") return "Steam肉鴿遊戲";
+  if (key === "steam_survival") return "Steam生存遊戲";
+  if (key === "steam_horror") return "Steam恐怖遊戲";
+  if (key === "steam_party") return "Steam派對遊戲";
+
+  if (key === "pubgm") return "PUBG M";
+  if (key === "naraka") return "NARAKA";
+  if (key === "minecraft") return "Minecraft";
+  if (key === "voice_chat") return "語音聊天";
+  if (key === "song_request") return "點歌服務";
+
+  return key;
+}
 function getManualCommissionRate(tier: string | null) {
   if (tier === "rate_80") return 80;
   if (tier === "rate_85") return 85;
