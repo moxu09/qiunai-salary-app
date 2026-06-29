@@ -58,18 +58,6 @@ type BonusItem = {
   created_at: string;
 };
 
-type StaffSalarySummary = {
-  staff: Staff;
-  orderCount: number;
-  orderAmount: number;
-  orderSalary: number;
-  orderBonus: number;
-  extraBonus: number;
-  totalSalary: number;
-  unpaidCount: number;
-  unpaidSalary: number;
-};
-
 export default function AdminSalaryPage() {
   const { adminLoading, isAdmin } = useQiunaiAdminGuard();
 
@@ -90,7 +78,6 @@ export default function AdminSalaryPage() {
     customer_name: "",
     service_name: "",
     order_amount: "",
-    salary_rate: getDefaultSalaryRateInput(),
     bonus_amount: "0",
     order_finished_at: getNowInput(),
   });
@@ -347,8 +334,15 @@ export default function AdminSalaryPage() {
       return;
     }
 
+    const selectedStaff = staffList.find(
+      (staff) => staff.discord_id === orderForm.discord_id
+    );
+
     const orderAmount = Number(orderForm.order_amount);
-    const salaryRate = Number(orderForm.salary_rate || 80);
+    const salaryRate = getStaffSalaryRate(
+      selectedStaff,
+      orderForm.order_finished_at
+    );
     const bonusAmount = Number(orderForm.bonus_amount || 0);
     const staffSalary = Math.round(orderAmount * (salaryRate / 100));
 
@@ -358,7 +352,7 @@ export default function AdminSalaryPage() {
     }
 
     if (Number.isNaN(salaryRate) || salaryRate <= 0) {
-      alert("請選擇正確抽成檔位");
+      alert("系統無法判斷此陪陪抽成檔位");
       return;
     }
 
@@ -382,7 +376,10 @@ export default function AdminSalaryPage() {
       staff_salary: staffSalary,
       bonus_amount: bonusAmount,
       salary_rate: salaryRate,
-      salary_level: `後台手動新增 ${salaryRate}%`,
+      salary_level: getStaffSalaryLevelLabel(
+        selectedStaff,
+        orderForm.order_finished_at
+      ),
       platform_income: orderAmount,
       platform_expense: staffSalary + bonusAmount,
       status: "未發薪",
@@ -403,7 +400,6 @@ export default function AdminSalaryPage() {
       customer_name: "",
       service_name: "",
       order_amount: "",
-      salary_rate: getDefaultSalaryRateInput(),
       bonus_amount: "0",
       order_finished_at: getNowInput(),
     });
@@ -967,7 +963,7 @@ export default function AdminSalaryPage() {
           </div>
 
           <p className="mt-2 text-sm text-zinc-400">
-            完成時間預設為現在，可自行修改。員工薪資會依照抽成比例自動計算。
+            完成時間預設為現在，可自行修改。選擇陪陪後會自動套用她的個人抽成檔位。
           </p>
 
           <div className="mt-5 grid gap-4 md:grid-cols-4">
@@ -1019,29 +1015,45 @@ export default function AdminSalaryPage() {
               }
             />
 
-            <label className="block">
-              <span className="text-sm text-zinc-300">抽成檔位</span>
+            <div className="block">
+              <span className="text-sm text-zinc-300">自動套用抽成</span>
 
-              <select
-                value={orderForm.salary_rate}
-                onChange={(e) =>
-                  setOrderForm((prev) => ({
-                    ...prev,
-                    salary_rate: e.target.value,
-                  }))
-                }
-                className="mt-2 w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-white outline-none"
-              >
-                <option value="80">80% 一般陪陪</option>
-                <option value="85">85% 進階陪陪</option>
-                <option value="90">90% 年度高階</option>
-                <option value="95">95% 主管津貼</option>
-              </select>
+              <div className="mt-2 rounded-xl border border-white/10 bg-black/30 px-4 py-3">
+                {orderForm.discord_id ? (
+                  (() => {
+                    const selectedStaff = staffList.find(
+                      (staff) => staff.discord_id === orderForm.discord_id
+                    );
 
-              <p className="mt-1 text-xs text-zinc-500">
-                九月前預設 90%，九月後預設 80%
-              </p>
-            </label>
+                    const salaryRate = getStaffSalaryRate(
+                      selectedStaff,
+                      orderForm.order_finished_at
+                    );
+
+                    return (
+                      <>
+                        <p className="font-bold text-violet-200">
+                          {salaryRate}%
+                        </p>
+                        <p className="mt-1 text-xs text-zinc-500">
+                          {getStaffSalaryLevelLabel(
+                            selectedStaff,
+                            orderForm.order_finished_at
+                          )}
+                        </p>
+                      </>
+                    );
+                  })()
+                ) : (
+                  <>
+                    <p className="font-bold text-zinc-400">請先選擇陪陪</p>
+                    <p className="mt-1 text-xs text-zinc-500">
+                      選擇陪陪後會自動帶入她的抽成檔位
+                    </p>
+                  </>
+                )}
+              </div>
+            </div>
 
             <Input
               label="訂單獎金"
@@ -1696,6 +1708,42 @@ function getDisplayStaffName(staff: Staff) {
   );
 }
 
+function getStaffSalaryRate(
+  staff: Staff | null | undefined,
+  orderFinishedAt?: string
+) {
+  const sourceDate = orderFinishedAt ? new Date(orderFinishedAt) : new Date();
+  const openingEnd = new Date("2026-09-01T00:00:00+08:00");
+
+  if (sourceDate < openingEnd) {
+    return 90;
+  }
+
+  if (staff?.commission_tier === "rate_85") return 85;
+  if (staff?.commission_tier === "rate_90") return 90;
+  if (staff?.commission_tier === "manager_95") return 95;
+
+  return 80;
+}
+
+function getStaffSalaryLevelLabel(
+  staff: Staff | null | undefined,
+  orderFinishedAt?: string
+) {
+  const sourceDate = orderFinishedAt ? new Date(orderFinishedAt) : new Date();
+  const openingEnd = new Date("2026-09-01T00:00:00+08:00");
+
+  if (sourceDate < openingEnd) {
+    return "開幕期固定 90%";
+  }
+
+  if (staff?.commission_tier === "rate_85") return "個人檔位 85%";
+  if (staff?.commission_tier === "rate_90") return "個人檔位 90%";
+  if (staff?.commission_tier === "manager_95") return "主管津貼 95%";
+
+  return "個人檔位 80%";
+}
+
 function getNowInput() {
   return formatInputDate(new Date());
 }
@@ -1741,15 +1789,4 @@ function formatDateTime(value: string | null) {
     hour: "2-digit",
     minute: "2-digit",
   });
-}
-
-function getDefaultSalaryRateInput() {
-  const now = new Date();
-  const openingEnd = new Date("2026-09-01T00:00:00+08:00");
-
-  if (now < openingEnd) {
-    return "90";
-  }
-
-  return "80";
 }
