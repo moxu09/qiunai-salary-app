@@ -5,6 +5,7 @@ import {
   RefreshCw,
   CheckCircle2,
   Gift,
+  MinusCircle,
   Plus,
   CalendarDays,
   ClipboardList,
@@ -85,6 +86,13 @@ export default function AdminSalaryPage() {
   const [bonusForm, setBonusForm] = useState({
     discord_id: "",
     title: "",
+    amount: "",
+    note: "",
+    created_at: getNowInput(),
+  });
+
+  const [deductionForm, setDeductionForm] = useState({
+    discord_id: "",
     amount: "",
     note: "",
     created_at: getNowInput(),
@@ -458,6 +466,56 @@ export default function AdminSalaryPage() {
     await loadAll();
   }
 
+  async function addDeduction() {
+    if (!deductionForm.discord_id) {
+      alert("請選擇員工");
+      return;
+    }
+
+    const amount = Number(deductionForm.amount);
+
+    if (!amount || amount <= 0) {
+      alert("請輸入正確扣除金額");
+      return;
+    }
+
+    if (!deductionForm.note.trim()) {
+      alert("請填寫扣除備註");
+      return;
+    }
+
+    const staffName = getStaffNameByDiscordId(deductionForm.discord_id);
+    const createdAt =
+      toIso(deductionForm.created_at) || new Date().toISOString();
+
+    const { error } = await supabase.from("qiunai_staff_bonus").insert({
+      discord_id: deductionForm.discord_id,
+      staff_name: staffName,
+      title: "薪水扣除",
+      amount: -Math.abs(amount),
+      note: deductionForm.note.trim(),
+      created_at: createdAt,
+    });
+
+    if (error) {
+      console.error("新增薪水扣除失敗:", error);
+      alert("新增薪水扣除失敗");
+      return;
+    }
+
+    setSelectedDetailDiscordId(deductionForm.discord_id);
+
+    setDeductionForm({
+      discord_id: "",
+      amount: "",
+      note: "",
+      created_at: getNowInput(),
+    });
+
+    alert("薪水扣除已新增");
+    await loadAll();
+  }
+
   async function markPaid(order: SalaryOrder) {
     const paidAt = toIso(payForm.paid_at) || new Date().toISOString();
 
@@ -712,7 +770,7 @@ export default function AdminSalaryPage() {
 
         <div className="mt-6 grid gap-4 md:grid-cols-3 lg:grid-cols-7">
           <Stat title="訂單數" value={`${totals.orderCount} 筆`} />
-          <Stat title="獎金筆數" value={`${totals.bonusCount} 筆`} />
+          <Stat title="獎金 / 扣除" value={`${totals.bonusCount} 筆`} />
           <Stat title="總收入" value={`$${totals.totalIncome.toLocaleString()}`} />
           <Stat title="總支出" value={`$${totals.totalExpense.toLocaleString()}`} />
           <Stat title="預估利潤" value={`$${totals.profit.toLocaleString()}`} />
@@ -771,7 +829,7 @@ export default function AdminSalaryPage() {
                       value={`$${selectedDetailSummary.orderSalary.toLocaleString()}`}
                     />
                     <MiniStat
-                      title="總獎金"
+                      title="獎金 / 扣除"
                       value={`$${(
                         selectedDetailSummary.orderBonus +
                         selectedDetailSummary.extraBonus
@@ -873,12 +931,12 @@ export default function AdminSalaryPage() {
 
               <div className="overflow-x-auto rounded-2xl border border-white/10 bg-black/20">
                 <div className="border-b border-white/10 p-4">
-                  <h3 className="font-bold">此陪陪額外獎金</h3>
+                  <h3 className="font-bold">此陪陪額外獎金 / 薪水扣除</h3>
                 </div>
 
                 {selectedDetailBonuses.length === 0 ? (
                   <div className="p-8 text-center text-sm text-zinc-400">
-                    此時間範圍內沒有額外獎金
+                    此時間範圍內沒有額外獎金或薪水扣除
                   </div>
                 ) : (
                   <table className="min-w-[650px] w-full text-left text-sm">
@@ -900,7 +958,13 @@ export default function AdminSalaryPage() {
 
                           <td className="px-4 py-3">{bonus.title}</td>
 
-                          <td className="px-4 py-3 text-violet-300">
+                          <td
+                            className={`px-4 py-3 ${
+                              Number(bonus.amount || 0) < 0
+                                ? "text-red-300"
+                                : "text-violet-300"
+                            }`}
+                          >
                             ${Number(bonus.amount || 0).toLocaleString()}
                           </td>
 
@@ -919,7 +983,7 @@ export default function AdminSalaryPage() {
           <h2 className="text-xl font-bold">員工抽成檔位</h2>
 
           <p className="mt-2 text-sm text-zinc-400">
-            九月前系統預設 90%。九月後可手動設定 80%、85%、90% 或主管津貼 95%。
+            九月前系統預設 90%，但後台手動設定會優先套用。九月後可設定 80%、85%、90% 或主管津貼 95%。
           </p>
 
           <div className="mt-5 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -1135,6 +1199,64 @@ export default function AdminSalaryPage() {
             >
               <Plus size={18} />
               新增獎金
+            </button>
+          </div>
+        </div>
+
+        <div className="mt-6 rounded-3xl border border-red-400/20 bg-red-500/5 p-6">
+          <div className="flex items-center gap-2">
+            <MinusCircle className="text-red-300" size={20} />
+            <h2 className="text-xl font-bold">新增薪水扣除</h2>
+          </div>
+
+          <p className="mt-2 text-sm text-zinc-400">
+            扣除金額請輸入正數，系統會以負數列入薪資明細。
+          </p>
+
+          <div className="mt-5 grid gap-4 md:grid-cols-5">
+            <SearchableStaffSelect
+              label="員工"
+              value={deductionForm.discord_id}
+              staffList={staffList}
+              onChange={(value) =>
+                setDeductionForm((prev) => ({ ...prev, discord_id: value }))
+              }
+            />
+
+            <Input
+              label="扣除金額"
+              type="number"
+              value={deductionForm.amount}
+              placeholder="例如：300"
+              onChange={(value) =>
+                setDeductionForm((prev) => ({ ...prev, amount: value }))
+              }
+            />
+
+            <Input
+              label="扣除時間"
+              type="datetime-local"
+              value={deductionForm.created_at}
+              onChange={(value) =>
+                setDeductionForm((prev) => ({ ...prev, created_at: value }))
+              }
+            />
+
+            <Input
+              label="備註"
+              value={deductionForm.note}
+              placeholder="例如：遲到、請假扣款、手動修正"
+              onChange={(value) =>
+                setDeductionForm((prev) => ({ ...prev, note: value }))
+              }
+            />
+
+            <button
+              onClick={addDeduction}
+              className="mt-6 flex items-center justify-center gap-2 rounded-xl bg-red-500 px-4 py-3 font-semibold hover:bg-red-400"
+            >
+              <MinusCircle size={18} />
+              新增扣除
             </button>
           </div>
         </div>
@@ -1358,12 +1480,12 @@ export default function AdminSalaryPage() {
 
         <div className="mt-6 overflow-x-auto rounded-3xl border border-white/10 bg-white/5">
           <div className="border-b border-white/10 p-5">
-            <h2 className="text-xl font-bold">獎金明細</h2>
+            <h2 className="text-xl font-bold">獎金 / 扣除明細</h2>
           </div>
 
           {bonusList.length === 0 ? (
             <div className="p-8 text-center text-zinc-400">
-              此時間範圍內沒有額外獎金
+              此時間範圍內沒有額外獎金或薪水扣除
             </div>
           ) : (
             <table className="min-w-[800px] w-full text-left text-sm">
@@ -1398,7 +1520,13 @@ export default function AdminSalaryPage() {
 
                     <td className="px-4 py-3">{bonus.title}</td>
 
-                    <td className="px-4 py-3 text-violet-300">
+                    <td
+                      className={`px-4 py-3 ${
+                        Number(bonus.amount || 0) < 0
+                          ? "text-red-300"
+                          : "text-violet-300"
+                      }`}
+                    >
                       ${Number(bonus.amount || 0).toLocaleString()}
                     </td>
 
@@ -1715,13 +1843,14 @@ function getStaffSalaryRate(
   const sourceDate = orderFinishedAt ? new Date(orderFinishedAt) : new Date();
   const openingEnd = new Date("2026-09-01T00:00:00+08:00");
 
-  if (sourceDate < openingEnd) {
-    return 90;
-  }
-
+  if (staff?.commission_tier === "rate_80") return 80;
   if (staff?.commission_tier === "rate_85") return 85;
   if (staff?.commission_tier === "rate_90") return 90;
   if (staff?.commission_tier === "manager_95") return 95;
+
+  if (sourceDate < openingEnd) {
+    return 90;
+  }
 
   return 80;
 }
@@ -1733,13 +1862,14 @@ function getStaffSalaryLevelLabel(
   const sourceDate = orderFinishedAt ? new Date(orderFinishedAt) : new Date();
   const openingEnd = new Date("2026-09-01T00:00:00+08:00");
 
-  if (sourceDate < openingEnd) {
-    return "開幕期固定 90%";
-  }
-
+  if (staff?.commission_tier === "rate_80") return "個人檔位 80%";
   if (staff?.commission_tier === "rate_85") return "個人檔位 85%";
   if (staff?.commission_tier === "rate_90") return "個人檔位 90%";
   if (staff?.commission_tier === "manager_95") return "主管津貼 95%";
+
+  if (sourceDate < openingEnd) {
+    return "開幕期預設 90%";
+  }
 
   return "個人檔位 80%";
 }

@@ -135,6 +135,7 @@ export default function StaffPage() {
 
   const [savingProfile, setSavingProfile] = useState(false);
   const [savingOnline, setSavingOnline] = useState(false);
+  const [selectedMonth, setSelectedMonth] = useState(getCurrentMonthInput());
 
   const [profileForm, setProfileForm] = useState({
     display_name: "",
@@ -257,20 +258,19 @@ export default function StaffPage() {
 
     let currentRate = 80;
     let currentLabel = "九月後預設 80%";
+    const manualRate = getManualCommissionRate(staff.commission_tier);
 
-    if (now < openingEnd) {
+    if (manualRate) {
+      currentRate = manualRate;
+      currentLabel =
+        manualRate === 95
+          ? "主管津貼 95%"
+          : `後台設定 ${manualRate}%`;
+    } else if (now < openingEnd) {
       currentRate = 90;
-      currentLabel = "開幕期固定 90%";
+      currentLabel = "開幕期預設 90%";
     } else {
-      const manualRate = getManualCommissionRate(staff.commission_tier);
-
-      if (manualRate) {
-        currentRate = manualRate;
-        currentLabel =
-          manualRate === 95
-            ? "主管津貼 95%"
-            : `後台設定 ${manualRate}%`;
-      } else if (previousYearSalary >= 100000) {
+      if (previousYearSalary >= 100000) {
         currentRate = 90;
         currentLabel = "去年薪資達標｜今年 90%";
       } else if (is85ActiveThisMonth(allSalaryOrders)) {
@@ -287,7 +287,11 @@ export default function StaffPage() {
           new Date(a.order_finished_at || a.created_at).getTime()
       )[0];
 
-    if (latestOrderWithRate && staff.commission_tier === "auto") {
+    if (
+      latestOrderWithRate &&
+      staff.commission_tier === "auto" &&
+      now >= openingEnd
+    ) {
       currentRate = Number(latestOrderWithRate.salary_rate || currentRate);
       currentLabel = latestOrderWithRate.salary_level || currentLabel;
     }
@@ -393,8 +397,7 @@ export default function StaffPage() {
   }
 
   async function loadSalaryData(discordId: string) {
-    const startIso = getMonthStartIso();
-    const endIso = new Date().toISOString();
+    const { startIso, endIso } = getMonthRange(selectedMonth);
 
     const { data: orderData, error: orderError } = await supabase
       .from("qiunai_salary_orders")
@@ -701,19 +704,40 @@ export default function StaffPage() {
 
       <section className="relative z-10 mx-auto max-w-7xl px-4 py-8">
         <div className="grid gap-4 md:grid-cols-4">
-          <Stat title="本月訂單" value={`${totals.orderCount} 筆`} />
+          <Stat title="月份訂單" value={`${totals.orderCount} 筆`} />
           <Stat
-            title="本月薪資"
+            title="月份薪資"
             value={`$${totals.totalSalary.toLocaleString()}`}
           />
           <Stat
-            title="本月獎金"
+            title="獎金 / 扣除"
             value={`$${totals.totalBonus.toLocaleString()}`}
           />
           <Stat
             title="未發薪"
             value={`$${totals.unpaidSalary.toLocaleString()}`}
           />
+        </div>
+
+        <div className="mt-6">
+          <Card>
+            <div className="grid gap-4 md:grid-cols-[1fr_auto] md:items-end">
+              <Input
+                label="薪資月份"
+                type="month"
+                value={selectedMonth}
+                onChange={setSelectedMonth}
+              />
+
+              <button
+                onClick={refreshData}
+                className="qiunai-button flex items-center justify-center gap-2 px-5 py-3 font-bold"
+              >
+                <RefreshCw size={16} />
+                查詢月份
+              </button>
+            </div>
+          </Card>
         </div>
 
         <div className="mt-6">
@@ -954,16 +978,16 @@ export default function StaffPage() {
             <Card noPadding>
               <div className="border-b border-pink-100 p-5">
                 <h2 className="text-xl font-black text-[#5b3768]">
-                  本月訂單
+                  {formatMonthLabel(selectedMonth)}訂單
                 </h2>
                 <p className="mt-1 text-sm text-[#8b5a8f]">
-                  顯示本月 1 號到現在的訂單。
+                  顯示所選月份的薪資訂單。
                 </p>
               </div>
 
               {orders.length === 0 ? (
                 <div className="p-8 text-center text-[#a36b9e]">
-                  目前沒有本月訂單
+                  目前沒有這個月份的訂單
                 </div>
               ) : (
                 <div className="overflow-x-auto">
@@ -1046,13 +1070,13 @@ export default function StaffPage() {
             <Card noPadding>
               <div className="border-b border-pink-100 p-5">
                 <h2 className="text-xl font-black text-[#5b3768]">
-                  本月額外獎金
+                  {formatMonthLabel(selectedMonth)}獎金 / 扣除
                 </h2>
               </div>
 
               {bonusList.length === 0 ? (
                 <div className="p-8 text-center text-[#a36b9e]">
-                  目前沒有額外獎金
+                  目前沒有這個月份的獎金或扣除
                 </div>
               ) : (
                 <div className="overflow-x-auto">
@@ -1077,7 +1101,13 @@ export default function StaffPage() {
                             {bonus.title}
                           </td>
 
-                          <td className="px-4 py-3 font-bold text-pink-500">
+                          <td
+                            className={`px-4 py-3 font-bold ${
+                              Number(bonus.amount || 0) < 0
+                                ? "text-red-500"
+                                : "text-pink-500"
+                            }`}
+                          >
                             ${Number(bonus.amount || 0).toLocaleString()}
                           </td>
 
@@ -1276,10 +1306,39 @@ function getMonthText(date: Date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
 }
 
-function getMonthStartIso() {
+function getCurrentMonthInput() {
   const now = new Date();
-  const start = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
-  return start.toISOString();
+
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function getMonthRange(monthText: string) {
+  const [yearText, monthValueText] = monthText.split("-");
+  const year = Number(yearText);
+  const monthValue = Number(monthValueText);
+  const source =
+    Number.isInteger(year) && Number.isInteger(monthValue) && monthValue >= 1
+      ? new Date(year, monthValue - 1, 1)
+      : new Date();
+
+  const start = new Date(source.getFullYear(), source.getMonth(), 1, 0, 0, 0, 0);
+  const end = new Date(source.getFullYear(), source.getMonth() + 1, 0, 23, 59, 59);
+
+  return {
+    startIso: start.toISOString(),
+    endIso: end.toISOString(),
+  };
+}
+
+function formatMonthLabel(monthText: string) {
+  if (!monthText) return "所選月份";
+
+  const [yearText, monthTextValue] = monthText.split("-");
+  const month = Number(monthTextValue);
+
+  if (!yearText || !month) return "所選月份";
+
+  return `${yearText} 年 ${month} 月`;
 }
 
 function formatDateTime(value: string | null) {
