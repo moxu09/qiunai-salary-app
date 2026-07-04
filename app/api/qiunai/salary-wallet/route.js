@@ -91,7 +91,7 @@ export async function POST(request) {
       return NextResponse.json(
         {
           ok: false,
-          message: "目前不在提領期間，每月 5 到 10 號可以提領。",
+          message: "目前不在提領期間，每月 2 到 10 號可以提領。",
         },
         { status: 403 }
       );

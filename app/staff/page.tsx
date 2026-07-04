@@ -873,7 +873,7 @@ export default function StaffPage() {
                   {withdrawing ? "申請中..." : "提領"}
                 </button>
                 <p className="text-xs font-semibold text-[#a36b9e]">
-                  每月 5 到 10 號可以提領，提領需要三個工作天。
+                  每月 2 到 10 號可以提領，提領需要三個工作天。
                 </p>
               </div>
             </div>
