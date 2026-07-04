@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Users, WalletCards, Settings, Trophy } from "lucide-react";
+import { Banknote, Users, WalletCards, Settings, Trophy } from "lucide-react";
 import { useQiunaiAdminGuard } from "@/lib/useQiunaiAdminGuard";
 
 export default function AdminHomePage() {
@@ -41,6 +41,13 @@ export default function AdminHomePage() {
             title="排行榜"
             desc="查看每位陪陪薪資排行，可依薪水升冪或降冪排序"
             icon={<Trophy size={26} />}
+          />
+
+          <AdminCard
+            href="/admin/payroll"
+            title="發薪模式"
+            desc="彙整有薪水要發的員工、薪水、獎金、銀行帳號與戶名"
+            icon={<Banknote size={26} />}
           />
 
           <AdminCard
