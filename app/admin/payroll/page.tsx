@@ -10,6 +10,8 @@ import {
   Clipboard,
   RefreshCw,
   Search,
+  CheckCircle2,
+  XCircle,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useQiunaiAdminGuard } from "@/lib/useQiunaiAdminGuard";
@@ -59,6 +61,17 @@ type PayrollRow = {
   bonusCount: number;
 };
 
+type WithdrawRequest = {
+  id: string;
+  discord_id: string;
+  staff_name?: string | null;
+  amount: number | string;
+  status: string;
+  reject_reason?: string | null;
+  reviewed_at?: string | null;
+  requested_at?: string | null;
+};
+
 export default function AdminPayrollPage() {
   const { adminLoading, isAdmin } = useQiunaiAdminGuard();
 
@@ -66,7 +79,9 @@ export default function AdminPayrollPage() {
   const [staffList, setStaffList] = useState<Staff[]>([]);
   const [orders, setOrders] = useState<SalaryOrder[]>([]);
   const [bonusList, setBonusList] = useState<BonusItem[]>([]);
+  const [withdrawRequests, setWithdrawRequests] = useState<WithdrawRequest[]>([]);
   const [keyword, setKeyword] = useState("");
+  const [reviewingId, setReviewingId] = useState<string | null>(null);
   const [filter, setFilter] = useState({
     start: getMonthStartInput(),
     end: getNowInput(),
@@ -170,6 +185,7 @@ export default function AdminPayrollPage() {
 
   async function loadPayrollData() {
     setLoading(true);
+    await loadWithdrawRequests();
 
     const startIso = toIso(filter.start);
     const endIso = toIsoEnd(filter.end);
@@ -177,9 +193,10 @@ export default function AdminPayrollPage() {
     let orderQuery = supabase
       .from("qiunai_salary_orders")
       .select(
-        "id, discord_id, staff_name, staff_salary, bonus_amount, status, order_finished_at, is_deleted"
+        "id, discord_id, staff_name, staff_salary, bonus_amount, status, order_finished_at, is_deleted, wallet_settled_at"
       )
       .or("is_deleted.eq.false,is_deleted.is.null")
+      .is("wallet_settled_at", null)
       .or("status.neq.已發薪,status.is.null")
       .order("order_finished_at", { ascending: false });
 
@@ -189,6 +206,7 @@ export default function AdminPayrollPage() {
     let bonusQuery = supabase
       .from("qiunai_staff_bonus")
       .select("id, discord_id, staff_name, title, amount, note, created_at")
+      .is("wallet_settled_at", null)
       .order("created_at", { ascending: false });
 
     if (startIso) bonusQuery = bonusQuery.gte("created_at", startIso);
@@ -228,6 +246,80 @@ export default function AdminPayrollPage() {
     setStaffList((staffRes.data || []) as Staff[]);
     setOrders((orderRes.data || []) as SalaryOrder[]);
     setBonusList((bonusRes.data || []) as BonusItem[]);
+  }
+
+  async function loadWithdrawRequests() {
+    try {
+      const { data } = await supabase.auth.getSession();
+      const session = data.session;
+
+      if (!session) return;
+
+      const res = await fetch("/api/qiunai/salary-wallet/admin", {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+
+      const payload = await res.json();
+
+      if (!res.ok || !payload.ok) {
+        throw new Error(payload.message || "讀取提領申請失敗");
+      }
+
+      setWithdrawRequests((payload.requests || []) as WithdrawRequest[]);
+    } catch (error) {
+      console.error("讀取提領申請失敗:", error);
+      alert(error instanceof Error ? error.message : "讀取提領申請失敗");
+    }
+  }
+
+  async function reviewWithdrawRequest(id: string, action: "approve" | "reject") {
+    const reason =
+      action === "reject"
+        ? window.prompt("請輸入駁回理由")
+        : "";
+
+    if (action === "reject" && !reason?.trim()) {
+      return;
+    }
+
+    setReviewingId(id);
+
+    try {
+      const { data } = await supabase.auth.getSession();
+      const session = data.session;
+
+      if (!session) {
+        throw new Error("請重新登入");
+      }
+
+      const res = await fetch("/api/qiunai/salary-wallet/admin", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          id,
+          action,
+          reason,
+        }),
+      });
+
+      const payload = await res.json();
+
+      if (!res.ok || !payload.ok) {
+        throw new Error(payload.message || "更新提領申請失敗");
+      }
+
+      await loadWithdrawRequests();
+    } catch (error) {
+      console.error("更新提領申請失敗:", error);
+      alert(error instanceof Error ? error.message : "更新提領申請失敗");
+    } finally {
+      setReviewingId(null);
+    }
   }
 
   async function copyPayrollList() {
@@ -347,6 +439,102 @@ export default function AdminPayrollPage() {
           <div className="border-b border-white/10 px-5 py-4">
             <h2 className="flex items-center gap-2 text-lg font-bold">
               <Banknote size={20} className="text-violet-300" />
+              薪資錢包提領申請
+            </h2>
+            <p className="mt-1 text-sm text-zinc-400">
+              員工按下提領後會出現在這裡；同意後員工端會顯示申請成功，駁回會顯示理由。
+            </p>
+          </div>
+
+          {withdrawRequests.length === 0 ? (
+            <div className="px-5 py-10 text-center text-sm text-zinc-400">
+              目前沒有提領申請
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[980px] text-left text-sm">
+                <thead className="bg-white/5 text-zinc-300">
+                  <tr>
+                    <th className="px-4 py-3">申請時間</th>
+                    <th className="px-4 py-3">員工</th>
+                    <th className="px-4 py-3">金額</th>
+                    <th className="px-4 py-3">狀態</th>
+                    <th className="px-4 py-3">審核時間</th>
+                    <th className="px-4 py-3">操作</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {withdrawRequests.map((request) => (
+                    <tr key={request.id} className="border-t border-white/10">
+                      <td className="px-4 py-3 text-zinc-300">
+                        {formatDateTime(request.requested_at)}
+                      </td>
+                      <td className="px-4 py-3">
+                        <p className="font-bold text-white">
+                          {request.staff_name || request.discord_id}
+                        </p>
+                        <p className="text-xs text-zinc-500">
+                          {request.discord_id}
+                        </p>
+                      </td>
+                      <td className="px-4 py-3 font-bold text-violet-200">
+                        {money(request.amount)}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span
+                          className={`rounded-full px-3 py-1 text-xs font-bold ${getRequestStatusClass(
+                            request.status
+                          )}`}
+                        >
+                          {getRequestStatusText(
+                            request.status,
+                            request.reject_reason
+                          )}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-zinc-300">
+                        {formatDateTime(request.reviewed_at)}
+                      </td>
+                      <td className="px-4 py-3">
+                        {request.status === "pending" ? (
+                          <div className="flex flex-wrap gap-2">
+                            <button
+                              onClick={() =>
+                                reviewWithdrawRequest(request.id, "approve")
+                              }
+                              disabled={reviewingId === request.id}
+                              className="inline-flex items-center gap-1 rounded-2xl bg-emerald-500 px-3 py-1.5 text-xs font-bold text-white hover:bg-emerald-400 disabled:opacity-60"
+                            >
+                              <CheckCircle2 size={14} />
+                              同意
+                            </button>
+                            <button
+                              onClick={() =>
+                                reviewWithdrawRequest(request.id, "reject")
+                              }
+                              disabled={reviewingId === request.id}
+                              className="inline-flex items-center gap-1 rounded-2xl bg-rose-500 px-3 py-1.5 text-xs font-bold text-white hover:bg-rose-400 disabled:opacity-60"
+                            >
+                              <XCircle size={14} />
+                              駁回
+                            </button>
+                          </div>
+                        ) : (
+                          "-"
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+
+        <section className="overflow-hidden rounded-3xl border border-white/10 bg-white/5">
+          <div className="border-b border-white/10 px-5 py-4">
+            <h2 className="flex items-center gap-2 text-lg font-bold">
+              <Banknote size={20} className="text-violet-300" />
               待發薪清單
             </h2>
             <p className="mt-1 text-sm text-zinc-400">
@@ -440,6 +628,33 @@ function toIsoEnd(value: string) {
 
 function money(value: number | string | null | undefined) {
   return `$${Number(value || 0).toLocaleString("zh-TW")}`;
+}
+
+function formatDateTime(value?: string | null) {
+  if (!value) return "-";
+
+  return new Date(value).toLocaleString("zh-TW", {
+    hour12: false,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function getRequestStatusText(status: string, rejectReason?: string | null) {
+  if (status === "pending") return "申請中";
+  if (status === "approved") return "申請成功，請稍等三個工作日";
+  if (status === "rejected") return `申請遭駁回${rejectReason ? `：${rejectReason}` : ""}`;
+  return status || "-";
+}
+
+function getRequestStatusClass(status: string) {
+  if (status === "pending") return "bg-yellow-100 text-yellow-700";
+  if (status === "approved") return "bg-emerald-100 text-emerald-700";
+  if (status === "rejected") return "bg-rose-100 text-rose-700";
+  return "bg-zinc-100 text-zinc-600";
 }
 
 function getStaffName(staff?: Staff | null, fallback?: string | null) {

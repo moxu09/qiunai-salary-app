@@ -10,6 +10,7 @@ import {
   WalletCards,
   Heart,
   Sparkles,
+  HandCoins,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
@@ -54,6 +55,7 @@ type SalaryOrder = {
   paid_at: string | null;
   order_finished_at: string | null;
   is_deleted: boolean | null;
+  wallet_settled_at?: string | null;
   created_at: string;
 };
 
@@ -82,6 +84,44 @@ type ServiceOption = {
   name: string;
   group: string;
   hint?: string;
+};
+
+type SalaryWalletEntry = {
+  id: string;
+  entry_type: string;
+  amount: number | string;
+  source_label?: string | null;
+  period_key?: string | null;
+  created_at?: string | null;
+};
+
+type SalaryWithdrawRequest = {
+  id: string;
+  amount: number | string;
+  status: string;
+  reject_reason?: string | null;
+  requested_at?: string | null;
+  reviewed_at?: string | null;
+};
+
+type SalaryWalletData = {
+  totals: {
+    orderSalary: number;
+    bonus: number;
+    deposited: number;
+    approvedWithdrawn: number;
+    pendingWithdrawn: number;
+    balance: number;
+    available: number;
+  };
+  entries: SalaryWalletEntry[];
+  requests: SalaryWithdrawRequest[];
+  pendingRequest: SalaryWithdrawRequest | null;
+  latestRequest: SalaryWithdrawRequest | null;
+  withdrawWindow: {
+    isOpen: boolean;
+    note: string;
+  };
 };
 
 const SERVICE_OPTIONS: ServiceOption[] = [
@@ -135,6 +175,9 @@ export default function StaffPage() {
 
   const [savingProfile, setSavingProfile] = useState(false);
   const [savingOnline, setSavingOnline] = useState(false);
+  const [walletLoading, setWalletLoading] = useState(false);
+  const [withdrawing, setWithdrawing] = useState(false);
+  const [salaryWallet, setSalaryWallet] = useState<SalaryWalletData | null>(null);
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonthInput());
 
   const [profileForm, setProfileForm] = useState({
@@ -183,7 +226,7 @@ export default function StaffPage() {
     const totalBonus = orderBonus + extraBonus;
 
     const unpaidSalary = orders
-      .filter((order) => order.status !== "已發薪")
+      .filter((order) => order.status !== "已發薪" && !order.wallet_settled_at)
       .reduce(
         (sum, order) =>
           sum +
@@ -390,6 +433,7 @@ export default function StaffPage() {
       bank_account: staffData.bank_account || "",
     });
 
+    await loadSalaryWallet();
     await loadSalaryData(staffData.discord_id);
     await loadStaffServices(staffData.discord_id);
 
@@ -455,6 +499,84 @@ export default function StaffPage() {
     setSelectedServices(
       ((data || []) as StaffService[]).map((item) => item.service_key)
     );
+  }
+
+  async function loadSalaryWallet() {
+    setWalletLoading(true);
+
+    try {
+      const { data } = await supabase.auth.getSession();
+      const session = data.session;
+
+      if (!session) return;
+
+      const res = await fetch("/api/qiunai/salary-wallet", {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+
+      const payload = await res.json();
+
+      if (!res.ok || !payload.ok) {
+        throw new Error(payload.message || "讀取薪資錢包失敗");
+      }
+
+      setSalaryWallet(payload.wallet as SalaryWalletData);
+    } catch (error: unknown) {
+      console.error("load salary wallet error:", error);
+      alert(error instanceof Error ? error.message : "讀取薪資錢包失敗");
+    } finally {
+      setWalletLoading(false);
+    }
+  }
+
+  async function requestWithdraw() {
+    if (!salaryWallet) return;
+
+    if (
+      !confirm(
+        `確定要申請提領 $${Number(
+          salaryWallet.totals.available || 0
+        ).toLocaleString()}？`
+      )
+    ) {
+      return;
+    }
+
+    setWithdrawing(true);
+
+    try {
+      const { data } = await supabase.auth.getSession();
+      const session = data.session;
+
+      if (!session) {
+        throw new Error("請重新登入");
+      }
+
+      const res = await fetch("/api/qiunai/salary-wallet", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({}),
+      });
+
+      const payload = await res.json();
+
+      if (!res.ok || !payload.ok) {
+        throw new Error(payload.message || "送出提領申請失敗");
+      }
+
+      setSalaryWallet(payload.wallet as SalaryWalletData);
+      alert("提領申請已送出");
+    } catch (error: unknown) {
+      console.error("request withdraw error:", error);
+      alert(error instanceof Error ? error.message : "送出提領申請失敗");
+    } finally {
+      setWithdrawing(false);
+    }
   }
 
   function updateProfileField(key: string, value: string) {
@@ -564,7 +686,6 @@ export default function StaffPage() {
     }
     if (selectedServices.length > 0) {
       const rows = selectedServices.map((key) => {
-        const option = SERVICE_OPTIONS.find((item) => item.key === key);
         return {
           discord_id: staff.discord_id,
           service_key: key,
@@ -594,6 +715,7 @@ export default function StaffPage() {
   async function refreshData() {
     if (!staff) return;
 
+    await loadSalaryWallet();
     await loadSalaryData(staff.discord_id);
     await loadStaffServices(staff.discord_id);
   }
@@ -717,6 +839,137 @@ export default function StaffPage() {
             title="未發薪"
             value={`$${totals.unpaidSalary.toLocaleString()}`}
           />
+        </div>
+
+        <div className="mt-6">
+          <Card>
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+              <div>
+                <p className="flex items-center gap-2 text-sm font-semibold text-pink-500">
+                  <HandCoins size={18} />
+                  薪資錢包
+                </p>
+                <h2 className="mt-1 text-2xl font-black text-[#5b3768]">
+                  可累積提領的薪資餘額
+                </h2>
+                <p className="mt-2 text-sm leading-6 text-[#8b5a8f]">
+                  每月 17 號入帳 1-15 號薪水；每月 2 號入帳上月 16-月底薪水。
+                </p>
+              </div>
+
+              <div className="flex flex-col items-start gap-2 sm:items-end">
+                <button
+                  onClick={requestWithdraw}
+                  disabled={
+                    withdrawing ||
+                    walletLoading ||
+                    !salaryWallet ||
+                    !salaryWallet.withdrawWindow.isOpen ||
+                    !!salaryWallet.pendingRequest ||
+                    Number(salaryWallet.totals.available || 0) <= 0
+                  }
+                  className="qiunai-button px-5 py-3 font-bold disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {withdrawing ? "申請中..." : "提領"}
+                </button>
+                <p className="text-xs font-semibold text-[#a36b9e]">
+                  每月 5 到 10 號可以提領，提領需要三個工作天。
+                </p>
+              </div>
+            </div>
+
+            {walletLoading && !salaryWallet ? (
+              <div className="mt-5 rounded-[24px] bg-pink-50 px-4 py-5 text-center text-sm font-semibold text-pink-500">
+                讀取薪資錢包中...
+              </div>
+            ) : salaryWallet ? (
+              <>
+                <div className="mt-5 grid gap-3 md:grid-cols-4">
+                  <WalletStat
+                    title="錢包餘額"
+                    value={`$${Number(salaryWallet.totals.balance || 0).toLocaleString()}`}
+                  />
+                  <WalletStat
+                    title="訂單薪水"
+                    value={`$${Number(salaryWallet.totals.orderSalary || 0).toLocaleString()}`}
+                  />
+                  <WalletStat
+                    title="獎金 / 扣除"
+                    value={`$${Number(salaryWallet.totals.bonus || 0).toLocaleString()}`}
+                  />
+                  <WalletStat
+                    title="使用的薪水"
+                    value={`$${Number(salaryWallet.totals.approvedWithdrawn || 0).toLocaleString()}`}
+                  />
+                </div>
+
+                <div className="mt-4 flex flex-col gap-3 rounded-[24px] border border-pink-100 bg-pink-50/70 px-4 py-3 md:flex-row md:items-center md:justify-between">
+                  <div>
+                    <p className="font-black text-[#5b3768]">提領狀態</p>
+                    <p className="mt-1 text-sm text-[#8b5a8f]">
+                      可提領：$
+                      {Number(salaryWallet.totals.available || 0).toLocaleString()}
+                      {salaryWallet.totals.pendingWithdrawn > 0
+                        ? `，申請中：$${Number(
+                            salaryWallet.totals.pendingWithdrawn || 0
+                          ).toLocaleString()}`
+                        : ""}
+                    </p>
+                  </div>
+
+                  <span
+                    className={`rounded-full px-3 py-1 text-xs font-bold ${getRequestStatusClass(
+                      salaryWallet.latestRequest
+                    )}`}
+                  >
+                    {getRequestStatusText(salaryWallet.latestRequest)}
+                  </span>
+                </div>
+
+                <div className="mt-5 overflow-x-auto">
+                  <table className="min-w-[760px] w-full text-left text-sm">
+                    <thead className="bg-pink-50 text-[#8b5a8f]">
+                      <tr>
+                        <th className="px-4 py-3">時間</th>
+                        <th className="px-4 py-3">項目</th>
+                        <th className="px-4 py-3">期別</th>
+                        <th className="px-4 py-3">金額</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {salaryWallet.entries.slice(0, 8).map((entry) => (
+                        <tr key={entry.id} className="border-t border-pink-100">
+                          <td className="px-4 py-3 text-[#8b5a8f]">
+                            {formatDateTime(entry.created_at)}
+                          </td>
+                          <td className="px-4 py-3">
+                            <p className="font-bold text-[#5b3768]">
+                              {formatEntryType(entry.entry_type)}
+                            </p>
+                            <p className="text-xs text-[#a36b9e]">
+                              {entry.source_label || "-"}
+                            </p>
+                          </td>
+                          <td className="px-4 py-3 text-[#8b5a8f]">
+                            {entry.period_key || "-"}
+                          </td>
+                          <td
+                            className={`px-4 py-3 font-bold ${
+                              Number(entry.amount || 0) < 0
+                                ? "text-red-500"
+                                : "text-pink-500"
+                            }`}
+                          >
+                            ${Number(entry.amount || 0).toLocaleString()}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            ) : null}
+          </Card>
         </div>
 
         <div className="mt-6">
@@ -1046,16 +1299,21 @@ export default function StaffPage() {
                             <span
                               className={`rounded-full px-3 py-1 text-xs font-semibold ${
                                 order.status === "已發薪"
+                                  || order.wallet_settled_at
                                   ? "bg-emerald-100 text-emerald-600"
                                   : "bg-yellow-100 text-yellow-600"
                               }`}
                             >
-                              {order.status || "未發薪"}
+                              {order.wallet_settled_at
+                                ? "已入錢包"
+                                : order.status || "未發薪"}
                             </span>
                           </td>
 
                           <td className="px-4 py-3 text-[#8b5a8f]">
-                            {order.paid_at
+                            {order.wallet_settled_at
+                              ? formatDateTime(order.wallet_settled_at)
+                              : order.paid_at
                               ? formatDateTime(order.paid_at)
                               : "-"}
                           </td>
@@ -1151,6 +1409,15 @@ function Stat({ title, value }: { title: string; value: string }) {
     <div className="qiunai-card rounded-[28px] p-5">
       <p className="text-sm font-semibold text-[#8b5a8f]">{title}</p>
       <p className="qiunai-title-gradient mt-2 text-2xl font-black">{value}</p>
+    </div>
+  );
+}
+
+function WalletStat({ title, value }: { title: string; value: string }) {
+  return (
+    <div className="rounded-[24px] border border-pink-100 bg-pink-50/70 px-4 py-3">
+      <p className="text-xs font-bold text-pink-500">{title}</p>
+      <p className="mt-2 text-xl font-black text-[#5b3768]">{value}</p>
     </div>
   );
 }
@@ -1341,7 +1608,7 @@ function formatMonthLabel(monthText: string) {
   return `${yearText} 年 ${month} 月`;
 }
 
-function formatDateTime(value: string | null) {
+function formatDateTime(value?: string | null) {
   if (!value) return "-";
 
   const date = new Date(value);
@@ -1353,4 +1620,29 @@ function formatDateTime(value: string | null) {
     hour: "2-digit",
     minute: "2-digit",
   });
+}
+
+function formatEntryType(type: string) {
+  if (type === "order_salary") return "訂單薪水";
+  if (type === "order_bonus") return "訂單獎金";
+  if (type === "staff_bonus") return "獎金 / 扣除";
+  return "薪資明細";
+}
+
+function getRequestStatusText(request?: SalaryWithdrawRequest | null) {
+  if (!request) return "尚未申請";
+  if (request.status === "pending") return "申請中";
+  if (request.status === "approved") return "申請成功，請稍等三個工作日";
+  if (request.status === "rejected") {
+    return `申請遭駁回${request.reject_reason ? `，原因是${request.reject_reason}` : ""}`;
+  }
+  return request.status || "尚未申請";
+}
+
+function getRequestStatusClass(request?: SalaryWithdrawRequest | null) {
+  if (!request) return "bg-zinc-100 text-zinc-500";
+  if (request.status === "pending") return "bg-yellow-100 text-yellow-600";
+  if (request.status === "approved") return "bg-emerald-100 text-emerald-600";
+  if (request.status === "rejected") return "bg-rose-100 text-rose-600";
+  return "bg-zinc-100 text-zinc-500";
 }
