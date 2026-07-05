@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Banknote, Users, WalletCards, Settings, Trophy } from "lucide-react";
+import { Banknote, ReceiptText, Users, WalletCards, Settings, Trophy } from "lucide-react";
 import { useQiunaiAdminGuard } from "@/lib/useQiunaiAdminGuard";
 
 export default function AdminHomePage() {
@@ -48,6 +48,13 @@ export default function AdminHomePage() {
             title="發薪模式"
             desc="彙整有薪水要發的員工、薪水、獎金、銀行帳號與戶名"
             icon={<Banknote size={26} />}
+          />
+
+          <AdminCard
+            href="/admin/accounting"
+            title="會計報表"
+            desc="按月份匯出儲值預收、訂單收入、薪資與月結應收"
+            icon={<ReceiptText size={26} />}
           />
 
           <AdminCard
