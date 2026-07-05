@@ -16,6 +16,14 @@ import {
 import { supabase } from "@/lib/supabase";
 import { useQiunaiAdminGuard } from "@/lib/useQiunaiAdminGuard";
 
+const SALARY_WALLET_START_DATE =
+  process.env.NEXT_PUBLIC_SALARY_WALLET_START_DATE || "2026-07-17";
+const SALARY_WALLET_START_ISO = new Date(
+  `${SALARY_WALLET_START_DATE}T00:00:00+08:00`
+).toISOString();
+const PAYROLL_WALLET_FILTER =
+  `wallet_settled_at.is.null,wallet_settled_at.lt.${SALARY_WALLET_START_ISO}`;
+
 type Staff = {
   id: string;
   discord_id: string;
@@ -31,6 +39,7 @@ type SalaryOrder = {
   id: string;
   discord_id: string | null;
   staff_name: string | null;
+  service_name: string | null;
   staff_salary: number | null;
   bonus_amount: number | null;
   status: string | null;
@@ -54,11 +63,16 @@ type PayrollRow = {
   accountName: string;
   bankName: string;
   bankAccount: string;
-  salary: number;
+  orderSalary: number;
+  tipSalary: number;
   bonus: number;
+  deduction: number;
   total: number;
   orderCount: number;
+  tipCount: number;
   bonusCount: number;
+  deductionCount: number;
+  recordCount: number;
 };
 
 type WithdrawRequest = {
@@ -116,11 +130,16 @@ export default function AdminPayrollPage() {
         accountName: getAccountName(staff, fallbackName),
         bankName: staff?.bank_name || "",
         bankAccount: staff?.bank_account || "",
-        salary: 0,
+        orderSalary: 0,
+        tipSalary: 0,
         bonus: 0,
+        deduction: 0,
         total: 0,
         orderCount: 0,
+        tipCount: 0,
         bonusCount: 0,
+        deductionCount: 0,
+        recordCount: 0,
       };
 
       rowMap.set(discordId, row);
@@ -132,9 +151,17 @@ export default function AdminPayrollPage() {
       if (!discordId) continue;
 
       const row = ensureRow(discordId, order.staff_name);
-      row.salary += Number(order.staff_salary || 0);
-      row.bonus += Number(order.bonus_amount || 0);
-      row.orderCount += 1;
+      const salary = Number(order.staff_salary || 0);
+
+      if (isTipOrder(order)) {
+        row.tipSalary += salary;
+        row.tipCount += 1;
+      } else {
+        row.orderSalary += salary;
+        row.orderCount += 1;
+      }
+
+      addBonusOrDeduction(row, order.bonus_amount);
     }
 
     for (const bonus of bonusList) {
@@ -142,14 +169,15 @@ export default function AdminPayrollPage() {
       if (!discordId) continue;
 
       const row = ensureRow(discordId, bonus.staff_name);
-      row.bonus += Number(bonus.amount || 0);
-      row.bonusCount += 1;
+      addBonusOrDeduction(row, bonus.amount);
     }
 
     let result = Array.from(rowMap.values())
       .map((row) => ({
         ...row,
-        total: row.salary + row.bonus,
+        total: row.orderSalary + row.tipSalary + row.bonus - row.deduction,
+        recordCount:
+          row.orderCount + row.tipCount + row.bonusCount + row.deductionCount,
       }))
       .filter((row) => row.total > 0);
 
@@ -177,8 +205,10 @@ export default function AdminPayrollPage() {
   const totals = useMemo(() => {
     return {
       staffCount: rows.length,
-      salary: rows.reduce((sum, row) => sum + row.salary, 0),
+      orderSalary: rows.reduce((sum, row) => sum + row.orderSalary, 0),
+      tipSalary: rows.reduce((sum, row) => sum + row.tipSalary, 0),
       bonus: rows.reduce((sum, row) => sum + row.bonus, 0),
+      deduction: rows.reduce((sum, row) => sum + row.deduction, 0),
       total: rows.reduce((sum, row) => sum + row.total, 0),
     };
   }, [rows]);
@@ -193,10 +223,10 @@ export default function AdminPayrollPage() {
     let orderQuery = supabase
       .from("qiunai_salary_orders")
       .select(
-        "id, discord_id, staff_name, staff_salary, bonus_amount, status, order_finished_at, is_deleted, wallet_settled_at"
+        "id, discord_id, staff_name, service_name, staff_salary, bonus_amount, status, order_finished_at, is_deleted, wallet_settled_at"
       )
       .or("is_deleted.eq.false,is_deleted.is.null")
-      .is("wallet_settled_at", null)
+      .or(PAYROLL_WALLET_FILTER)
       .or("status.neq.已發薪,status.is.null")
       .order("order_finished_at", { ascending: false });
 
@@ -206,7 +236,7 @@ export default function AdminPayrollPage() {
     let bonusQuery = supabase
       .from("qiunai_staff_bonus")
       .select("id, discord_id, staff_name, title, amount, note, created_at")
-      .is("wallet_settled_at", null)
+      .or(PAYROLL_WALLET_FILTER)
       .order("created_at", { ascending: false });
 
     if (startIso) bonusQuery = bonusQuery.gte("created_at", startIso);
@@ -379,10 +409,12 @@ export default function AdminPayrollPage() {
       </header>
 
       <section className="mx-auto max-w-7xl space-y-5 px-4 py-6">
-        <div className="grid gap-4 md:grid-cols-4">
+        <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-6">
           <Stat title="待發人數" value={`${totals.staffCount} 人`} />
-          <Stat title="薪水" value={money(totals.salary)} />
-          <Stat title="獎金 / 扣除" value={money(totals.bonus)} />
+          <Stat title="訂單薪水" value={money(totals.orderSalary)} />
+          <Stat title="打賞薪水" value={money(totals.tipSalary)} />
+          <Stat title="獎金" value={money(totals.bonus)} />
+          <Stat title="扣除" value={money(totals.deduction)} />
           <Stat title="應發總額" value={money(totals.total)} />
         </div>
 
@@ -552,16 +584,18 @@ export default function AdminPayrollPage() {
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[900px] text-left text-sm">
+              <table className="w-full min-w-[1180px] text-left text-sm">
                 <thead className="bg-white/5 text-zinc-300">
                   <tr>
                     <th className="px-4 py-3">名字</th>
                     <th className="px-4 py-3">銀行</th>
                     <th className="px-4 py-3">帳號</th>
                     <th className="px-4 py-3">戶名</th>
-                    <th className="px-4 py-3">薪水</th>
-                    <th className="px-4 py-3">獎金 / 扣除</th>
-                    <th className="px-4 py-3">應發</th>
+                    <th className="px-4 py-3">訂單薪水</th>
+                    <th className="px-4 py-3">打賞薪水</th>
+                    <th className="px-4 py-3">獎金</th>
+                    <th className="px-4 py-3">扣除</th>
+                    <th className="px-4 py-3">應發總額</th>
                     <th className="px-4 py-3">筆數</th>
                   </tr>
                 </thead>
@@ -575,19 +609,25 @@ export default function AdminPayrollPage() {
                       <td className="px-4 py-3">{row.bankName || "-"}</td>
                       <td className="px-4 py-3">{row.bankAccount || "-"}</td>
                       <td className="px-4 py-3">{row.accountName}</td>
-                      <td className="px-4 py-3">{money(row.salary)}</td>
-                      <td
-                        className={`px-4 py-3 ${
-                          row.bonus < 0 ? "text-rose-300" : "text-emerald-300"
-                        }`}
-                      >
+                      <td className="px-4 py-3">{money(row.orderSalary)}</td>
+                      <td className="px-4 py-3">{money(row.tipSalary)}</td>
+                      <td className="px-4 py-3 text-emerald-300">
                         {money(row.bonus)}
+                      </td>
+                      <td className="px-4 py-3 text-rose-300">
+                        {money(row.deduction)}
                       </td>
                       <td className="px-4 py-3 font-bold text-violet-200">
                         {money(row.total)}
                       </td>
                       <td className="px-4 py-3 text-zinc-300">
-                        {row.orderCount} 單 / {row.bonusCount} 筆
+                        <p className="font-bold text-zinc-200">
+                          {row.recordCount}
+                        </p>
+                        <p className="text-xs text-zinc-500">
+                          {row.orderCount} 單 / {row.tipCount} 賞 /{" "}
+                          {row.bonusCount + row.deductionCount} 獎扣
+                        </p>
                       </td>
                     </tr>
                   ))}
@@ -672,6 +712,25 @@ function getAccountName(staff?: Staff | null, fallback?: string | null) {
   return staff?.real_name || staff?.display_name || fallback || "-";
 }
 
+function isTipOrder(order: SalaryOrder) {
+  return String(order.service_name || "").includes("打賞");
+}
+
+function addBonusOrDeduction(
+  row: PayrollRow,
+  value: number | string | null | undefined
+) {
+  const amount = Number(value || 0);
+
+  if (amount > 0) {
+    row.bonus += amount;
+    row.bonusCount += 1;
+  } else if (amount < 0) {
+    row.deduction += Math.abs(amount);
+    row.deductionCount += 1;
+  }
+}
+
 function buildCopyText(rows: PayrollRow[]) {
   return rows
     .map((row, index) => {
@@ -680,9 +739,12 @@ function buildCopyText(rows: PayrollRow[]) {
         `戶名：${row.accountName}`,
         `銀行：${row.bankName || "-"}`,
         `帳號：${row.bankAccount || "-"}`,
-        `薪水：${money(row.salary)}`,
-        `獎金/扣除：${money(row.bonus)}`,
-        `應發：${money(row.total)}`,
+        `訂單薪水：${money(row.orderSalary)}`,
+        `打賞薪水：${money(row.tipSalary)}`,
+        `獎金：${money(row.bonus)}`,
+        `扣除：${money(row.deduction)}`,
+        `應發總額：${money(row.total)}`,
+        `筆數：${row.recordCount}`,
       ].join("\n");
     })
     .join("\n\n");
