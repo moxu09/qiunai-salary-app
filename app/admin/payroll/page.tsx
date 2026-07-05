@@ -57,6 +57,11 @@ type BonusItem = {
   created_at: string;
 };
 
+type PlatformGift = {
+  name: string | null;
+  is_active?: boolean | null;
+};
+
 type PayrollRow = {
   discordId: string;
   staffName: string;
@@ -93,6 +98,7 @@ export default function AdminPayrollPage() {
   const [staffList, setStaffList] = useState<Staff[]>([]);
   const [orders, setOrders] = useState<SalaryOrder[]>([]);
   const [bonusList, setBonusList] = useState<BonusItem[]>([]);
+  const [giftNames, setGiftNames] = useState<string[]>([]);
   const [withdrawRequests, setWithdrawRequests] = useState<WithdrawRequest[]>([]);
   const [keyword, setKeyword] = useState("");
   const [reviewingId, setReviewingId] = useState<string | null>(null);
@@ -153,7 +159,7 @@ export default function AdminPayrollPage() {
       const row = ensureRow(discordId, order.staff_name);
       const salary = Number(order.staff_salary || 0);
 
-      if (isTipOrder(order)) {
+      if (isTipOrder(order, giftNames)) {
         row.tipSalary += salary;
         row.tipCount += 1;
       } else {
@@ -200,7 +206,7 @@ export default function AdminPayrollPage() {
     }
 
     return result.sort((a, b) => b.total - a.total);
-  }, [staffList, orders, bonusList, keyword]);
+  }, [staffList, orders, bonusList, giftNames, keyword]);
 
   const totals = useMemo(() => {
     return {
@@ -242,7 +248,7 @@ export default function AdminPayrollPage() {
     if (startIso) bonusQuery = bonusQuery.gte("created_at", startIso);
     if (endIso) bonusQuery = bonusQuery.lte("created_at", endIso);
 
-    const [staffRes, orderRes, bonusRes] = await Promise.all([
+    const [staffRes, orderRes, bonusRes, giftRes] = await Promise.all([
       supabase
         .from("qiunai_staff")
         .select(
@@ -251,6 +257,10 @@ export default function AdminPayrollPage() {
         .order("created_at", { ascending: false }),
       orderQuery,
       bonusQuery,
+      supabase
+        .from("platform_gifts")
+        .select("name, is_active")
+        .order("sort_order", { ascending: true }),
     ]);
 
     setLoading(false);
@@ -273,9 +283,20 @@ export default function AdminPayrollPage() {
       return;
     }
 
+    if (giftRes.error) {
+      console.error("讀取打賞禮物失敗:", giftRes.error);
+      alert("讀取打賞禮物失敗");
+      return;
+    }
+
     setStaffList((staffRes.data || []) as Staff[]);
     setOrders((orderRes.data || []) as SalaryOrder[]);
     setBonusList((bonusRes.data || []) as BonusItem[]);
+    setGiftNames(
+      ((giftRes.data || []) as PlatformGift[])
+        .map((gift) => String(gift.name || "").trim())
+        .filter(Boolean)
+    );
   }
 
   async function loadWithdrawRequests() {
@@ -712,8 +733,31 @@ function getAccountName(staff?: Staff | null, fallback?: string | null) {
   return staff?.real_name || staff?.display_name || fallback || "-";
 }
 
-function isTipOrder(order: SalaryOrder) {
-  return String(order.service_name || "").includes("打賞");
+function normalizeGiftText(value: string | null | undefined) {
+  return String(value || "")
+    .trim()
+    .replace(/^打賞[:：\s]*/, "")
+    .replace(/\s+/g, "");
+}
+
+function isTipOrder(order: SalaryOrder, giftNames: string[]) {
+  const serviceName = String(order.service_name || "").trim();
+
+  if (serviceName.includes("打賞")) return true;
+
+  const normalizedService = normalizeGiftText(serviceName);
+  if (!normalizedService) return false;
+
+  return giftNames.some((giftName) => {
+    const normalizedGift = normalizeGiftText(giftName);
+
+    return (
+      normalizedGift &&
+      (normalizedService === normalizedGift ||
+        normalizedService.includes(normalizedGift) ||
+        normalizedGift.includes(normalizedService))
+    );
+  });
 }
 
 function addBonusOrDeduction(
