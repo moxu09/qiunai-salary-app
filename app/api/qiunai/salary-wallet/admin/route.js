@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import {
   getAuthUserFromRequest,
+  manuallyDepositSalaryWallet,
   settleSalaryWallet,
 } from "@/lib/salaryWallet";
 
@@ -34,6 +35,49 @@ async function requireAdmin(request) {
     discordId,
     admin: data,
   };
+}
+
+function normalizeGiftText(value) {
+  return String(value || "")
+    .trim()
+    .replace(/^打賞[:：\s]*/, "")
+    .replace(/\s+/g, "");
+}
+
+async function loadGiftNames() {
+  const { data, error } = await supabaseAdmin
+    .from("platform_gifts")
+    .select("name")
+    .order("sort_order", { ascending: true });
+
+  if (error) {
+    console.error("[qiunai salary wallet admin] load gifts failed", error);
+    throw new Error("讀取打賞禮物失敗");
+  }
+
+  return (data || [])
+    .map((gift) => String(gift.name || "").trim())
+    .filter(Boolean);
+}
+
+function isQiunaiTipOrder(order, giftNames) {
+  const serviceName = String(order.service_name || "").trim();
+
+  if (serviceName.includes("打賞")) return true;
+
+  const normalizedService = normalizeGiftText(serviceName);
+  if (!normalizedService) return false;
+
+  return giftNames.some((giftName) => {
+    const normalizedGift = normalizeGiftText(giftName);
+
+    return (
+      normalizedGift &&
+      (normalizedService === normalizedGift ||
+        normalizedService.includes(normalizedGift) ||
+        normalizedGift.includes(normalizedService))
+    );
+  });
 }
 
 export async function GET(request) {
@@ -71,8 +115,34 @@ export async function POST(request) {
   try {
     const { discordId } = await requireAdmin(request);
     const body = await request.json();
-    const id = String(body.id || "").trim();
     const action = String(body.action || "").trim();
+
+    if (action === "deposit-wallet") {
+      const giftNames = await loadGiftNames();
+      const result = await manuallyDepositSalaryWallet(
+        supabaseAdmin,
+        {
+          ...walletConfig,
+          isTipOrder: (order) => isQiunaiTipOrder(order, giftNames),
+        },
+        {
+          discordId: body.discordId,
+          staffName: body.staffName,
+          types: body.types,
+          startDate: body.startDate,
+          endDate: body.endDate,
+          note: "後台手動新增",
+          adminDiscordId: discordId,
+        }
+      );
+
+      return NextResponse.json({
+        ok: true,
+        result,
+      });
+    }
+
+    const id = String(body.id || "").trim();
 
     if (!id) {
       throw new Error("缺少申請 ID");
