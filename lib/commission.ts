@@ -4,6 +4,7 @@ export type CommissionTier =
   | "rate_85"
   | "rate_90"
   | "manager_95";
+import { getNextTaipeiMonthText, getTaipeiYear } from "./taipeiTime";
 
 export function money(value: number) {
   return `NT$ ${Number(value || 0).toLocaleString("zh-TW")}`;
@@ -30,14 +31,9 @@ export function isBeforeOpeningEnd(dateText: string) {
 }
 
 export function getNextMonthText(dateText: string) {
-  const date = new Date(dateText);
-  const year = date.getFullYear();
-  const month = date.getMonth();
-
-  const next = new Date(year, month + 1, 1);
-  return `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, "0")}`;
+  return getNextTaipeiMonthText(dateText);
 }
 
 export function getYearText(dateText: string) {
-  return String(new Date(dateText).getFullYear());
+  return String(getTaipeiYear(dateText));
 }

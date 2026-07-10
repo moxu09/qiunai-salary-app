@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, Download, Loader2, RefreshCw } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { formatTaipeiDateTime, getTaipeiMonthInput } from "@/lib/taipeiTime";
 
 type AccountingRow = {
   id: string;
@@ -51,8 +52,7 @@ const emptySummary: Summary = {
 };
 
 function getCurrentMonth() {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  return getTaipeiMonthInput();
 }
 
 function money(value: number | null | undefined) {
@@ -60,8 +60,7 @@ function money(value: number | null | undefined) {
 }
 
 function formatDateTime(value: string) {
-  if (!value) return "-";
-  return new Date(value).toLocaleString("zh-TW", {
+  return formatTaipeiDateTime(value, {
     month: "2-digit",
     day: "2-digit",
     hour: "2-digit",

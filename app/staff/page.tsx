@@ -14,6 +14,14 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import {
+  formatTaipeiDateTime,
+  getNextTaipeiMonthText,
+  getTaipeiMonthInput,
+  getTaipeiMonthText,
+  getTaipeiYear,
+  monthInputToTaipeiRange,
+} from "@/lib/taipeiTime";
 
 type Staff = {
   id: string;
@@ -177,6 +185,7 @@ export default function StaffPage() {
   const [savingOnline, setSavingOnline] = useState(false);
   const [walletLoading, setWalletLoading] = useState(false);
   const [withdrawing, setWithdrawing] = useState(false);
+  const [withdrawAmount, setWithdrawAmount] = useState("");
   const [salaryWallet, setSalaryWallet] = useState<SalaryWalletData | null>(null);
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonthInput());
 
@@ -259,20 +268,20 @@ export default function StaffPage() {
       };
     }
 
-    const now = new Date();
     const openingEnd = new Date("2026-09-01T00:00:00+08:00");
+    const now = new Date();
 
     const totalOrderAmount = allSalaryOrders.reduce(
       (sum, order) => sum + Number(order.order_amount || 0),
       0
     );
 
-    const thisYear = now.getFullYear();
+    const thisYear = getTaipeiYear();
 
     const thisYearSalary = allSalaryOrders
       .filter((order) => {
         const sourceDate = order.order_finished_at || order.created_at;
-        const year = new Date(sourceDate).getFullYear();
+        const year = getTaipeiYear(sourceDate);
 
         return year === thisYear;
       })
@@ -283,7 +292,7 @@ export default function StaffPage() {
     const previousYearSalary = allSalaryOrders
       .filter((order) => {
         const sourceDate = order.order_finished_at || order.created_at;
-        const year = new Date(sourceDate).getFullYear();
+        const year = getTaipeiYear(sourceDate);
 
         return year === previousYear;
       })
@@ -534,13 +543,21 @@ export default function StaffPage() {
   async function requestWithdraw() {
     if (!salaryWallet) return;
 
-    if (
-      !confirm(
-        `確定要申請提領 $${Number(
-          salaryWallet.totals.available || 0
-        ).toLocaleString()}？`
-      )
-    ) {
+    const available = Math.floor(Number(salaryWallet.totals.available || 0));
+    const amountNumber = Number(withdrawAmount || 0);
+    const amount = Math.floor(amountNumber);
+
+    if (!Number.isFinite(amountNumber) || amount <= 0) {
+      alert("請輸入要提領的金額");
+      return;
+    }
+
+    if (amount > available) {
+      alert(`提領金額不能超過可提領薪資 $${available.toLocaleString()}`);
+      return;
+    }
+
+    if (!confirm(`確定要申請提領 $${amount.toLocaleString()}？`)) {
       return;
     }
 
@@ -560,7 +577,7 @@ export default function StaffPage() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${session.access_token}`,
         },
-        body: JSON.stringify({}),
+        body: JSON.stringify({ amount }),
       });
 
       const payload = await res.json();
@@ -570,6 +587,7 @@ export default function StaffPage() {
       }
 
       setSalaryWallet(payload.wallet as SalaryWalletData);
+      setWithdrawAmount("");
       alert("提領申請已送出");
     } catch (error: unknown) {
       console.error("request withdraw error:", error);
@@ -857,7 +875,25 @@ export default function StaffPage() {
                 </p>
               </div>
 
-              <div className="flex flex-col items-start gap-2 sm:items-end">
+              <div className="flex w-full flex-col items-stretch gap-2 sm:max-w-xs sm:items-end">
+                <label className="w-full text-xs font-bold text-[#8b5a8f]">
+                  提領金額
+                  <input
+                    type="number"
+                    min="1"
+                    step="1"
+                    inputMode="numeric"
+                    value={withdrawAmount}
+                    onChange={(event) => setWithdrawAmount(event.target.value)}
+                    placeholder={
+                      salaryWallet
+                        ? `最多 $${Number(salaryWallet.totals.available || 0).toLocaleString()}`
+                        : "輸入金額"
+                    }
+                    className="qiunai-input mt-1"
+                  />
+                </label>
+
                 <button
                   onClick={requestWithdraw}
                   disabled={
@@ -866,9 +902,10 @@ export default function StaffPage() {
                     !salaryWallet ||
                     !salaryWallet.withdrawWindow.isOpen ||
                     !!salaryWallet.pendingRequest ||
-                    Number(salaryWallet.totals.available || 0) <= 0
+                    Number(salaryWallet.totals.available || 0) <= 0 ||
+                    Number(withdrawAmount || 0) <= 0
                   }
-                  className="qiunai-button px-5 py-3 font-bold disabled:cursor-not-allowed disabled:opacity-50"
+                  className="qiunai-button w-full px-5 py-3 font-bold disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {withdrawing ? "申請中..." : "提領"}
                 </button>
@@ -1563,38 +1600,19 @@ function is85ActiveThisMonth(orders: SalaryOrder[]) {
 }
 
 function getNextMonthText(dateText: string) {
-  const date = new Date(dateText);
-  const next = new Date(date.getFullYear(), date.getMonth() + 1, 1);
-
-  return `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, "0")}`;
+  return getNextTaipeiMonthText(dateText);
 }
 
 function getMonthText(date: Date) {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+  return getTaipeiMonthText(date);
 }
 
 function getCurrentMonthInput() {
-  const now = new Date();
-
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  return getTaipeiMonthInput();
 }
 
 function getMonthRange(monthText: string) {
-  const [yearText, monthValueText] = monthText.split("-");
-  const year = Number(yearText);
-  const monthValue = Number(monthValueText);
-  const source =
-    Number.isInteger(year) && Number.isInteger(monthValue) && monthValue >= 1
-      ? new Date(year, monthValue - 1, 1)
-      : new Date();
-
-  const start = new Date(source.getFullYear(), source.getMonth(), 1, 0, 0, 0, 0);
-  const end = new Date(source.getFullYear(), source.getMonth() + 1, 0, 23, 59, 59);
-
-  return {
-    startIso: start.toISOString(),
-    endIso: end.toISOString(),
-  };
+  return monthInputToTaipeiRange(monthText);
 }
 
 function formatMonthLabel(monthText: string) {
@@ -1609,17 +1627,7 @@ function formatMonthLabel(monthText: string) {
 }
 
 function formatDateTime(value?: string | null) {
-  if (!value) return "-";
-
-  const date = new Date(value);
-
-  return date.toLocaleString("zh-TW", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  return formatTaipeiDateTime(value, { hour12: true });
 }
 
 function formatEntryType(type: string) {

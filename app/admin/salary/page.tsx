@@ -15,6 +15,14 @@ import {
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useQiunaiAdminGuard } from "@/lib/useQiunaiAdminGuard";
+import {
+  dateTimeInputToTaipeiIso,
+  formatTaipeiDateTime,
+  getPreviousTaipeiMonthEndInput,
+  getPreviousTaipeiMonthStartInput,
+  getTaipeiDateTimeInput,
+  getTaipeiMonthStartInput,
+} from "@/lib/taipeiTime";
 
 type Staff = {
   id: string;
@@ -1875,48 +1883,26 @@ function getStaffSalaryLevelLabel(
 }
 
 function getNowInput() {
-  return formatInputDate(new Date());
+  return getTaipeiDateTimeInput();
 }
 
 function getMonthStartInput() {
-  const now = new Date();
-  const date = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
-  return formatInputDate(date);
+  return `${getTaipeiMonthStartInput()}T00:00`;
 }
 
 function getPreviousMonthStartInput() {
-  const now = new Date();
-  const date = new Date(now.getFullYear(), now.getMonth() - 1, 1, 0, 0, 0, 0);
-  return formatInputDate(date);
+  return `${getPreviousTaipeiMonthStartInput()}T00:00`;
 }
 
 function getPreviousMonthEndInput() {
-  const now = new Date();
-  const date = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 0, 0);
-  return formatInputDate(date);
-}
-
-function formatInputDate(date: Date) {
-  const local = new Date(date);
-  local.setMinutes(local.getMinutes() - local.getTimezoneOffset());
-  return local.toISOString().slice(0, 16);
+  return getPreviousTaipeiMonthEndInput();
 }
 
 function toIso(value: string) {
   if (!value) return null;
-  return new Date(value).toISOString();
+  return dateTimeInputToTaipeiIso(value);
 }
 
 function formatDateTime(value: string | null) {
-  if (!value) return "-";
-
-  const date = new Date(value);
-
-  return date.toLocaleString("zh-TW", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  return formatTaipeiDateTime(value, { hour12: true });
 }

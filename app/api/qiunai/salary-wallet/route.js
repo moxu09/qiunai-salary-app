@@ -107,13 +107,41 @@ export async function POST(request) {
       );
     }
 
-    const amount = Math.floor(Number(wallet.totals.available || 0));
+    const available = Math.floor(Number(wallet.totals.available || 0));
+    const rawAmount = String(body.amount ?? "").trim();
+    const hasRequestedAmount = rawAmount !== "";
+    const requestedAmountNumber = Number(rawAmount);
+    const requestedAmount = Math.floor(requestedAmountNumber);
+    const amount = hasRequestedAmount ? requestedAmount : available;
+
+    if (
+      hasRequestedAmount &&
+      (!Number.isFinite(requestedAmountNumber) || requestedAmount <= 0)
+    ) {
+      return NextResponse.json(
+        {
+          ok: false,
+          message: "提領金額必須是大於 0 的數字。",
+        },
+        { status: 400 }
+      );
+    }
 
     if (amount <= 0) {
       return NextResponse.json(
         {
           ok: false,
           message: "目前沒有可提領薪資。",
+        },
+        { status: 400 }
+      );
+    }
+
+    if (amount > available) {
+      return NextResponse.json(
+        {
+          ok: false,
+          message: `提領金額不能超過可提領薪資 ${available.toLocaleString("zh-TW")}。`,
         },
         { status: 400 }
       );

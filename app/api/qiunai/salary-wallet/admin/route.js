@@ -129,6 +129,7 @@ export async function POST(request) {
           discordId: body.discordId,
           staffName: body.staffName,
           types: body.types,
+          manualAmount: body.manualAmount,
           startDate: body.startDate,
           endDate: body.endDate,
           note: "後台手動新增",

@@ -12,6 +12,11 @@ import {
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useQiunaiAdminGuard } from "@/lib/useQiunaiAdminGuard";
+import {
+  dateTimeInputToTaipeiIso,
+  getTaipeiDateTimeInput,
+  getTaipeiMonthStartInput,
+} from "@/lib/taipeiTime";
 
 type Staff = {
   id: string;
@@ -526,22 +531,14 @@ function getCommissionLabel(value: string | null) {
 }
 
 function getNowInput() {
-  return formatInputDate(new Date());
+  return getTaipeiDateTimeInput();
 }
 
 function getMonthStartInput() {
-  const now = new Date();
-  const date = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
-  return formatInputDate(date);
-}
-
-function formatInputDate(date: Date) {
-  const local = new Date(date);
-  local.setMinutes(local.getMinutes() - local.getTimezoneOffset());
-  return local.toISOString().slice(0, 16);
+  return `${getTaipeiMonthStartInput()}T00:00`;
 }
 
 function toIso(value: string) {
   if (!value) return null;
-  return new Date(value).toISOString();
+  return dateTimeInputToTaipeiIso(value);
 }
