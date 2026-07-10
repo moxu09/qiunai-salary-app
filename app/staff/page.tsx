@@ -160,6 +160,15 @@ const SERVICE_OPTIONS: ServiceOption[] = [
   { key: "steam_horror", name: "恐怖遊戲", group: "Steam" },
   { key: "steam_party", name: "派對遊戲", group: "Steam" },
 
+  { key: "hok_entertain", name: "娛樂", group: "王者榮耀" },
+  { key: "hok_skill", name: "技術", group: "王者榮耀" },
+
+  { key: "identity_v_entertain", name: "娛樂", group: "第五人格" },
+  { key: "identity_v_rank_4", name: "四階", group: "第五人格" },
+  { key: "identity_v_rank_5", name: "五階", group: "第五人格" },
+  { key: "identity_v_rank_6", name: "六階", group: "第五人格" },
+  { key: "identity_v_rank_7", name: "七階", group: "第五人格" },
+
   { key: "pubgm", name: "PUBG M", group: "其他項目" },
   { key: "naraka", name: "NARAKA", group: "其他項目" },
   { key: "minecraft", name: "Minecraft", group: "其他項目" },
@@ -1554,6 +1563,15 @@ function getAllowedServiceNameByKey(key: string) {
   if (key === "steam_survival") return "Steam生存遊戲";
   if (key === "steam_horror") return "Steam恐怖遊戲";
   if (key === "steam_party") return "Steam派對遊戲";
+
+  if (key === "hok_entertain") return "王者榮耀娛樂";
+  if (key === "hok_skill") return "王者榮耀技術";
+
+  if (key === "identity_v_entertain") return "第五人格娛樂";
+  if (key === "identity_v_rank_4") return "第五人格四階";
+  if (key === "identity_v_rank_5") return "第五人格五階";
+  if (key === "identity_v_rank_6") return "第五人格六階";
+  if (key === "identity_v_rank_7") return "第五人格七階";
 
   if (key === "pubgm") return "PUBG M";
   if (key === "naraka") return "NARAKA";

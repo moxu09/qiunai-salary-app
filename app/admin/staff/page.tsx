@@ -70,6 +70,15 @@ const SERVICE_OPTIONS: ServiceOption[] = [
   { key: "steam_horror", name: "恐怖遊戲", group: "Steam" },
   { key: "steam_party", name: "派對遊戲", group: "Steam" },
 
+  { key: "hok_entertain", name: "娛樂", group: "王者榮耀" },
+  { key: "hok_skill", name: "技術", group: "王者榮耀" },
+
+  { key: "identity_v_entertain", name: "娛樂", group: "第五人格" },
+  { key: "identity_v_rank_4", name: "四階", group: "第五人格" },
+  { key: "identity_v_rank_5", name: "五階", group: "第五人格" },
+  { key: "identity_v_rank_6", name: "六階", group: "第五人格" },
+  { key: "identity_v_rank_7", name: "七階", group: "第五人格" },
+
   { key: "pubgm", name: "PUBG M", group: "其他項目" },
   { key: "naraka", name: "NARAKA", group: "其他項目" },
   { key: "minecraft", name: "Minecraft", group: "其他項目" },
@@ -190,6 +199,11 @@ export default function AdminStaffPage() {
 
   async function saveStaff(staff: Staff) {
     setSavingId(staff.id);
+    const selectedServices = staffServiceMap[staff.discord_id] || [];
+    const allowedServices = selectedServices.map((key) => {
+      const option = SERVICE_OPTIONS.find((item) => item.key === key);
+      return option ? `${option.group}${option.name}` : key;
+    });
 
     const { error: staffError } = await supabase
       .from("qiunai_staff")
@@ -201,6 +215,7 @@ export default function AdminStaffPage() {
         bank_name: staff.bank_name || null,
         bank_account: staff.bank_account || null,
         salary_channel_id: staff.salary_channel_id || null,
+        allowed_services: allowedServices,
         is_online: !!staff.is_online,
         can_take_order: !!staff.can_take_order,
         is_active: !!staff.is_active,
@@ -226,8 +241,6 @@ export default function AdminStaffPage() {
       setSavingId(null);
       return;
     }
-
-    const selectedServices = staffServiceMap[staff.discord_id] || [];
 
     if (selectedServices.length > 0) {
       const rows = selectedServices.map((key) => {

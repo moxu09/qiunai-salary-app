@@ -85,6 +85,7 @@ export default function AdminSalaryPage() {
   const [orderForm, setOrderForm] = useState({
     discord_id: "",
     customer_name: "",
+    entry_type: "order" as "order" | "tip",
     service_name: "",
     order_amount: "",
     bonus_amount: "0",
@@ -355,12 +356,18 @@ export default function AdminSalaryPage() {
     );
 
     const orderAmount = Number(orderForm.order_amount);
-    const salaryRate = getStaffSalaryRate(
+    const regularRate = getStaffSalaryRate(
       selectedStaff,
       orderForm.order_finished_at
     );
+    const salaryRate =
+      orderForm.entry_type === "tip" && regularRate !== 95 ? 90 : regularRate;
     const bonusAmount = Number(orderForm.bonus_amount || 0);
     const staffSalary = Math.round(orderAmount * (salaryRate / 100));
+    const serviceName =
+      orderForm.entry_type === "tip" && !orderForm.service_name.includes("打賞")
+        ? `打賞：${orderForm.service_name || "手動打賞"}`
+        : orderForm.service_name;
 
     if (!orderAmount || orderAmount <= 0) {
       alert("請輸入正確訂單金額");
@@ -387,15 +394,15 @@ export default function AdminSalaryPage() {
       discord_id: orderForm.discord_id,
       staff_name: staffName,
       customer_name: orderForm.customer_name || null,
-      service_name: orderForm.service_name,
+      service_name: serviceName,
       order_amount: orderAmount,
       staff_salary: staffSalary,
       bonus_amount: bonusAmount,
       salary_rate: salaryRate,
-      salary_level: getStaffSalaryLevelLabel(
-        selectedStaff,
-        orderForm.order_finished_at
-      ),
+      salary_level:
+        orderForm.entry_type === "tip"
+          ? salaryRate === 95 ? "打賞特別設定 95%" : "打賞固定 90%"
+          : getStaffSalaryLevelLabel(selectedStaff, orderForm.order_finished_at),
       platform_income: orderAmount,
       platform_expense: staffSalary + bonusAmount,
       status: "未發薪",
@@ -414,6 +421,7 @@ export default function AdminSalaryPage() {
     setOrderForm({
       discord_id: "",
       customer_name: "",
+      entry_type: "order",
       service_name: "",
       order_amount: "",
       bonus_amount: "0",
@@ -614,7 +622,9 @@ export default function AdminSalaryPage() {
     }
   ) {
     const orderAmount = Number(payload.order_amount || 0);
-    const salaryRate = Number(payload.salary_rate || 80);
+    const isTip = String(payload.service_name || "").includes("打賞");
+    const requestedRate = Number(payload.salary_rate || 80);
+    const salaryRate = isTip && requestedRate !== 95 ? 90 : requestedRate;
     const bonusAmount = Number(payload.bonus_amount || 0);
     const staffSalary = Math.round(orderAmount * (salaryRate / 100));
 
@@ -644,7 +654,9 @@ export default function AdminSalaryPage() {
         staff_salary: staffSalary,
         platform_income: orderAmount,
         platform_expense: staffSalary + bonusAmount,
-        salary_level: `後台手動修改 ${salaryRate}%`,
+        salary_level: isTip
+          ? salaryRate === 95 ? "打賞特別設定 95%" : "打賞固定 90%"
+          : `後台手動修改 ${salaryRate}%`,
         admin_note: payload.admin_note || null,
         edited_at: new Date().toISOString(),
         edited_by: "admin",
@@ -1049,13 +1061,30 @@ export default function AdminSalaryPage() {
             />
 
             <Input
-              label="客人名稱"
+              label="老闆"
               value={orderForm.customer_name}
               placeholder="可填 Discord 名稱或暱稱"
               onChange={(value) =>
                 setOrderForm((prev) => ({ ...prev, customer_name: value }))
               }
             />
+
+            <label className="block">
+              <span className="text-sm font-semibold text-[#7b4f85]">類型</span>
+              <select
+                value={orderForm.entry_type}
+                onChange={(event) =>
+                  setOrderForm((prev) => ({
+                    ...prev,
+                    entry_type: event.target.value as "order" | "tip",
+                  }))
+                }
+                className="qiunai-input mt-2"
+              >
+                <option value="order">訂單</option>
+                <option value="tip">打賞</option>
+              </select>
+            </label>
 
             <Input
               label="服務項目"
@@ -1097,10 +1126,14 @@ export default function AdminSalaryPage() {
                       (staff) => staff.discord_id === orderForm.discord_id
                     );
 
-                    const salaryRate = getStaffSalaryRate(
+                    const regularRate = getStaffSalaryRate(
                       selectedStaff,
                       orderForm.order_finished_at
                     );
+                    const salaryRate =
+                      orderForm.entry_type === "tip" && regularRate !== 95
+                        ? 90
+                        : regularRate;
 
                     return (
                       <>
@@ -1108,10 +1141,14 @@ export default function AdminSalaryPage() {
                           {salaryRate}%
                         </p>
                         <p className="mt-1 text-xs text-zinc-500">
-                          {getStaffSalaryLevelLabel(
-                            selectedStaff,
-                            orderForm.order_finished_at
-                          )}
+                          {orderForm.entry_type === "tip"
+                            ? salaryRate === 95
+                              ? "打賞特別設定 95%"
+                              : "打賞固定 90%"
+                            : getStaffSalaryLevelLabel(
+                                selectedStaff,
+                                orderForm.order_finished_at
+                              )}
                         </p>
                       </>
                     );
