@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Save, RefreshCw, Gamepad2 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { SERVICE_OPTIONS, type ServiceOption } from "@/lib/serviceOptions";
 import { useQiunaiAdminGuard } from "@/lib/useQiunaiAdminGuard";
 
 type Staff = {
@@ -34,57 +35,6 @@ type StaffService = {
   created_at: string;
   updated_at: string;
 };
-
-type ServiceOption = {
-  key: string;
-  name: string;
-  group: string;
-  hint?: string;
-};
-
-const SERVICE_OPTIONS: ServiceOption[] = [
-  { key: "valorant_god", name: "大神陪玩", group: "特戰英豪" },
-  { key: "valorant_skill", name: "技術陪玩", group: "特戰英豪" },
-  { key: "valorant_entertainment", name: "娛樂陪玩", group: "特戰英豪" },
-
-  { key: "delta_pc", name: "電腦版", group: "三角洲行動" },
-  { key: "delta_mobile", name: "手機版", group: "三角洲行動" },
-  { key: "delta_entertainment", name: "娛樂", group: "三角洲行動" },
-  { key: "delta_basic_guard", name: "基本單護", group: "三角洲行動" },
-  { key: "delta_secret_double_guard", name: "機密雙護", group: "三角洲行動" },
-  { key: "delta_attack_guard", name: "猛攻護航", group: "三角洲行動" },
-
-  { key: "apex_god", name: "大神陪玩", group: "Apex" },
-  { key: "apex_skill", name: "技術陪玩", group: "Apex" },
-  { key: "apex_entertainment", name: "娛樂陪玩", group: "Apex" },
-
-  { key: "lol_main", name: "英雄聯盟", group: "英雄聯盟", hint: "模式" },
-  { key: "lol_aram", name: "ARAM", group: "英雄聯盟", hint: "模式" },
-  { key: "lol_tft", name: "聯盟戰棋", group: "英雄聯盟", hint: "模式" },
-  { key: "lol_god", name: "大神陪玩", group: "英雄聯盟", hint: "類型" },
-  { key: "lol_skill", name: "技術陪玩", group: "英雄聯盟", hint: "類型" },
-  { key: "lol_entertainment", name: "娛樂陪玩", group: "英雄聯盟", hint: "類型" },
-
-  { key: "steam_roguelike", name: "肉鴿遊戲", group: "Steam" },
-  { key: "steam_survival", name: "生存遊戲", group: "Steam" },
-  { key: "steam_horror", name: "恐怖遊戲", group: "Steam" },
-  { key: "steam_party", name: "派對遊戲", group: "Steam" },
-
-  { key: "hok_entertain", name: "娛樂", group: "王者榮耀" },
-  { key: "hok_skill", name: "技術", group: "王者榮耀" },
-
-  { key: "identity_v_entertain", name: "娛樂", group: "第五人格" },
-  { key: "identity_v_rank_4", name: "四階", group: "第五人格" },
-  { key: "identity_v_rank_5", name: "五階", group: "第五人格" },
-  { key: "identity_v_rank_6", name: "六階", group: "第五人格" },
-  { key: "identity_v_rank_7", name: "七階", group: "第五人格" },
-
-  { key: "pubgm", name: "PUBG M", group: "其他項目" },
-  { key: "naraka", name: "NARAKA", group: "其他項目" },
-  { key: "minecraft", name: "Minecraft", group: "其他項目" },
-  { key: "voice_chat", name: "語音聊天", group: "其他項目" },
-  { key: "song_request", name: "點歌服務", group: "其他項目" },
-];
 
 export default function AdminStaffPage() {
   const { adminLoading, isAdmin } = useQiunaiAdminGuard();
@@ -292,9 +242,7 @@ export default function AdminStaffPage() {
       <header className="relative z-10 border-b border-pink-200/50 bg-white/45 backdrop-blur-xl">
         <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-5 md:flex-row md:items-center md:justify-between">
           <div>
-            <p className="text-sm font-semibold text-pink-500">
-              Qiunai Admin
-            </p>
+            <p className="text-sm font-semibold text-pink-500">Qiunai Admin</p>
             <h1 className="qiunai-title-gradient text-2xl font-black">
               秋奈電競｜員工管理
             </h1>
@@ -332,10 +280,7 @@ export default function AdminStaffPage() {
               const selectedServices = staffServiceMap[staff.discord_id] || [];
 
               return (
-                <div
-                  key={staff.id}
-                  className="qiunai-card rounded-[34px] p-6"
-                >
+                <div key={staff.id} className="qiunai-card rounded-[34px] p-6">
                   <div className="flex flex-col gap-4 border-b border-pink-100 pb-5 md:flex-row md:items-center md:justify-between">
                     <div className="flex items-center gap-4">
                       {staff.avatar_url ? (

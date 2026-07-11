@@ -10,7 +10,10 @@ export function money(value: number) {
   return `NT$ ${Number(value || 0).toLocaleString("zh-TW")}`;
 }
 
-export function getCommissionLabel(tier: CommissionTier | string, rate: number) {
+export function getCommissionLabel(
+  tier: CommissionTier | string,
+  rate: number
+) {
   if (tier === "rate_80") return "80% 一般陪陪";
   if (tier === "rate_85") return "85% 進階陪陪";
   if (tier === "rate_90") return "90% 年度高階";

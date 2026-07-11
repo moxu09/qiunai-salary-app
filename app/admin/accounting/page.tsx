@@ -214,7 +214,11 @@ export default function AccountingPage() {
                 className="inline-flex items-center gap-2 rounded-2xl bg-violet-500 px-4 py-3 text-sm font-black text-white disabled:opacity-60"
                 disabled={loading}
               >
-                {loading ? <Loader2 className="animate-spin" size={16} /> : <RefreshCw size={16} />}
+                {loading ? (
+                  <Loader2 className="animate-spin" size={16} />
+                ) : (
+                  <RefreshCw size={16} />
+                )}
                 重新整理
               </button>
               <button
@@ -231,9 +235,12 @@ export default function AccountingPage() {
 
         {ledgerMissing ? (
           <div className="rounded-3xl border border-amber-300/30 bg-amber-300/10 px-5 py-4 text-sm font-bold leading-7 text-amber-100">
-            尚未建立 accounting_ledger 資料表。報表會先用現有訂單與薪資資料產生；
+            尚未建立 accounting_ledger
+            資料表。報表會先用現有訂單與薪資資料產生；
             儲值、月結繳費等新流水要先到 Supabase SQL Editor 執行
-            <span className="mx-1 rounded bg-white/10 px-2 py-1">supabase/accounting_ledger.sql</span>
+            <span className="mx-1 rounded bg-white/10 px-2 py-1">
+              supabase/accounting_ledger.sql
+            </span>
             後才會開始進表。
           </div>
         ) : null}
@@ -283,13 +290,19 @@ export default function AccountingPage() {
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan={11} className="px-6 py-12 text-center font-bold text-zinc-400">
+                    <td
+                      colSpan={11}
+                      className="px-6 py-12 text-center font-bold text-zinc-400"
+                    >
                       讀取中...
                     </td>
                   </tr>
                 ) : displayedRows.length === 0 ? (
                   <tr>
-                    <td colSpan={11} className="px-6 py-12 text-center font-bold text-zinc-400">
+                    <td
+                      colSpan={11}
+                      className="px-6 py-12 text-center font-bold text-zinc-400"
+                    >
                       這個月份沒有資料
                     </td>
                   </tr>
@@ -299,13 +312,19 @@ export default function AccountingPage() {
                       <Td>{formatDateTime(row.occurred_at)}</Td>
                       <Td>
                         <p className="font-black text-white">{row.category}</p>
-                        <p className="mt-1 text-xs text-zinc-500">{row.source}</p>
+                        <p className="mt-1 text-xs text-zinc-500">
+                          {row.source}
+                        </p>
                       </Td>
                       <Td>{row.subject || "-"}</Td>
                       <Td>{money(row.amount)}</Td>
                       <Td>
-                        <p className="text-emerald-300">入 {money(Math.max(0, row.cash_amount))}</p>
-                        <p className="text-rose-300">出 {money(Math.abs(Math.min(0, row.cash_amount)))}</p>
+                        <p className="text-emerald-300">
+                          入 {money(Math.max(0, row.cash_amount))}
+                        </p>
+                        <p className="text-rose-300">
+                          出 {money(Math.abs(Math.min(0, row.cash_amount)))}
+                        </p>
                       </Td>
                       <Td>{money(row.revenue_amount)}</Td>
                       <Td>{money(row.expense_amount)}</Td>
@@ -347,5 +366,9 @@ function Th({ children }: { children: React.ReactNode }) {
 }
 
 function Td({ children }: { children: React.ReactNode }) {
-  return <td className="px-4 py-4 align-top font-semibold text-zinc-300">{children}</td>;
+  return (
+    <td className="px-4 py-4 align-top font-semibold text-zinc-300">
+      {children}
+    </td>
+  );
 }

@@ -245,7 +245,9 @@ export default function AdminSalaryPage() {
   const selectedDetailOrders = useMemo(() => {
     if (!selectedDetailDiscordId) return [];
 
-    return orders.filter((order) => order.discord_id === selectedDetailDiscordId);
+    return orders.filter(
+      (order) => order.discord_id === selectedDetailDiscordId
+    );
   }, [orders, selectedDetailDiscordId]);
 
   const selectedDetailBonuses = useMemo(() => {
@@ -401,8 +403,13 @@ export default function AdminSalaryPage() {
       salary_rate: salaryRate,
       salary_level:
         orderForm.entry_type === "tip"
-          ? salaryRate === 95 ? "打賞特別設定 95%" : "打賞固定 90%"
-          : getStaffSalaryLevelLabel(selectedStaff, orderForm.order_finished_at),
+          ? salaryRate === 95
+            ? "打賞特別設定 95%"
+            : "打賞固定 90%"
+          : getStaffSalaryLevelLabel(
+              selectedStaff,
+              orderForm.order_finished_at
+            ),
       platform_income: orderAmount,
       platform_expense: staffSalary + bonusAmount,
       status: "未發薪",
@@ -536,7 +543,9 @@ export default function AdminSalaryPage() {
     const paidAt = toIso(payForm.paid_at) || new Date().toISOString();
 
     const ok = confirm(
-      `確定要將「${order.staff_name || order.discord_id}」這筆訂單標記為已發薪嗎？`
+      `確定要將「${
+        order.staff_name || order.discord_id
+      }」這筆訂單標記為已發薪嗎？`
     );
 
     if (!ok) return;
@@ -655,7 +664,9 @@ export default function AdminSalaryPage() {
         platform_income: orderAmount,
         platform_expense: staffSalary + bonusAmount,
         salary_level: isTip
-          ? salaryRate === 95 ? "打賞特別設定 95%" : "打賞固定 90%"
+          ? salaryRate === 95
+            ? "打賞特別設定 95%"
+            : "打賞固定 90%"
           : `後台手動修改 ${salaryRate}%`,
         admin_note: payload.admin_note || null,
         edited_at: new Date().toISOString(),
@@ -791,10 +802,19 @@ export default function AdminSalaryPage() {
         <div className="mt-6 grid gap-4 md:grid-cols-3 lg:grid-cols-7">
           <Stat title="訂單數" value={`${totals.orderCount} 筆`} />
           <Stat title="獎金 / 扣除" value={`${totals.bonusCount} 筆`} />
-          <Stat title="總收入" value={`$${totals.totalIncome.toLocaleString()}`} />
-          <Stat title="總支出" value={`$${totals.totalExpense.toLocaleString()}`} />
+          <Stat
+            title="總收入"
+            value={`$${totals.totalIncome.toLocaleString()}`}
+          />
+          <Stat
+            title="總支出"
+            value={`$${totals.totalExpense.toLocaleString()}`}
+          />
           <Stat title="預估利潤" value={`$${totals.profit.toLocaleString()}`} />
-          <Stat title="薪資" value={`$${totals.totalSalary.toLocaleString()}`} />
+          <Stat
+            title="薪資"
+            value={`$${totals.totalSalary.toLocaleString()}`}
+          />
           <Stat title="未發薪" value={`${totals.unpaidCount} 筆`} />
         </div>
 
@@ -1003,7 +1023,8 @@ export default function AdminSalaryPage() {
           <h2 className="text-xl font-bold">員工抽成檔位</h2>
 
           <p className="mt-2 text-sm text-zinc-400">
-            九月前系統預設 90%，但後台手動設定會優先套用。九月後可設定 80%、85%、90% 或主管津貼 95%。
+            九月前系統預設 90%，但後台手動設定會優先套用。九月後可設定
+            80%、85%、90% 或主管津貼 95%。
           </p>
 
           <div className="mt-5 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -1014,9 +1035,7 @@ export default function AdminSalaryPage() {
               >
                 <p className="font-bold">{getDisplayStaffName(staff)}</p>
 
-                <p className="mt-1 text-xs text-zinc-500">
-                  {staff.discord_id}
-                </p>
+                <p className="mt-1 text-xs text-zinc-500">{staff.discord_id}</p>
 
                 <label className="mt-3 block">
                   <span className="text-sm text-zinc-300">抽成檔位</span>
@@ -1410,7 +1429,9 @@ export default function AdminSalaryPage() {
 
                     <td className="px-4 py-3">
                       <button
-                        onClick={() => setSelectedDetailDiscordId(order.discord_id)}
+                        onClick={() =>
+                          setSelectedDetailDiscordId(order.discord_id)
+                        }
                         className="text-left hover:text-violet-300"
                       >
                         <p>{order.staff_name || "未知員工"}</p>
@@ -1553,7 +1574,9 @@ export default function AdminSalaryPage() {
 
                     <td className="px-4 py-3">
                       <button
-                        onClick={() => setSelectedDetailDiscordId(bonus.discord_id)}
+                        onClick={() =>
+                          setSelectedDetailDiscordId(bonus.discord_id)
+                        }
                         className="text-left hover:text-violet-300"
                       >
                         <p>{bonus.staff_name || bonus.discord_id}</p>

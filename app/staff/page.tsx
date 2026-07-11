@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { SERVICE_OPTIONS, type ServiceOption } from "@/lib/serviceOptions";
 import {
   formatTaipeiDateTime,
   getNextTaipeiMonthText,
@@ -87,13 +88,6 @@ type StaffService = {
   updated_at: string;
 };
 
-type ServiceOption = {
-  key: string;
-  name: string;
-  group: string;
-  hint?: string;
-};
-
 type SalaryWalletEntry = {
   id: string;
   entry_type: string;
@@ -132,50 +126,6 @@ type SalaryWalletData = {
   };
 };
 
-const SERVICE_OPTIONS: ServiceOption[] = [
-  { key: "valorant_god", name: "大神陪玩", group: "特戰英豪" },
-  { key: "valorant_skill", name: "技術陪玩", group: "特戰英豪" },
-  { key: "valorant_entertainment", name: "娛樂陪玩", group: "特戰英豪" },
-
-  { key: "delta_pc", name: "電腦版", group: "三角洲行動" },
-  { key: "delta_mobile", name: "手機版", group: "三角洲行動" },
-  { key: "delta_entertainment", name: "娛樂", group: "三角洲行動" },
-  { key: "delta_basic_guard", name: "基本單護", group: "三角洲行動" },
-  { key: "delta_secret_double_guard", name: "機密雙護", group: "三角洲行動" },
-  { key: "delta_attack_guard", name: "猛攻護航", group: "三角洲行動" },
-
-  { key: "apex_god", name: "大神陪玩", group: "Apex" },
-  { key: "apex_skill", name: "技術陪玩", group: "Apex" },
-  { key: "apex_entertainment", name: "娛樂陪玩", group: "Apex" },
-
-  { key: "lol_main", name: "英雄聯盟", group: "英雄聯盟", hint: "模式" },
-  { key: "lol_aram", name: "ARAM", group: "英雄聯盟", hint: "模式" },
-  { key: "lol_tft", name: "聯盟戰棋", group: "英雄聯盟", hint: "模式" },
-  { key: "lol_god", name: "大神陪玩", group: "英雄聯盟", hint: "類型" },
-  { key: "lol_skill", name: "技術陪玩", group: "英雄聯盟", hint: "類型" },
-  { key: "lol_entertainment", name: "娛樂陪玩", group: "英雄聯盟", hint: "類型" },
-
-  { key: "steam_roguelike", name: "肉鴿遊戲", group: "Steam" },
-  { key: "steam_survival", name: "生存遊戲", group: "Steam" },
-  { key: "steam_horror", name: "恐怖遊戲", group: "Steam" },
-  { key: "steam_party", name: "派對遊戲", group: "Steam" },
-
-  { key: "hok_entertain", name: "娛樂", group: "王者榮耀" },
-  { key: "hok_skill", name: "技術", group: "王者榮耀" },
-
-  { key: "identity_v_entertain", name: "娛樂", group: "第五人格" },
-  { key: "identity_v_rank_4", name: "四階", group: "第五人格" },
-  { key: "identity_v_rank_5", name: "五階", group: "第五人格" },
-  { key: "identity_v_rank_6", name: "六階", group: "第五人格" },
-  { key: "identity_v_rank_7", name: "七階", group: "第五人格" },
-
-  { key: "pubgm", name: "PUBG M", group: "其他項目" },
-  { key: "naraka", name: "NARAKA", group: "其他項目" },
-  { key: "minecraft", name: "Minecraft", group: "其他項目" },
-  { key: "voice_chat", name: "語音聊天", group: "其他項目" },
-  { key: "song_request", name: "點歌服務", group: "其他項目" },
-];
-
 export default function StaffPage() {
   const router = useRouter();
 
@@ -195,7 +145,9 @@ export default function StaffPage() {
   const [walletLoading, setWalletLoading] = useState(false);
   const [withdrawing, setWithdrawing] = useState(false);
   const [withdrawAmount, setWithdrawAmount] = useState("");
-  const [salaryWallet, setSalaryWallet] = useState<SalaryWalletData | null>(null);
+  const [salaryWallet, setSalaryWallet] = useState<SalaryWalletData | null>(
+    null
+  );
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonthInput());
 
   const [profileForm, setProfileForm] = useState({
@@ -324,9 +276,7 @@ export default function StaffPage() {
     if (manualRate) {
       currentRate = manualRate;
       currentLabel =
-        manualRate === 95
-          ? "主管津貼 95%"
-          : `後台設定 ${manualRate}%`;
+        manualRate === 95 ? "主管津貼 95%" : `後台設定 ${manualRate}%`;
     } else if (now < openingEnd) {
       currentRate = 90;
       currentLabel = "開幕期預設 90%";
@@ -686,8 +636,9 @@ export default function StaffPage() {
   async function saveStaffServices() {
     if (!staff) return;
     setSavingServices(true);
-    const allowedServices =
-      selectedServices.map((key) => getAllowedServiceNameByKey(key));
+    const allowedServices = selectedServices.map((key) =>
+      getAllowedServiceNameByKey(key)
+    );
     const { error: updateStaffError } = await supabase
       .from("qiunai_staff")
       .update({
@@ -896,7 +847,9 @@ export default function StaffPage() {
                     onChange={(event) => setWithdrawAmount(event.target.value)}
                     placeholder={
                       salaryWallet
-                        ? `最多 $${Number(salaryWallet.totals.available || 0).toLocaleString()}`
+                        ? `最多 $${Number(
+                            salaryWallet.totals.available || 0
+                          ).toLocaleString()}`
                         : "輸入金額"
                     }
                     className="qiunai-input mt-1"
@@ -933,19 +886,27 @@ export default function StaffPage() {
                 <div className="mt-5 grid gap-3 md:grid-cols-4">
                   <WalletStat
                     title="錢包餘額"
-                    value={`$${Number(salaryWallet.totals.balance || 0).toLocaleString()}`}
+                    value={`$${Number(
+                      salaryWallet.totals.balance || 0
+                    ).toLocaleString()}`}
                   />
                   <WalletStat
                     title="訂單薪水"
-                    value={`$${Number(salaryWallet.totals.orderSalary || 0).toLocaleString()}`}
+                    value={`$${Number(
+                      salaryWallet.totals.orderSalary || 0
+                    ).toLocaleString()}`}
                   />
                   <WalletStat
                     title="獎金 / 扣除"
-                    value={`$${Number(salaryWallet.totals.bonus || 0).toLocaleString()}`}
+                    value={`$${Number(
+                      salaryWallet.totals.bonus || 0
+                    ).toLocaleString()}`}
                   />
                   <WalletStat
                     title="使用的薪水"
-                    value={`$${Number(salaryWallet.totals.approvedWithdrawn || 0).toLocaleString()}`}
+                    value={`$${Number(
+                      salaryWallet.totals.approvedWithdrawn || 0
+                    ).toLocaleString()}`}
                   />
                 </div>
 
@@ -954,7 +915,9 @@ export default function StaffPage() {
                     <p className="font-black text-[#5b3768]">提領狀態</p>
                     <p className="mt-1 text-sm text-[#8b5a8f]">
                       可提領：$
-                      {Number(salaryWallet.totals.available || 0).toLocaleString()}
+                      {Number(
+                        salaryWallet.totals.available || 0
+                      ).toLocaleString()}
                       {salaryWallet.totals.pendingWithdrawn > 0
                         ? `，申請中：$${Number(
                             salaryWallet.totals.pendingWithdrawn || 0
@@ -1059,7 +1022,8 @@ export default function StaffPage() {
                 </div>
 
                 <p className="mt-3 text-sm leading-6 text-[#8b5a8f]">
-                  85% 依累積接單金額判定；90% 依今年薪資進度，達標後隔年整年適用。
+                  85% 依累積接單金額判定；90%
+                  依今年薪資進度，達標後隔年整年適用。
                 </p>
               </div>
 
@@ -1220,47 +1184,49 @@ export default function StaffPage() {
               </p>
 
               <p className="mt-3 rounded-[22px] border border-pink-200 bg-pink-50/80 px-4 py-3 text-sm leading-6 text-pink-600">
-                英雄聯盟類型需要同時勾「模式」和「陪玩類型」。
-                例如：要接 ARAM｜大神陪玩，就要勾 ARAM + 大神陪玩。
+                英雄聯盟類型需要同時勾「模式」和「陪玩類型」。 例如：要接
+                ARAM｜大神陪玩，就要勾 ARAM + 大神陪玩。
               </p>
 
               <div className="mt-5 space-y-5">
-                {Object.entries(groupedServices).map(([groupName, services]) => (
-                  <div
-                    key={groupName}
-                    className="rounded-[26px] border border-pink-200/70 bg-white/55 p-4"
-                  >
-                    <h3 className="font-black text-pink-500">{groupName}</h3>
+                {Object.entries(groupedServices).map(
+                  ([groupName, services]) => (
+                    <div
+                      key={groupName}
+                      className="rounded-[26px] border border-pink-200/70 bg-white/55 p-4"
+                    >
+                      <h3 className="font-black text-pink-500">{groupName}</h3>
 
-                    <div className="mt-3 grid gap-3">
-                      {services.map((service) => (
-                        <label
-                          key={service.key}
-                          className="flex cursor-pointer items-center justify-between gap-3 rounded-[20px] border border-pink-100 bg-white/70 px-4 py-3 transition hover:bg-pink-50"
-                        >
-                          <div className="flex items-center gap-3">
-                            <input
-                              type="checkbox"
-                              checked={selectedServices.includes(service.key)}
-                              onChange={() => toggleService(service.key)}
-                              className="h-5 w-5 accent-pink-400"
-                            />
+                      <div className="mt-3 grid gap-3">
+                        {services.map((service) => (
+                          <label
+                            key={service.key}
+                            className="flex cursor-pointer items-center justify-between gap-3 rounded-[20px] border border-pink-100 bg-white/70 px-4 py-3 transition hover:bg-pink-50"
+                          >
+                            <div className="flex items-center gap-3">
+                              <input
+                                type="checkbox"
+                                checked={selectedServices.includes(service.key)}
+                                onChange={() => toggleService(service.key)}
+                                className="h-5 w-5 accent-pink-400"
+                              />
 
-                            <span className="text-sm font-semibold text-[#6b4f71]">
-                              {service.name}
-                            </span>
-                          </div>
+                              <span className="text-sm font-semibold text-[#6b4f71]">
+                                {service.name}
+                              </span>
+                            </div>
 
-                          {service.hint ? (
-                            <span className="rounded-full bg-violet-100 px-2 py-1 text-xs font-semibold text-violet-500">
-                              {service.hint}
-                            </span>
-                          ) : null}
-                        </label>
-                      ))}
+                            {service.hint ? (
+                              <span className="rounded-full bg-violet-100 px-2 py-1 text-xs font-semibold text-violet-500">
+                                {service.hint}
+                              </span>
+                            ) : null}
+                          </label>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  )
+                )}
               </div>
 
               <button
@@ -1330,7 +1296,9 @@ export default function StaffPage() {
 
                           <td className="px-4 py-3 text-[#5b3768]">
                             <p>
-                              {order.salary_rate ? `${order.salary_rate}%` : "-"}
+                              {order.salary_rate
+                                ? `${order.salary_rate}%`
+                                : "-"}
                             </p>
                             <p className="text-xs text-[#a36b9e]">
                               {order.salary_level || ""}
@@ -1344,8 +1312,8 @@ export default function StaffPage() {
                           <td className="px-4 py-3">
                             <span
                               className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                                order.status === "已發薪"
-                                  || order.wallet_settled_at
+                                order.status === "已發薪" ||
+                                order.wallet_settled_at
                                   ? "bg-emerald-100 text-emerald-600"
                                   : "bg-yellow-100 text-yellow-600"
                               }`}
@@ -1660,7 +1628,9 @@ function getRequestStatusText(request?: SalaryWithdrawRequest | null) {
   if (request.status === "pending") return "申請中";
   if (request.status === "approved") return "申請成功，請稍等三個工作日";
   if (request.status === "rejected") {
-    return `申請遭駁回${request.reject_reason ? `，原因是${request.reject_reason}` : ""}`;
+    return `申請遭駁回${
+      request.reject_reason ? `，原因是${request.reject_reason}` : ""
+    }`;
   }
   return request.status || "尚未申請";
 }

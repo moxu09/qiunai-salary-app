@@ -136,6 +136,8 @@ export function getTaipeiMonthText(value?: string | Date | null) {
 export function getNextTaipeiMonthText(value?: string | Date | null) {
   const date = value ? new Date(value) : new Date();
   const parts = getTaipeiParts(date);
-  const next = new Date(Date.UTC(Number(parts.year), Number(parts.month), 1, 12));
+  const next = new Date(
+    Date.UTC(Number(parts.year), Number(parts.month), 1, 12)
+  );
   return getTaipeiMonthText(next);
 }

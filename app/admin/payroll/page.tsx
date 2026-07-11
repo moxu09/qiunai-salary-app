@@ -29,8 +29,7 @@ const SALARY_WALLET_START_DATE =
 const SALARY_WALLET_START_ISO = new Date(
   `${SALARY_WALLET_START_DATE}T00:00:00+08:00`
 ).toISOString();
-const PAYROLL_WALLET_FILTER =
-  `wallet_settled_at.is.null,wallet_settled_at.lt.${SALARY_WALLET_START_ISO}`;
+const PAYROLL_WALLET_FILTER = `wallet_settled_at.is.null,wallet_settled_at.lt.${SALARY_WALLET_START_ISO}`;
 const APP_KEY = "qiunai";
 const ORDER_TABLE = "qiunai_salary_orders";
 const BONUS_TABLE = "qiunai_staff_bonus";
@@ -139,13 +138,18 @@ export default function AdminPayrollPage() {
   const [orders, setOrders] = useState<SalaryOrder[]>([]);
   const [bonusList, setBonusList] = useState<BonusItem[]>([]);
   const [giftNames, setGiftNames] = useState<string[]>([]);
-  const [walletEntrySources, setWalletEntrySources] = useState<WalletEntrySource[]>([]);
-  const [withdrawRequests, setWithdrawRequests] = useState<WithdrawRequest[]>([]);
+  const [walletEntrySources, setWalletEntrySources] = useState<
+    WalletEntrySource[]
+  >([]);
+  const [withdrawRequests, setWithdrawRequests] = useState<WithdrawRequest[]>(
+    []
+  );
   const [keyword, setKeyword] = useState("");
   const [reviewingId, setReviewingId] = useState<string | null>(null);
   const [walletModalRow, setWalletModalRow] = useState<PayrollRow | null>(null);
-  const [walletOptions, setWalletOptions] =
-    useState<Record<WalletOptionKey, boolean>>(DEFAULT_WALLET_OPTIONS);
+  const [walletOptions, setWalletOptions] = useState<
+    Record<WalletOptionKey, boolean>
+  >(DEFAULT_WALLET_OPTIONS);
   const [walletManualAmount, setWalletManualAmount] = useState("");
   const [walletSendingId, setWalletSendingId] = useState<string | null>(null);
   const [filter, setFilter] = useState({
@@ -320,25 +324,25 @@ export default function AdminPayrollPage() {
 
     const [staffRes, orderRes, bonusRes, giftRes, walletEntryRes] =
       await Promise.all([
-      supabase
-        .from("qiunai_staff")
-        .select(
-          "id, discord_id, discord_name, display_name, real_name, bank_name, bank_account, is_active"
-        )
-        .order("created_at", { ascending: false }),
-      orderQuery,
-      bonusQuery,
-      supabase
-        .from("platform_gifts")
-        .select("name, is_active")
-        .order("sort_order", { ascending: true }),
-      supabase
-        .from("salary_wallet_entries")
-        .select("source_table, source_id, entry_type")
-        .eq("app_key", APP_KEY)
-        .in("source_table", [ORDER_TABLE, BONUS_TABLE])
-        .limit(10000),
-    ]);
+        supabase
+          .from("qiunai_staff")
+          .select(
+            "id, discord_id, discord_name, display_name, real_name, bank_name, bank_account, is_active"
+          )
+          .order("created_at", { ascending: false }),
+        orderQuery,
+        bonusQuery,
+        supabase
+          .from("platform_gifts")
+          .select("name, is_active")
+          .order("sort_order", { ascending: true }),
+        supabase
+          .from("salary_wallet_entries")
+          .select("source_table, source_id, entry_type")
+          .eq("app_key", APP_KEY)
+          .in("source_table", [ORDER_TABLE, BONUS_TABLE])
+          .limit(10000),
+      ]);
 
     if (!silent) {
       setLoading(false);
@@ -411,11 +415,11 @@ export default function AdminPayrollPage() {
     }
   }
 
-  async function reviewWithdrawRequest(id: string, action: "approve" | "reject") {
-    const reason =
-      action === "reject"
-        ? window.prompt("請輸入駁回理由")
-        : "";
+  async function reviewWithdrawRequest(
+    id: string,
+    action: "approve" | "reject"
+  ) {
+    const reason = action === "reject" ? window.prompt("請輸入駁回理由") : "";
 
     if (action === "reject" && !reason?.trim()) {
       return;
@@ -811,7 +815,10 @@ export default function AdminPayrollPage() {
                 </thead>
                 <tbody>
                   {rows.map((row) => (
-                    <tr key={row.discordId} className="border-t border-white/10">
+                    <tr
+                      key={row.discordId}
+                      className="border-t border-white/10"
+                    >
                       <td className="px-4 py-3">
                         <p className="font-bold text-white">{row.staffName}</p>
                         <p className="text-xs text-zinc-500">{row.discordId}</p>
@@ -989,7 +996,8 @@ function formatDateTime(value?: string | null) {
 function getRequestStatusText(status: string, rejectReason?: string | null) {
   if (status === "pending") return "申請中";
   if (status === "approved") return "申請成功，請稍等三個工作日";
-  if (status === "rejected") return `申請遭駁回${rejectReason ? `：${rejectReason}` : ""}`;
+  if (status === "rejected")
+    return `申請遭駁回${rejectReason ? `：${rejectReason}` : ""}`;
   return status || "-";
 }
 
@@ -1093,13 +1101,7 @@ function Stat({ title, value }: { title: string; value: string }) {
   );
 }
 
-function Field({
-  label,
-  children,
-}: {
-  label: string;
-  children: ReactNode;
-}) {
+function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <label className="block">
       <span className="mb-2 block text-sm font-bold text-zinc-300">

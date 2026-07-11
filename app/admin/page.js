@@ -1,7 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { Banknote, ReceiptText, Users, WalletCards, Settings, Trophy } from "lucide-react";
+import {
+  Banknote,
+  ReceiptText,
+  Users,
+  WalletCards,
+  Settings,
+  Trophy,
+} from "lucide-react";
 import { useQiunaiAdminGuard } from "@/lib/useQiunaiAdminGuard";
 
 export default function AdminHomePage() {
