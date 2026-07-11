@@ -4,6 +4,7 @@ import { useQiunaiAdminGuard } from "@/lib/useQiunaiAdminGuard";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { Save, Settings } from "lucide-react";
+import ActivityCommissionPanel from "@/components/ActivityCommissionPanel";
 
 export default function AdminSettingsPage() {
   const [loading, setLoading] = useState(true);
@@ -117,7 +118,7 @@ export default function AdminSettingsPage() {
         </div>
       </header>
 
-      <section className="admin-page-content mx-auto max-w-7xl">
+      <section className="admin-page-content mx-auto max-w-7xl space-y-5">
         <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
           {loading ? (
             <p className="text-zinc-400">載入中...</p>
@@ -167,6 +168,8 @@ export default function AdminSettingsPage() {
             </>
           )}
         </div>
+
+        <ActivityCommissionPanel appKey="qiunai" accent="pink" />
       </section>
     </main>
   );
