@@ -742,8 +742,8 @@ export default function AdminSalaryPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#0f0b1f] text-white">
-      <header className="border-b border-white/10 bg-white/5">
+    <main className="admin-page min-h-screen bg-[#fff7fb] text-[#3f2947]">
+      <header className="admin-page-header border border-pink-100 bg-white">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-5">
           <div>
             <p className="text-sm text-violet-300">Qiunai Admin</p>
@@ -760,7 +760,7 @@ export default function AdminSalaryPage() {
         </div>
       </header>
 
-      <section className="mx-auto max-w-7xl px-4 py-8">
+      <section className="admin-page-content mx-auto max-w-7xl">
         <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
           <div className="flex items-center gap-2">
             <CalendarDays className="text-violet-300" size={20} />

@@ -176,6 +176,40 @@ textarea {
   color: #3f2947 !important;
 }
 
+.qiunai-admin-shell .admin-page {
+  padding: 24px 20px 40px !important;
+}
+
+.qiunai-admin-shell .admin-page-header {
+  width: min(100%, 1280px);
+  margin-inline: auto;
+  border-radius: 30px !important;
+  padding: 20px 24px !important;
+  box-shadow: 0 8px 24px rgba(190, 24, 93, 0.07) !important;
+}
+
+.qiunai-admin-shell .admin-page-header > div {
+  width: 100%;
+  max-width: none !important;
+  padding: 0 !important;
+}
+
+.qiunai-admin-shell .admin-page-content {
+  width: min(100%, 1280px);
+  margin: 20px auto 0 !important;
+  padding: 0 !important;
+}
+
+.qiunai-admin-shell .admin-page-content > :first-child {
+  margin-top: 0 !important;
+}
+
+.qiunai-admin-shell .admin-page-content > [class*="rounded-"] {
+  border-color: #fbcfe8 !important;
+  background: #fff !important;
+  box-shadow: 0 8px 24px rgba(190, 24, 93, 0.06);
+}
+
 .qiunai-admin-shell main > section,
 .qiunai-admin-shell main > div {
   width: min(100%, 1280px);

@@ -45,6 +45,7 @@ export default function AdminStaffPage() {
     Record<string, string[]>
   >({});
   const [savingId, setSavingId] = useState<string | null>(null);
+  const [selectedStaffId, setSelectedStaffId] = useState<string | null>(null);
 
   const groupedServices = useMemo(() => {
     const groups: Record<string, ServiceOption[]> = {};
@@ -110,7 +111,13 @@ export default function AdminStaffPage() {
       nextServiceMap[row.discord_id].push(row.service_key);
     }
 
-    setStaffList((staffData || []) as Staff[]);
+    const nextStaffList = (staffData || []) as Staff[];
+    setStaffList(nextStaffList);
+    setSelectedStaffId((current) =>
+      current && nextStaffList.some((staff) => staff.id === current)
+        ? current
+        : nextStaffList[0]?.id || null
+    );
     setStaffServiceMap(nextServiceMap);
     setLoading(false);
   }
@@ -234,12 +241,12 @@ export default function AdminStaffPage() {
   }
 
   return (
-    <main className="qiunai-page">
+    <main className="qiunai-page admin-page">
       <div className="qiunai-glow left-[-90px] top-[-90px] h-72 w-72 bg-pink-300" />
       <div className="qiunai-glow right-[-100px] top-32 h-80 w-80 bg-purple-300" />
       <div className="qiunai-glow bottom-[-120px] left-1/2 h-80 w-80 -translate-x-1/2 bg-rose-200" />
 
-      <header className="relative z-10 border-b border-pink-200/50 bg-white/45 backdrop-blur-xl">
+      <header className="admin-page-header relative z-10 border border-pink-100 bg-white">
         <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-5 md:flex-row md:items-center md:justify-between">
           <div>
             <p className="text-sm font-semibold text-pink-500">Qiunai Admin</p>
@@ -258,7 +265,7 @@ export default function AdminStaffPage() {
         </div>
       </header>
 
-      <section className="relative z-10 mx-auto max-w-7xl px-4 py-8">
+      <section className="admin-page-content relative z-10 mx-auto max-w-7xl">
         <div className="grid gap-4 md:grid-cols-4">
           <Stat title="員工總數" value={`${totals.total} 人`} />
           <Stat title="上線中" value={`${totals.online} 人`} />
@@ -275,216 +282,284 @@ export default function AdminStaffPage() {
             目前沒有員工資料
           </div>
         ) : (
-          <div className="mt-6 space-y-6">
-            {staffList.map((staff) => {
-              const selectedServices = staffServiceMap[staff.discord_id] || [];
-
-              return (
-                <div key={staff.id} className="qiunai-card rounded-[34px] p-6">
-                  <div className="flex flex-col gap-4 border-b border-pink-100 pb-5 md:flex-row md:items-center md:justify-between">
-                    <div className="flex items-center gap-4">
+          <div className="mt-6 grid gap-5 xl:grid-cols-[0.85fr_1.4fr]">
+            <aside className="qiunai-card self-start rounded-[28px] p-3 xl:sticky xl:top-5">
+              <div className="border-b border-pink-100 px-3 pb-3 pt-2">
+                <h2 className="text-lg font-black text-[#5b3768]">員工列表</h2>
+                <p className="mt-1 text-xs font-semibold text-[#8b5a8f]">
+                  選擇一位員工後，在右側編輯完整資料。
+                </p>
+              </div>
+              <div className="mt-2 max-h-[720px] space-y-2 overflow-y-auto">
+                {staffList.map((staff) => {
+                  const active = selectedStaffId === staff.id;
+                  return (
+                    <button
+                      key={staff.id}
+                      type="button"
+                      onClick={() => setSelectedStaffId(staff.id)}
+                      className={`flex w-full items-center gap-3 rounded-[20px] border px-3 py-3 text-left transition ${
+                        active
+                          ? "border-pink-300 bg-pink-50"
+                          : "border-transparent bg-white hover:border-pink-100 hover:bg-pink-50/60"
+                      }`}
+                    >
                       {staff.avatar_url ? (
                         <img
                           src={staff.avatar_url}
                           alt=""
-                          className="h-14 w-14 rounded-[22px] border border-pink-200 bg-white object-cover shadow-lg"
+                          className="h-11 w-11 shrink-0 rounded-2xl border border-pink-100 object-cover"
                         />
                       ) : (
-                        <div className="h-14 w-14 rounded-[22px] bg-gradient-to-br from-pink-300 to-violet-300 shadow-lg" />
+                        <div className="h-11 w-11 shrink-0 rounded-2xl bg-pink-100" />
                       )}
-
-                      <div>
-                        <p className="text-lg font-black text-[#5b3768]">
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-black text-[#5b3768]">
                           {staff.display_name ||
                             staff.real_name ||
                             staff.discord_name ||
                             "未知員工"}
+                        </span>
+                        <span className="mt-1 block truncate text-xs text-[#8b5a8f]">
+                          {staff.discord_id}
+                        </span>
+                      </span>
+                      <span
+                        className={`h-2.5 w-2.5 shrink-0 rounded-full ${
+                          staff.is_online ? "bg-emerald-400" : "bg-slate-300"
+                        }`}
+                      />
+                    </button>
+                  );
+                })}
+              </div>
+            </aside>
+
+            <div className="min-w-0">
+              {staffList
+                .filter((staff) => staff.id === selectedStaffId)
+                .map((staff) => {
+                  const selectedServices =
+                    staffServiceMap[staff.discord_id] || [];
+
+                  return (
+                    <div
+                      key={staff.id}
+                      className="qiunai-card rounded-[34px] p-6"
+                    >
+                      <div className="flex flex-col gap-4 border-b border-pink-100 pb-5 md:flex-row md:items-center md:justify-between">
+                        <div className="flex items-center gap-4">
+                          {staff.avatar_url ? (
+                            <img
+                              src={staff.avatar_url}
+                              alt=""
+                              className="h-14 w-14 rounded-[22px] border border-pink-200 bg-white object-cover shadow-lg"
+                            />
+                          ) : (
+                            <div className="h-14 w-14 rounded-[22px] bg-gradient-to-br from-pink-300 to-violet-300 shadow-lg" />
+                          )}
+
+                          <div>
+                            <p className="text-lg font-black text-[#5b3768]">
+                              {staff.display_name ||
+                                staff.real_name ||
+                                staff.discord_name ||
+                                "未知員工"}
+                            </p>
+
+                            <p className="text-sm text-[#8b5a8f]">
+                              Discord：{staff.discord_name || "未知"}
+                            </p>
+
+                            <p className="text-xs text-[#a36b9e]">
+                              ID：{staff.discord_id}
+                            </p>
+                          </div>
+                        </div>
+
+                        <button
+                          onClick={() => saveStaff(staff)}
+                          disabled={savingId === staff.id}
+                          className="qiunai-button flex items-center justify-center gap-2 px-5 py-3 font-bold"
+                        >
+                          <Save size={18} />
+                          {savingId === staff.id ? "儲存中..." : "儲存此員工"}
+                        </button>
+                      </div>
+
+                      <div className="mt-5 grid gap-4 md:grid-cols-3">
+                        <AdminInput
+                          label="顯示名稱"
+                          value={staff.display_name}
+                          onChange={(value) =>
+                            updateLocalStaff(staff.id, "display_name", value)
+                          }
+                        />
+
+                        <AdminInput
+                          label="真實姓名"
+                          value={staff.real_name}
+                          onChange={(value) =>
+                            updateLocalStaff(staff.id, "real_name", value)
+                          }
+                        />
+
+                        <label className="block">
+                          <span className="text-sm font-semibold text-[#7b4f85]">
+                            性別
+                          </span>
+
+                          <select
+                            value={staff.gender || ""}
+                            onChange={(e) =>
+                              updateLocalStaff(
+                                staff.id,
+                                "gender",
+                                e.target.value
+                              )
+                            }
+                            className="qiunai-input mt-2"
+                          >
+                            <option value="">未填</option>
+                            <option value="女">女</option>
+                            <option value="男">男</option>
+                            <option value="其他">其他</option>
+                            <option value="不公開">不公開</option>
+                          </select>
+                        </label>
+
+                        <AdminInput
+                          label="生日"
+                          type="date"
+                          value={staff.birthday}
+                          onChange={(value) =>
+                            updateLocalStaff(staff.id, "birthday", value)
+                          }
+                        />
+
+                        <AdminInput
+                          label="銀行名稱"
+                          value={staff.bank_name}
+                          onChange={(value) =>
+                            updateLocalStaff(staff.id, "bank_name", value)
+                          }
+                        />
+
+                        <AdminInput
+                          label="銀行帳號"
+                          value={staff.bank_account}
+                          onChange={(value) =>
+                            updateLocalStaff(staff.id, "bank_account", value)
+                          }
+                        />
+
+                        <AdminInput
+                          label="個人薪資頻道 ID"
+                          value={staff.salary_channel_id}
+                          placeholder="貼 Discord 頻道 ID"
+                          onChange={(value) =>
+                            updateLocalStaff(
+                              staff.id,
+                              "salary_channel_id",
+                              value
+                            )
+                          }
+                        />
+                      </div>
+
+                      <div className="mt-5 grid gap-3 md:grid-cols-3">
+                        <CheckBox
+                          label="目前上線"
+                          checked={staff.is_online}
+                          onChange={(value) =>
+                            updateLocalStaff(staff.id, "is_online", value)
+                          }
+                        />
+
+                        <CheckBox
+                          label="允許接單"
+                          checked={staff.can_take_order}
+                          onChange={(value) =>
+                            updateLocalStaff(staff.id, "can_take_order", value)
+                          }
+                        />
+
+                        <CheckBox
+                          label="啟用此員工"
+                          checked={staff.is_active}
+                          onChange={(value) =>
+                            updateLocalStaff(staff.id, "is_active", value)
+                          }
+                        />
+                      </div>
+
+                      <div className="mt-6 rounded-[28px] border border-pink-200/70 bg-white/55 p-5">
+                        <div className="flex items-center gap-2">
+                          <Gamepad2 className="text-pink-400" size={20} />
+                          <h3 className="font-black text-[#5b3768]">
+                            可接遊戲 / 服務
+                          </h3>
+                        </div>
+
+                        <p className="mt-2 text-sm leading-6 text-[#8b5a8f]">
+                          後台可協助員工調整可接項目。英雄聯盟若要接
+                          ARAM｜大神陪玩，需同時勾 ARAM 與大神陪玩。
                         </p>
 
-                        <p className="text-sm text-[#8b5a8f]">
-                          Discord：{staff.discord_name || "未知"}
-                        </p>
+                        <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                          {Object.entries(groupedServices).map(
+                            ([groupName, services]) => (
+                              <div
+                                key={groupName}
+                                className="rounded-[24px] border border-pink-100 bg-white/70 p-4"
+                              >
+                                <h4 className="font-black text-pink-500">
+                                  {groupName}
+                                </h4>
 
-                        <p className="text-xs text-[#a36b9e]">
-                          ID：{staff.discord_id}
-                        </p>
+                                <div className="mt-3 space-y-2">
+                                  {services.map((service) => (
+                                    <label
+                                      key={service.key}
+                                      className="flex cursor-pointer items-center justify-between gap-3 rounded-[18px] border border-pink-100 bg-white/70 px-3 py-2 transition hover:bg-pink-50"
+                                    >
+                                      <div className="flex items-center gap-3">
+                                        <input
+                                          type="checkbox"
+                                          checked={selectedServices.includes(
+                                            service.key
+                                          )}
+                                          onChange={() =>
+                                            toggleLocalService(
+                                              staff.discord_id,
+                                              service.key
+                                            )
+                                          }
+                                          className="h-5 w-5 accent-pink-400"
+                                        />
+
+                                        <span className="text-sm font-semibold text-[#6b4f71]">
+                                          {service.name}
+                                        </span>
+                                      </div>
+
+                                      {service.hint ? (
+                                        <span className="rounded-full bg-violet-100 px-2 py-1 text-xs font-semibold text-violet-500">
+                                          {service.hint}
+                                        </span>
+                                      ) : null}
+                                    </label>
+                                  ))}
+                                </div>
+                              </div>
+                            )
+                          )}
+                        </div>
                       </div>
                     </div>
-
-                    <button
-                      onClick={() => saveStaff(staff)}
-                      disabled={savingId === staff.id}
-                      className="qiunai-button flex items-center justify-center gap-2 px-5 py-3 font-bold"
-                    >
-                      <Save size={18} />
-                      {savingId === staff.id ? "儲存中..." : "儲存此員工"}
-                    </button>
-                  </div>
-
-                  <div className="mt-5 grid gap-4 md:grid-cols-3">
-                    <AdminInput
-                      label="顯示名稱"
-                      value={staff.display_name}
-                      onChange={(value) =>
-                        updateLocalStaff(staff.id, "display_name", value)
-                      }
-                    />
-
-                    <AdminInput
-                      label="真實姓名"
-                      value={staff.real_name}
-                      onChange={(value) =>
-                        updateLocalStaff(staff.id, "real_name", value)
-                      }
-                    />
-
-                    <label className="block">
-                      <span className="text-sm font-semibold text-[#7b4f85]">
-                        性別
-                      </span>
-
-                      <select
-                        value={staff.gender || ""}
-                        onChange={(e) =>
-                          updateLocalStaff(staff.id, "gender", e.target.value)
-                        }
-                        className="qiunai-input mt-2"
-                      >
-                        <option value="">未填</option>
-                        <option value="女">女</option>
-                        <option value="男">男</option>
-                        <option value="其他">其他</option>
-                        <option value="不公開">不公開</option>
-                      </select>
-                    </label>
-
-                    <AdminInput
-                      label="生日"
-                      type="date"
-                      value={staff.birthday}
-                      onChange={(value) =>
-                        updateLocalStaff(staff.id, "birthday", value)
-                      }
-                    />
-
-                    <AdminInput
-                      label="銀行名稱"
-                      value={staff.bank_name}
-                      onChange={(value) =>
-                        updateLocalStaff(staff.id, "bank_name", value)
-                      }
-                    />
-
-                    <AdminInput
-                      label="銀行帳號"
-                      value={staff.bank_account}
-                      onChange={(value) =>
-                        updateLocalStaff(staff.id, "bank_account", value)
-                      }
-                    />
-
-                    <AdminInput
-                      label="個人薪資頻道 ID"
-                      value={staff.salary_channel_id}
-                      placeholder="貼 Discord 頻道 ID"
-                      onChange={(value) =>
-                        updateLocalStaff(staff.id, "salary_channel_id", value)
-                      }
-                    />
-                  </div>
-
-                  <div className="mt-5 grid gap-3 md:grid-cols-3">
-                    <CheckBox
-                      label="目前上線"
-                      checked={staff.is_online}
-                      onChange={(value) =>
-                        updateLocalStaff(staff.id, "is_online", value)
-                      }
-                    />
-
-                    <CheckBox
-                      label="允許接單"
-                      checked={staff.can_take_order}
-                      onChange={(value) =>
-                        updateLocalStaff(staff.id, "can_take_order", value)
-                      }
-                    />
-
-                    <CheckBox
-                      label="啟用此員工"
-                      checked={staff.is_active}
-                      onChange={(value) =>
-                        updateLocalStaff(staff.id, "is_active", value)
-                      }
-                    />
-                  </div>
-
-                  <div className="mt-6 rounded-[28px] border border-pink-200/70 bg-white/55 p-5">
-                    <div className="flex items-center gap-2">
-                      <Gamepad2 className="text-pink-400" size={20} />
-                      <h3 className="font-black text-[#5b3768]">
-                        可接遊戲 / 服務
-                      </h3>
-                    </div>
-
-                    <p className="mt-2 text-sm leading-6 text-[#8b5a8f]">
-                      後台可協助員工調整可接項目。英雄聯盟若要接
-                      ARAM｜大神陪玩，需同時勾 ARAM 與大神陪玩。
-                    </p>
-
-                    <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                      {Object.entries(groupedServices).map(
-                        ([groupName, services]) => (
-                          <div
-                            key={groupName}
-                            className="rounded-[24px] border border-pink-100 bg-white/70 p-4"
-                          >
-                            <h4 className="font-black text-pink-500">
-                              {groupName}
-                            </h4>
-
-                            <div className="mt-3 space-y-2">
-                              {services.map((service) => (
-                                <label
-                                  key={service.key}
-                                  className="flex cursor-pointer items-center justify-between gap-3 rounded-[18px] border border-pink-100 bg-white/70 px-3 py-2 transition hover:bg-pink-50"
-                                >
-                                  <div className="flex items-center gap-3">
-                                    <input
-                                      type="checkbox"
-                                      checked={selectedServices.includes(
-                                        service.key
-                                      )}
-                                      onChange={() =>
-                                        toggleLocalService(
-                                          staff.discord_id,
-                                          service.key
-                                        )
-                                      }
-                                      className="h-5 w-5 accent-pink-400"
-                                    />
-
-                                    <span className="text-sm font-semibold text-[#6b4f71]">
-                                      {service.name}
-                                    </span>
-                                  </div>
-
-                                  {service.hint ? (
-                                    <span className="rounded-full bg-violet-100 px-2 py-1 text-xs font-semibold text-violet-500">
-                                      {service.hint}
-                                    </span>
-                                  ) : null}
-                                </label>
-                              ))}
-                            </div>
-                          </div>
-                        )
-                      )}
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+                  );
+                })}
+            </div>
           </div>
         )}
       </section>

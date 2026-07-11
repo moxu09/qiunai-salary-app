@@ -584,8 +584,8 @@ export default function AdminPayrollPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#0f0b1f] text-white">
-      <header className="border-b border-white/10 bg-white/5">
+    <main className="admin-page min-h-screen bg-[#fff7fb] text-[#3f2947]">
+      <header className="admin-page-header border border-pink-100 bg-white">
         <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-5 md:flex-row md:items-center md:justify-between">
           <div>
             <Link
@@ -621,7 +621,7 @@ export default function AdminPayrollPage() {
         </div>
       </header>
 
-      <section className="mx-auto max-w-7xl space-y-5 px-4 py-6">
+      <section className="admin-page-content mx-auto max-w-7xl space-y-5">
         <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-6">
           <Stat title="待發人數" value={`${totals.staffCount} 人`} />
           <Stat title="訂單薪水" value={money(totals.orderSalary)} />

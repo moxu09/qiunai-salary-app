@@ -182,9 +182,9 @@ export default function AccountingPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#0f0b1f] px-4 py-8 text-white">
+    <main className="admin-page min-h-screen bg-[#fff7fb] text-[#3f2947]">
       <div className="mx-auto max-w-7xl space-y-6">
-        <header className="rounded-3xl border border-white/10 bg-white/5 p-7">
+        <header className="admin-page-header rounded-[32px] border border-pink-100 bg-white p-7">
           <Link
             href="/admin"
             className="inline-flex items-center gap-2 text-sm font-bold text-violet-300"
