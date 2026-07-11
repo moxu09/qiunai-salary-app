@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import {
+  ArrowLeft,
   RefreshCw,
   CheckCircle2,
   Gift,
@@ -735,8 +737,13 @@ export default function AdminSalaryPage() {
 
   if (adminLoading || !isAdmin) {
     return (
-      <main className="min-h-screen bg-[#0f0b1f] text-white flex items-center justify-center">
-        <p className="text-sm text-zinc-300">檢查後台權限中...</p>
+      <main className="flex min-h-screen items-center justify-center bg-[#fff7fb]">
+        <div className="rounded-[28px] border border-pink-100 bg-white px-8 py-7 text-center shadow-sm shadow-pink-100">
+          <RefreshCw className="mx-auto animate-spin text-pink-500" size={34} />
+          <p className="mt-4 text-sm font-semibold text-[#80647d]">
+            檢查後台權限中...
+          </p>
+        </div>
       </main>
     );
   }
@@ -744,24 +751,37 @@ export default function AdminSalaryPage() {
   return (
     <main className="admin-page min-h-screen bg-[#fff7fb] text-[#3f2947]">
       <header className="admin-page-header border border-pink-100 bg-white">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-5">
+        <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
           <div>
-            <p className="text-sm text-violet-300">Qiunai Admin</p>
-            <h1 className="text-2xl font-bold">秋奈電競｜薪資總表</h1>
+            <Link
+              href="/admin"
+              className="inline-flex items-center gap-2 text-sm font-bold text-pink-600 hover:text-pink-700"
+            >
+              <ArrowLeft size={16} />
+              回管理後台
+            </Link>
+            <p className="mt-4 text-sm font-bold text-pink-600">Qiunai Admin</p>
+            <h1 className="mt-1 text-2xl font-black text-[#3f2947] md:text-3xl">
+              薪資總表
+            </h1>
+            <p className="mt-2 text-sm text-[#80647d]">
+              管理訂單薪資、獎金、收入支出與批次發薪。
+            </p>
           </div>
 
           <button
             onClick={loadAll}
-            className="flex items-center gap-2 rounded-xl border border-white/10 px-4 py-2 text-sm hover:bg-white/10"
+            disabled={loading}
+            className="inline-flex items-center justify-center gap-2 rounded-full bg-pink-500 px-5 py-2.5 text-sm font-bold text-white shadow-sm shadow-pink-200 hover:bg-pink-600 disabled:opacity-60"
           >
-            <RefreshCw size={16} />
+            <RefreshCw size={16} className={loading ? "animate-spin" : ""} />
             重新整理
           </button>
         </div>
       </header>
 
-      <section className="admin-page-content mx-auto max-w-7xl">
-        <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
+      <section className="salary-template admin-page-content mx-auto max-w-7xl">
+        <div className="salary-filter-panel rounded-[28px] border border-pink-100 bg-white p-5 shadow-sm shadow-pink-100">
           <div className="flex items-center gap-2">
             <CalendarDays className="text-violet-300" size={20} />
             <h2 className="text-xl font-bold">時間範圍查詢</h2>
@@ -799,26 +819,23 @@ export default function AdminSalaryPage() {
           </div>
         </div>
 
-        <div className="mt-6 grid gap-4 md:grid-cols-3 lg:grid-cols-7">
-          <Stat title="訂單數" value={`${totals.orderCount} 筆`} />
-          <Stat title="獎金 / 扣除" value={`${totals.bonusCount} 筆`} />
+        <div className="salary-stat-grid grid gap-4 md:grid-cols-4">
           <Stat
             title="總收入"
             value={`$${totals.totalIncome.toLocaleString()}`}
           />
           <Stat
-            title="總支出"
-            value={`$${totals.totalExpense.toLocaleString()}`}
-          />
-          <Stat title="預估利潤" value={`$${totals.profit.toLocaleString()}`} />
-          <Stat
-            title="薪資"
+            title="薪資支出"
             value={`$${totals.totalSalary.toLocaleString()}`}
+          />
+          <Stat
+            title="獎金 / 扣除"
+            value={`$${totals.totalBonus.toLocaleString()}`}
           />
           <Stat title="未發薪" value={`${totals.unpaidCount} 筆`} />
         </div>
 
-        <div className="mt-6 rounded-3xl border border-white/10 bg-white/5 p-6">
+        <div className="salary-personal-panel rounded-[28px] border border-pink-100 bg-white p-5 shadow-sm shadow-pink-100">
           <div className="flex items-center gap-2">
             <WalletCards className="text-violet-300" size={20} />
             <h2 className="text-xl font-bold">陪陪個人薪資明細</h2>
@@ -1019,7 +1036,7 @@ export default function AdminSalaryPage() {
           ) : null}
         </div>
 
-        <div className="mt-6 rounded-3xl border border-white/10 bg-white/5 p-6">
+        <div className="salary-commission-panel rounded-[28px] border border-pink-100 bg-white p-5 shadow-sm shadow-pink-100">
           <h2 className="text-xl font-bold">員工抽成檔位</h2>
 
           <p className="mt-2 text-sm text-zinc-400">
@@ -1059,7 +1076,7 @@ export default function AdminSalaryPage() {
           </div>
         </div>
 
-        <div className="mt-6 rounded-3xl border border-white/10 bg-white/5 p-6">
+        <div className="salary-order-form rounded-[28px] border border-pink-100 bg-white p-5 shadow-sm shadow-pink-100">
           <div className="flex items-center gap-2">
             <ClipboardList className="text-violet-300" size={20} />
             <h2 className="text-xl font-bold">新增訂單</h2>
@@ -1202,7 +1219,7 @@ export default function AdminSalaryPage() {
           </div>
         </div>
 
-        <div className="mt-6 rounded-3xl border border-white/10 bg-white/5 p-6">
+        <div className="salary-bonus-form rounded-[28px] border border-pink-100 bg-white p-5 shadow-sm shadow-pink-100">
           <div className="flex items-center gap-2">
             <Gift className="text-violet-300" size={20} />
             <h2 className="text-xl font-bold">新增員工獎金</h2>
@@ -1267,7 +1284,7 @@ export default function AdminSalaryPage() {
           </div>
         </div>
 
-        <div className="mt-6 rounded-3xl border border-red-400/20 bg-red-500/5 p-6">
+        <div className="salary-deduction-form rounded-[28px] border border-rose-100 bg-white p-5 shadow-sm shadow-rose-100">
           <div className="flex items-center gap-2">
             <MinusCircle className="text-red-300" size={20} />
             <h2 className="text-xl font-bold">新增薪水扣除</h2>
@@ -1325,7 +1342,7 @@ export default function AdminSalaryPage() {
           </div>
         </div>
 
-        <div className="mt-6 rounded-3xl border border-white/10 bg-white/5 p-6">
+        <div className="salary-pay-panel rounded-[28px] border border-pink-100 bg-white p-5 shadow-sm shadow-pink-100">
           <h2 className="text-xl font-bold">發薪管理</h2>
 
           <p className="mt-2 text-sm text-zinc-400">
@@ -1393,7 +1410,7 @@ export default function AdminSalaryPage() {
           </div>
         </div>
 
-        <div className="mt-6 overflow-x-auto rounded-3xl border border-white/10 bg-white/5">
+        <div className="salary-orders-table overflow-x-auto rounded-[28px] border border-pink-100 bg-white shadow-sm shadow-pink-100">
           {loading ? (
             <div className="p-8 text-center text-zinc-400">載入中...</div>
           ) : orders.length === 0 ? (
@@ -1544,7 +1561,7 @@ export default function AdminSalaryPage() {
           )}
         </div>
 
-        <div className="mt-6 overflow-x-auto rounded-3xl border border-white/10 bg-white/5">
+        <div className="salary-bonus-table overflow-x-auto rounded-[28px] border border-pink-100 bg-white shadow-sm shadow-pink-100">
           <div className="border-b border-white/10 p-5">
             <h2 className="text-xl font-bold">獎金 / 扣除明細</h2>
           </div>
