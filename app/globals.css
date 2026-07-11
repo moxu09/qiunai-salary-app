@@ -166,6 +166,11 @@ textarea {
   color: #3f2947;
 }
 
+.qiunai-admin-shell .qiunai-page::before,
+.qiunai-admin-shell .qiunai-glow {
+  display: none !important;
+}
+
 .qiunai-admin-shell main {
   background: #fff7fb !important;
   color: #3f2947 !important;
@@ -185,11 +190,32 @@ textarea {
 }
 
 .qiunai-admin-shell .bg-\[\#0f0b1f\],
+.qiunai-admin-shell .bg-\[\#171026\],
+.qiunai-admin-shell .bg-\[\#181127\],
 .qiunai-admin-shell .bg-zinc-900,
 .qiunai-admin-shell .bg-zinc-950,
+.qiunai-admin-shell .bg-black\/20,
+.qiunai-admin-shell .bg-black\/30,
 .qiunai-admin-shell .bg-white\/5,
 .qiunai-admin-shell .bg-white\/10 {
   background-color: #fff !important;
+}
+
+.qiunai-admin-shell [class*="bg-black/"],
+.qiunai-admin-shell [class*="bg-zinc-"],
+.qiunai-admin-shell [class*="bg-slate-"] {
+  background-color: #fff !important;
+  background-image: none !important;
+}
+
+.qiunai-admin-shell .qiunai-card,
+.qiunai-admin-shell [class*="border-white/10"][class*="bg-white/5"],
+.qiunai-admin-shell [class*="border-white/10"][class*="bg-black/"] {
+  border-color: #fbcfe8 !important;
+  background: #fff !important;
+  color: #3f2947 !important;
+  box-shadow: 0 8px 24px rgba(190, 24, 93, 0.07) !important;
+  backdrop-filter: none !important;
 }
 
 .qiunai-admin-shell .text-white,
@@ -200,8 +226,29 @@ textarea {
 }
 
 .qiunai-admin-shell .text-zinc-400,
-.qiunai-admin-shell .text-zinc-500 {
+.qiunai-admin-shell .text-zinc-500,
+.qiunai-admin-shell .text-zinc-600 {
   color: #80647d !important;
+}
+
+.qiunai-admin-shell [class*="text-violet-"],
+.qiunai-admin-shell [class*="text-purple-"] {
+  color: #a21caf !important;
+}
+
+.qiunai-admin-shell [class*="text-yellow-"],
+.qiunai-admin-shell [class*="text-amber-"] {
+  color: #a16207 !important;
+}
+
+.qiunai-admin-shell [class*="text-emerald-"],
+.qiunai-admin-shell [class*="text-green-"] {
+  color: #047857 !important;
+}
+
+.qiunai-admin-shell [class*="text-rose-"],
+.qiunai-admin-shell [class*="text-red-"] {
+  color: #be123c !important;
 }
 
 .qiunai-admin-shell .border-white\/10,
@@ -225,6 +272,58 @@ textarea {
 .qiunai-admin-shell select,
 .qiunai-admin-shell textarea {
   max-width: 100%;
+  border-color: #fbcfe8 !important;
+  background: #fff !important;
+  color: #3f2947 !important;
+  box-shadow: none;
+}
+
+.qiunai-admin-shell input::placeholder,
+.qiunai-admin-shell textarea::placeholder {
+  color: #b392ad !important;
+}
+
+.qiunai-admin-shell input:focus,
+.qiunai-admin-shell select:focus,
+.qiunai-admin-shell textarea:focus {
+  border-color: #f472b6 !important;
+  box-shadow: 0 0 0 3px rgba(244, 114, 182, 0.14) !important;
+}
+
+.qiunai-admin-shell tbody tr {
+  border-color: #fce7f3 !important;
+  background: #fff;
+}
+
+.qiunai-admin-shell tbody tr:hover {
+  background: #fff7fb !important;
+}
+
+.qiunai-admin-shell [class*="border-white/"],
+.qiunai-admin-shell [class*="border-zinc-"] {
+  border-color: #fbcfe8 !important;
+}
+
+.qiunai-admin-shell [class*="bg-violet-500/20"],
+.qiunai-admin-shell [class*="bg-purple-500/20"] {
+  background: #fae8ff !important;
+}
+
+.qiunai-admin-shell [class*="bg-white/5"][class*="text-zinc"],
+.qiunai-admin-shell [class*="bg-white/10"][class*="text-zinc"] {
+  background: #fdf2f8 !important;
+}
+
+@media (max-width: 768px) {
+  .qiunai-admin-shell header > div,
+  .qiunai-admin-shell main > section,
+  .qiunai-admin-shell main > div {
+    width: 100%;
+  }
+
+  .qiunai-admin-shell table {
+    font-size: 12px;
+  }
 }
 
 /* 響應式護欄：前台、後台在手機與桌機都保持整齊 */
