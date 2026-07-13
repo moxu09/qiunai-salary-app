@@ -65,6 +65,11 @@ type SalaryOrder = {
   order_finished_at: string | null;
   is_deleted: boolean | null;
   wallet_settled_at?: string | null;
+  review_decision?: "approved" | "rejected" | null;
+  reviewer_discord_id?: string | null;
+  reviewer_name?: string | null;
+  review_reason?: string | null;
+  reviewed_at?: string | null;
   created_at: string;
 };
 
@@ -135,6 +140,7 @@ export default function StaffPage() {
   const [staff, setStaff] = useState<Staff | null>(null);
   const [orders, setOrders] = useState<SalaryOrder[]>([]);
   const [allSalaryOrders, setAllSalaryOrders] = useState<SalaryOrder[]>([]);
+  const [reviewedOrders, setReviewedOrders] = useState<SalaryOrder[]>([]);
   const [bonusList, setBonusList] = useState<BonusItem[]>([]);
 
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
@@ -422,6 +428,22 @@ export default function StaffPage() {
 
     if (orderError) {
       console.error("load salary orders error:", orderError);
+    }
+
+    const { data: reviewData, error: reviewError } = await supabase
+      .from("qiunai_salary_orders")
+      .select("*")
+      .eq("discord_id", discordId)
+      .not("reviewed_at", "is", null)
+      .gte("reviewed_at", startIso)
+      .lte("reviewed_at", endIso)
+      .order("reviewed_at", { ascending: false });
+
+    if (reviewError) {
+      console.error("load order reviews error:", reviewError);
+      setReviewedOrders([]);
+    } else {
+      setReviewedOrders((reviewData || []) as SalaryOrder[]);
     }
 
     const { data: allOrderData, error: allOrderError } = await supabase
@@ -1240,6 +1262,78 @@ export default function StaffPage() {
           </div>
 
           <div className="space-y-6">
+            <Card noPadding>
+              <div className="border-b border-pink-100 p-5">
+                <h2 className="text-xl font-black text-[#5b3768]">
+                  訂單審核紀錄
+                </h2>
+                <p className="mt-1 text-sm text-[#8b5a8f]">
+                  核准與駁回都會顯示審核人及審核時間。
+                </p>
+              </div>
+
+              {reviewedOrders.length === 0 ? (
+                <div className="p-8 text-center text-[#a36b9e]">
+                  這個月份尚無審核紀錄
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[760px] text-left text-sm">
+                    <thead className="bg-pink-50 text-[#8b5a8f]">
+                      <tr>
+                        <th className="px-4 py-3">審核時間</th>
+                        <th className="px-4 py-3">服務</th>
+                        <th className="px-4 py-3">結果</th>
+                        <th className="px-4 py-3">審核人</th>
+                        <th className="px-4 py-3">原因</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {reviewedOrders.map((order) => (
+                        <tr
+                          key={`review-${order.id}`}
+                          className="border-t border-pink-100"
+                        >
+                          <td className="px-4 py-3 text-[#8b5a8f]">
+                            {formatDateTime(order.reviewed_at)}
+                          </td>
+                          <td className="px-4 py-3 text-[#5b3768]">
+                            {order.service_name || "-"}
+                          </td>
+                          <td className="px-4 py-3">
+                            <span
+                              className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                                order.review_decision === "approved"
+                                  ? "bg-emerald-100 text-emerald-600"
+                                  : "bg-rose-100 text-rose-600"
+                              }`}
+                            >
+                              {order.review_decision === "approved"
+                                ? "已核准"
+                                : "已駁回"}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-[#5b3768]">
+                            <p className="font-bold">
+                              {order.reviewer_name || "未知審核人"}
+                            </p>
+                            {order.reviewer_discord_id ? (
+                              <p className="mt-1 text-xs text-[#a36b9e]">
+                                {order.reviewer_discord_id}
+                              </p>
+                            ) : null}
+                          </td>
+                          <td className="px-4 py-3 text-[#8b5a8f]">
+                            {order.review_reason || "-"}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </Card>
+
             <Card noPadding>
               <div className="border-b border-pink-100 p-5">
                 <h2 className="text-xl font-black text-[#5b3768]">
