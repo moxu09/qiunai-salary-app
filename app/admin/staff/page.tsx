@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Save, RefreshCw, Gamepad2 } from "lucide-react";
+import { Save, RefreshCw, Gamepad2, Trophy } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { SERVICE_OPTIONS, type ServiceOption } from "@/lib/serviceOptions";
 import { useQiunaiAdminGuard } from "@/lib/useQiunaiAdminGuard";
@@ -46,6 +46,8 @@ export default function AdminStaffPage() {
   >({});
   const [savingId, setSavingId] = useState<string | null>(null);
   const [selectedStaffId, setSelectedStaffId] = useState<string | null>(null);
+  const [featuredIds, setFeaturedIds] = useState<string[]>([]);
+  const [featuredSaving, setFeaturedSaving] = useState(false);
 
   const groupedServices = useMemo(() => {
     const groups: Record<string, ServiceOption[]> = {};
@@ -73,6 +75,7 @@ export default function AdminStaffPage() {
   useEffect(() => {
     if (isAdmin) {
       loadStaff();
+      loadFeatured();
     }
   }, [isAdmin]);
 
@@ -120,6 +123,61 @@ export default function AdminStaffPage() {
     );
     setStaffServiceMap(nextServiceMap);
     setLoading(false);
+  }
+
+  async function loadFeatured() {
+    const { data } = await supabase.auth.getSession();
+    const token = data.session?.access_token;
+    if (!token) return;
+    const response = await fetch("/api/qiunai/public-profile?admin=1", {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: "no-store",
+    });
+    const result = await response.json().catch(() => ({}));
+    if (response.ok && Array.isArray(result.profiles)) {
+      const month = new Intl.DateTimeFormat("en-CA", {
+        timeZone: "Asia/Taipei",
+        year: "numeric",
+        month: "2-digit",
+      }).format(new Date());
+      setFeaturedIds(
+        result.profiles
+          .filter((profile: { is_featured?: boolean; featured_month?: string }) =>
+            profile.is_featured && String(profile.featured_month || "").startsWith(month)
+          )
+          .map((profile: { discord_id: string }) => profile.discord_id)
+      );
+    }
+  }
+
+  function toggleFeatured(discordId: string) {
+    setFeaturedIds((current) =>
+      current.includes(discordId)
+        ? current.filter((id) => id !== discordId)
+        : [...current, discordId]
+    );
+  }
+
+  async function saveFeatured() {
+    const { data } = await supabase.auth.getSession();
+    const token = data.session?.access_token;
+    if (!token) return;
+    setFeaturedSaving(true);
+    const response = await fetch("/api/qiunai/public-profile", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ action: "set-featured", discordIds: featuredIds }),
+    });
+    const result = await response.json().catch(() => ({}));
+    setFeaturedSaving(false);
+    if (!response.ok || !result.ok) {
+      alert(result.message || "儲存金榜名單失敗");
+      return;
+    }
+    alert("本月金榜陪陪已更新");
   }
 
   function updateLocalStaff(
@@ -272,6 +330,35 @@ export default function AdminStaffPage() {
           <Stat title="可接單" value={`${totals.canTakeOrder} 人`} />
           <Stat title="啟用中" value={`${totals.active} 人`} />
         </div>
+
+        <section className="qiunai-card mt-6 rounded-[28px] p-5">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h2 className="flex items-center gap-2 text-lg font-black text-[#5b3768]">
+                <Trophy size={20} className="text-amber-500" />
+                本月金榜陪陪
+              </h2>
+              <p className="mt-1 text-sm text-[#8b5a8f]">
+                可複選；儲存後這些陪陪會優先顯示在官網。
+              </p>
+            </div>
+            <button onClick={saveFeatured} disabled={featuredSaving} className="qiunai-button px-5 py-2.5 text-sm font-bold">
+              {featuredSaving ? "儲存中..." : "儲存金榜名單"}
+            </button>
+          </div>
+          <div className="mt-4 flex flex-wrap gap-2">
+            {staffList.filter((staff) => staff.is_active).map((staff) => (
+              <label key={staff.discord_id} className={`flex cursor-pointer items-center gap-2 rounded-full border px-3 py-2 text-sm font-semibold transition ${
+                featuredIds.includes(staff.discord_id)
+                  ? "border-amber-300 bg-amber-50 text-amber-800"
+                  : "border-pink-100 bg-white text-[#7b4f85]"
+              }`}>
+                <input type="checkbox" checked={featuredIds.includes(staff.discord_id)} onChange={() => toggleFeatured(staff.discord_id)} />
+                {staff.display_name || staff.real_name || staff.discord_name || staff.discord_id}
+              </label>
+            ))}
+          </div>
+        </section>
 
         {loading ? (
           <div className="qiunai-card mt-6 rounded-[32px] p-8 text-center text-[#8b5a8f]">

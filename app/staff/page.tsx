@@ -158,6 +158,9 @@ export default function StaffPage() {
 
   const [profileForm, setProfileForm] = useState({
     display_name: "",
+    avatar_url: "",
+    intro: "",
+    invite_url: "",
     real_name: "",
     gender: "",
     birthday: "",
@@ -400,12 +403,29 @@ export default function StaffPage() {
 
     setProfileForm({
       display_name: staffData.display_name || "",
+      avatar_url: staffData.avatar_url || "",
+      intro: "",
+      invite_url: "",
       real_name: staffData.real_name || "",
       gender: staffData.gender || "",
       birthday: staffData.birthday || "",
       bank_name: staffData.bank_name || "",
       bank_account: staffData.bank_account || "",
     });
+
+    const publicProfileRes = await fetch("/api/qiunai/public-profile", {
+      headers: { Authorization: `Bearer ${sessionData.session.access_token}` },
+      cache: "no-store",
+    });
+    const publicProfileData = await publicProfileRes.json().catch(() => ({}));
+    if (publicProfileRes.ok && publicProfileData.profile) {
+      setProfileForm((current) => ({
+        ...current,
+        avatar_url: publicProfileData.profile.avatar_url || current.avatar_url,
+        intro: publicProfileData.profile.intro || "",
+        invite_url: publicProfileData.profile.invite_url || "",
+      }));
+    }
 
     await loadSalaryWallet();
     await loadSalaryData(staffData.discord_id);
@@ -594,6 +614,7 @@ export default function StaffPage() {
       .from("qiunai_staff")
       .update({
         display_name: profileForm.display_name || null,
+        avatar_url: profileForm.avatar_url || null,
         real_name: profileForm.real_name || null,
         gender: profileForm.gender || null,
         birthday: profileForm.birthday || null,
@@ -613,8 +634,41 @@ export default function StaffPage() {
       return;
     }
 
+    try {
+      await syncPublicProfile({
+        displayName: profileForm.display_name,
+        avatarUrl: profileForm.avatar_url,
+        intro: profileForm.intro,
+        inviteUrl: profileForm.invite_url,
+      });
+    } catch (syncError) {
+      console.error("sync public profile error:", syncError);
+      setStaff(data as Staff);
+      alert("薪資資料已儲存，但官網介紹同步失敗，請稍後再試");
+      return;
+    }
+
     setStaff(data as Staff);
     alert("個人資料已儲存");
+  }
+
+  async function syncPublicProfile(payload: Record<string, unknown>) {
+    const { data } = await supabase.auth.getSession();
+    const token = data.session?.access_token;
+    if (!token) throw new Error("登入已過期");
+    const response = await fetch("/api/qiunai/public-profile", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(payload),
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok || !result.ok) {
+      throw new Error(result.message || "官網同步失敗");
+    }
+    return result.profile;
   }
 
   async function toggleOnline() {
@@ -643,6 +697,9 @@ export default function StaffPage() {
     }
 
     setStaff(data as Staff);
+    await syncPublicProfile({ isOnline: nextOnline }).catch((syncError) => {
+      console.error("sync online status error:", syncError);
+    });
   }
 
   function toggleService(serviceKey: string) {
@@ -705,6 +762,17 @@ export default function StaffPage() {
       }
     }
     setSavingServices(false);
+    await syncPublicProfile({
+      games: Array.from(
+        new Set(
+          selectedServices
+            .map((key) => SERVICE_OPTIONS.find((item) => item.key === key)?.group)
+            .filter(Boolean)
+        )
+      ),
+    }).catch((syncError) => {
+      console.error("sync public games error:", syncError);
+    });
     alert("可接遊戲已儲存");
   }
   async function logout() {
@@ -824,7 +892,37 @@ export default function StaffPage() {
         </div>
       </header>
 
-      <section className="relative z-10 mx-auto max-w-7xl px-4 py-8">
+      <section id="overview" className="relative z-10 mx-auto max-w-[1500px] scroll-mt-24 px-4 py-8">
+        <div className="grid gap-5 lg:grid-cols-[250px_minmax(0,1fr)]">
+          <aside className="sticky top-4 self-start overflow-x-auto rounded-[28px] bg-[#4a197f] p-3 text-white shadow-xl shadow-purple-200/60 lg:h-[calc(100vh-2rem)] lg:p-5">
+            <div className="hidden lg:block">
+              <p className="text-xs font-semibold text-purple-200">PLAYER CENTER</p>
+              <p className="mt-2 text-xl font-black">秋奈陪玩師</p>
+              <p className="mt-1 truncate text-sm text-purple-200">
+                {staff.display_name || staff.discord_name || staff.discord_id}
+              </p>
+            </div>
+            <nav className="flex min-w-max gap-2 lg:mt-8 lg:min-w-0 lg:flex-col">
+              {[
+                ["#overview", "首頁總覽", Sparkles],
+                ["#profile", "個人資料", Heart],
+                ["#wallet", "薪資錢包", WalletCards],
+                ["#games", "可接遊戲", Gamepad2],
+              ].map(([href, label, Icon]) => {
+                const NavIcon = Icon as typeof Sparkles;
+                return (
+                  <a key={href as string} href={href as string} className="flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-bold text-purple-100 transition hover:bg-white/15 hover:text-white">
+                    <NavIcon size={18} /> {label as string}
+                  </a>
+                );
+              })}
+            </nav>
+            <p className="mt-auto hidden rounded-2xl bg-white/10 p-4 text-xs leading-6 text-purple-200 lg:block">
+              個人資料與可接遊戲儲存後，會同步更新官網陪陪介紹。
+            </p>
+          </aside>
+
+          <div className="min-w-0">
         <div className="grid gap-4 md:grid-cols-4">
           <Stat title="月份訂單" value={`${totals.orderCount} 筆`} />
           <Stat
@@ -842,7 +940,7 @@ export default function StaffPage() {
         </div>
 
         <div className="mt-6">
-          <Card>
+          <Card id="wallet">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
               <div>
                 <p className="flex items-center gap-2 text-sm font-semibold text-pink-500">
@@ -1080,7 +1178,7 @@ export default function StaffPage() {
 
         <div className="mt-6 grid gap-6 lg:grid-cols-[420px_1fr]">
           <div className="space-y-6">
-            <Card>
+            <Card id="profile">
               <div className="flex items-center justify-between">
                 <div>
                   <h2 className="text-xl font-black text-[#5b3768]">
@@ -1120,7 +1218,7 @@ export default function StaffPage() {
               </button>
             </Card>
 
-            <Card>
+            <Card id="games">
               <div className="flex items-center gap-2">
                 <WalletCards className="text-pink-400" size={20} />
                 <h2 className="text-xl font-black text-[#5b3768]">個人資料</h2>
@@ -1133,6 +1231,35 @@ export default function StaffPage() {
                   onChange={(value) =>
                     updateProfileField("display_name", value)
                   }
+                />
+
+                <Input
+                  label="官網頭像網址"
+                  type="url"
+                  value={profileForm.avatar_url}
+                  onChange={(value) => updateProfileField("avatar_url", value)}
+                />
+
+                <label className="block">
+                  <span className="text-sm font-semibold text-[#7b4f85]">
+                    官網自我介紹
+                  </span>
+                  <textarea
+                    rows={4}
+                    value={profileForm.intro}
+                    onChange={(event) =>
+                      updateProfileField("intro", event.target.value)
+                    }
+                    placeholder="介紹你的個性、擅長遊戲與陪玩風格"
+                    className="qiunai-input mt-2"
+                  />
+                </label>
+
+                <Input
+                  label="專屬邀請連結"
+                  type="url"
+                  value={profileForm.invite_url}
+                  onChange={(value) => updateProfileField("invite_url", value)}
                 />
 
                 <Input
@@ -1489,6 +1616,8 @@ export default function StaffPage() {
             </Card>
           </div>
         </div>
+        </div>
+        </div>
       </section>
     </main>
   );
@@ -1497,12 +1626,15 @@ export default function StaffPage() {
 function Card({
   children,
   noPadding = false,
+  id,
 }: {
   children: React.ReactNode;
   noPadding?: boolean;
+  id?: string;
 }) {
   return (
     <div
+      id={id}
       className={`qiunai-card overflow-hidden rounded-[32px] ${
         noPadding ? "" : "p-6"
       }`}
