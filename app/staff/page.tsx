@@ -155,6 +155,9 @@ export default function StaffPage() {
     null
   );
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonthInput());
+  const [activeTab, setActiveTab] = useState<
+    "overview" | "profile" | "wallet" | "games"
+  >("overview");
 
   const [profileForm, setProfileForm] = useState({
     display_name: "",
@@ -904,16 +907,28 @@ export default function StaffPage() {
             </div>
             <nav className="flex min-w-max gap-2 lg:mt-8 lg:min-w-0 lg:flex-col">
               {[
-                ["#overview", "首頁總覽", Sparkles],
-                ["#profile", "個人資料", Heart],
-                ["#wallet", "薪資錢包", WalletCards],
-                ["#games", "可接遊戲", Gamepad2],
-              ].map(([href, label, Icon]) => {
+                ["overview", "首頁總覽", Sparkles],
+                ["profile", "個人資料", Heart],
+                ["wallet", "薪資錢包", WalletCards],
+                ["games", "可接遊戲", Gamepad2],
+              ].map(([tab, label, Icon]) => {
                 const NavIcon = Icon as typeof Sparkles;
                 return (
-                  <a key={href as string} href={href as string} className="flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-bold text-purple-100 transition hover:bg-white/15 hover:text-white">
+                  <button
+                    key={tab as string}
+                    type="button"
+                    onClick={() => {
+                      setActiveTab(tab as typeof activeTab);
+                      window.scrollTo({ top: 0, behavior: "smooth" });
+                    }}
+                    className={`flex items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm font-bold transition ${
+                      activeTab === tab
+                        ? "bg-fuchsia-500 text-white shadow-lg shadow-purple-950/20"
+                        : "text-purple-100 hover:bg-white/15 hover:text-white"
+                    }`}
+                  >
                     <NavIcon size={18} /> {label as string}
-                  </a>
+                  </button>
                 );
               })}
             </nav>
@@ -923,7 +938,7 @@ export default function StaffPage() {
           </aside>
 
           <div className="min-w-0">
-        <div className="grid gap-4 md:grid-cols-4">
+        <div className={activeTab === "overview" ? "grid gap-4 md:grid-cols-4" : "hidden"}>
           <Stat title="月份訂單" value={`${totals.orderCount} 筆`} />
           <Stat
             title="月份薪資"
@@ -940,7 +955,7 @@ export default function StaffPage() {
         </div>
 
         <div className="mt-6">
-          <Card id="wallet">
+          <Card id="wallet" className={activeTab === "wallet" ? "" : "hidden"}>
             <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
               <div>
                 <p className="flex items-center gap-2 text-sm font-semibold text-pink-500">
@@ -1101,7 +1116,7 @@ export default function StaffPage() {
           </Card>
         </div>
 
-        <div className="mt-6">
+        <div className={activeTab === "overview" ? "mt-6" : "hidden"}>
           <Card>
             <div className="grid gap-4 md:grid-cols-[1fr_auto] md:items-end">
               <Input
@@ -1122,7 +1137,7 @@ export default function StaffPage() {
           </Card>
         </div>
 
-        <div className="mt-6">
+        <div className={activeTab === "overview" ? "mt-6" : "hidden"}>
           <Card>
             <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
               <div>
@@ -1176,9 +1191,9 @@ export default function StaffPage() {
           </Card>
         </div>
 
-        <div className="mt-6 grid gap-6 lg:grid-cols-[420px_1fr]">
+        <div className={activeTab === "overview" ? "mt-6 grid gap-6 lg:grid-cols-[420px_1fr]" : "mt-6 block"}>
           <div className="space-y-6">
-            <Card id="profile">
+            <Card className={activeTab === "overview" ? "" : "hidden"}>
               <div className="flex items-center justify-between">
                 <div>
                   <h2 className="text-xl font-black text-[#5b3768]">
@@ -1218,7 +1233,7 @@ export default function StaffPage() {
               </button>
             </Card>
 
-            <Card id="games">
+            <Card id="profile" className={activeTab === "profile" ? "" : "hidden"}>
               <div className="flex items-center gap-2">
                 <WalletCards className="text-pink-400" size={20} />
                 <h2 className="text-xl font-black text-[#5b3768]">個人資料</h2>
@@ -1320,7 +1335,7 @@ export default function StaffPage() {
               </div>
             </Card>
 
-            <Card>
+            <Card id="games" className={activeTab === "games" ? "" : "hidden"}>
               <div className="flex items-center gap-2">
                 <Gamepad2 className="text-pink-400" size={20} />
                 <h2 className="text-xl font-black text-[#5b3768]">
@@ -1388,7 +1403,7 @@ export default function StaffPage() {
             </Card>
           </div>
 
-          <div className="space-y-6">
+          <div className={activeTab === "overview" ? "space-y-6" : "hidden"}>
             <Card noPadding>
               <div className="border-b border-pink-100 p-5">
                 <h2 className="text-xl font-black text-[#5b3768]">
@@ -1627,15 +1642,17 @@ function Card({
   children,
   noPadding = false,
   id,
+  className = "",
 }: {
   children: React.ReactNode;
   noPadding?: boolean;
   id?: string;
+  className?: string;
 }) {
   return (
     <div
       id={id}
-      className={`qiunai-card overflow-hidden rounded-[32px] ${
+      className={`qiunai-card overflow-hidden rounded-[32px] ${className} ${
         noPadding ? "" : "p-6"
       }`}
     >
