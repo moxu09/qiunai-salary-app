@@ -82,6 +82,7 @@ export default function AdminSalaryPage() {
   const [staffList, setStaffList] = useState<Staff[]>([]);
   const [editingOrder, setEditingOrder] = useState<SalaryOrder | null>(null);
   const [selectedDetailDiscordId, setSelectedDetailDiscordId] = useState("");
+  const [filterStaffId, setFilterStaffId] = useState("all");
 
   const [filter, setFilter] = useState({
     start: getMonthStartInput(),
@@ -94,6 +95,7 @@ export default function AdminSalaryPage() {
     entry_type: "order" as "order" | "tip",
     service_name: "",
     order_amount: "",
+    salary_rate: "90",
     bonus_amount: "0",
     order_finished_at: getNowInput(),
   });
@@ -275,7 +277,7 @@ export default function AdminSalaryPage() {
     );
   }, [bonusList, selectedDetailDiscordId]);
 
-  async function loadAll() {
+  async function loadAll(staffId = filterStaffId) {
     setLoading(true);
 
     const startIso = toIso(filter.start);
@@ -293,6 +295,10 @@ export default function AdminSalaryPage() {
 
     if (endIso) {
       orderQuery = orderQuery.lte("order_finished_at", endIso);
+    }
+
+    if (staffId !== "all") {
+      orderQuery = orderQuery.eq("discord_id", staffId);
     }
 
     const { data: orderData, error: orderError } = await orderQuery;
@@ -313,6 +319,10 @@ export default function AdminSalaryPage() {
 
     if (endIso) {
       bonusQuery = bonusQuery.lte("created_at", endIso);
+    }
+
+    if (staffId !== "all") {
+      bonusQuery = bonusQuery.eq("discord_id", staffId);
     }
 
     const { data: bonusData, error: bonusError } = await bonusQuery;
@@ -341,7 +351,9 @@ export default function AdminSalaryPage() {
     setBonusList((bonusData || []) as BonusItem[]);
     setStaffList(nextStaffList);
 
-    if (!selectedDetailDiscordId && nextStaffList.length > 0) {
+    if (staffId !== "all") {
+      setSelectedDetailDiscordId(staffId);
+    } else if (!selectedDetailDiscordId && nextStaffList.length > 0) {
       setSelectedDetailDiscordId(nextStaffList[0].discord_id);
     }
 
@@ -357,6 +369,19 @@ export default function AdminSalaryPage() {
       staff?.discord_name ||
       discordId
     );
+  }
+
+  function getDefaultOrderRate(
+    discordId: string,
+    entryType: "order" | "tip",
+    finishedAt: string
+  ) {
+    const regularRate = getStaffSalaryRate(
+      staffList.find((staff) => staff.discord_id === discordId),
+      finishedAt
+    );
+
+    return entryType === "tip" && regularRate !== 95 ? 90 : regularRate;
   }
 
   async function addOrder() {
@@ -375,12 +400,16 @@ export default function AdminSalaryPage() {
     );
 
     const orderAmount = Number(orderForm.order_amount);
-    const regularRate = getStaffSalaryRate(
+    const defaultRate = getStaffSalaryRate(
       selectedStaff,
       orderForm.order_finished_at
     );
     const salaryRate =
-      orderForm.entry_type === "tip" && regularRate !== 95 ? 90 : regularRate;
+      orderForm.entry_type === "tip"
+        ? defaultRate === 95
+          ? 95
+          : 90
+        : Number(orderForm.salary_rate);
     const bonusAmount = Number(orderForm.bonus_amount || 0);
     const staffSalary = Math.round(orderAmount * (salaryRate / 100));
     const serviceName =
@@ -393,8 +422,8 @@ export default function AdminSalaryPage() {
       return;
     }
 
-    if (Number.isNaN(salaryRate) || salaryRate <= 0) {
-      alert("系統無法判斷此陪陪抽成檔位");
+    if (Number.isNaN(salaryRate) || salaryRate <= 0 || salaryRate > 100) {
+      alert("請輸入 1 到 100 之間的員工抽成");
       return;
     }
 
@@ -423,10 +452,7 @@ export default function AdminSalaryPage() {
           ? salaryRate === 95
             ? "打賞特別設定 95%"
             : "打賞固定 90%"
-          : getStaffSalaryLevelLabel(
-              selectedStaff,
-              orderForm.order_finished_at
-            ),
+          : `訂單抽成 ${salaryRate}%`,
       platform_income: orderAmount,
       platform_expense: staffSalary + bonusAmount,
       status: "未發薪",
@@ -448,6 +474,7 @@ export default function AdminSalaryPage() {
       entry_type: "order",
       service_name: "",
       order_amount: "",
+      salary_rate: "90",
       bonus_amount: "0",
       order_finished_at: getNowInput(),
     });
@@ -659,8 +686,8 @@ export default function AdminSalaryPage() {
       return false;
     }
 
-    if (Number.isNaN(salaryRate) || salaryRate <= 0) {
-      alert("抽成比例錯誤");
+    if (Number.isNaN(salaryRate) || salaryRate <= 0 || salaryRate > 100) {
+      alert("抽成比例需介於 1 到 100 之間");
       return false;
     }
 
@@ -850,7 +877,7 @@ export default function AdminSalaryPage() {
             </div>
 
             <button
-              onClick={loadAll}
+              onClick={() => void loadAll()}
               disabled={loading}
               className="inline-flex items-center justify-center gap-2 rounded-full bg-pink-500 px-5 py-2.5 text-sm font-bold text-[#3f2947] shadow-sm shadow-pink-200 hover:bg-pink-600 disabled:opacity-60"
             >
@@ -898,7 +925,7 @@ export default function AdminSalaryPage() {
               預設為本月 1 號 00:00 到現在，可自行調整。
             </p>
 
-            <div className="mt-5 grid gap-4 md:grid-cols-3">
+            <div className="mt-5 grid gap-4 md:grid-cols-4">
               <Input
                 label="開始時間"
                 type="datetime-local"
@@ -917,11 +944,22 @@ export default function AdminSalaryPage() {
                 }
               />
 
+              <SearchableStaffSelect
+                label="搜尋單一員工"
+                value={filterStaffId}
+                staffList={staffList}
+                allowAll
+                onChange={(value) => {
+                  setFilterStaffId(value);
+                  void loadAll(value);
+                }}
+              />
+
               <button
-                onClick={loadAll}
+                onClick={() => void loadAll()}
                 className="mt-6 rounded-xl bg-pink-500 px-4 py-3 font-semibold hover:bg-pink-400"
               >
-                套用時間範圍
+                套用查詢條件
               </button>
             </div>
           </div>
@@ -1210,7 +1248,19 @@ export default function AdminSalaryPage() {
                 value={orderForm.discord_id}
                 staffList={staffList}
                 onChange={(value) =>
-                  setOrderForm((prev) => ({ ...prev, discord_id: value }))
+                  setOrderForm((prev) => ({
+                    ...prev,
+                    discord_id: value,
+                    salary_rate: value
+                      ? String(
+                          getDefaultOrderRate(
+                            value,
+                            prev.entry_type,
+                            prev.order_finished_at
+                          )
+                        )
+                      : "",
+                  }))
                 }
               />
 
@@ -1230,10 +1280,22 @@ export default function AdminSalaryPage() {
                 <select
                   value={orderForm.entry_type}
                   onChange={(event) =>
-                    setOrderForm((prev) => ({
-                      ...prev,
-                      entry_type: event.target.value as "order" | "tip",
-                    }))
+                    setOrderForm((prev) => {
+                      const entryType = event.target.value as "order" | "tip";
+                      return {
+                        ...prev,
+                        entry_type: entryType,
+                        salary_rate: prev.discord_id
+                          ? String(
+                              getDefaultOrderRate(
+                                prev.discord_id,
+                                entryType,
+                                prev.order_finished_at
+                              )
+                            )
+                          : prev.salary_rate,
+                      };
+                    })
                   }
                   className="qiunai-input mt-2"
                 >
@@ -1259,6 +1321,15 @@ export default function AdminSalaryPage() {
                   setOrderForm((prev) => ({
                     ...prev,
                     order_finished_at: value,
+                    salary_rate: prev.discord_id
+                      ? String(
+                          getDefaultOrderRate(
+                            prev.discord_id,
+                            prev.entry_type,
+                            value
+                          )
+                        )
+                      : prev.salary_rate,
                   }))
                 }
               />
@@ -1272,53 +1343,28 @@ export default function AdminSalaryPage() {
                 }
               />
 
-              <div className="block">
-                <span className="text-sm text-[#6f526d]">自動套用抽成</span>
-
-                <div className="mt-2 rounded-xl border border-pink-100 bg-pink-50 px-4 py-3">
-                  {orderForm.discord_id ? (
-                    (() => {
-                      const selectedStaff = staffList.find(
-                        (staff) => staff.discord_id === orderForm.discord_id
-                      );
-
-                      const regularRate = getStaffSalaryRate(
-                        selectedStaff,
-                        orderForm.order_finished_at
-                      );
-                      const salaryRate =
-                        orderForm.entry_type === "tip" && regularRate !== 95
-                          ? 90
-                          : regularRate;
-
-                      return (
-                        <>
-                          <p className="font-bold text-[#7b4f85]">
-                            {salaryRate}%
-                          </p>
-                          <p className="mt-1 text-xs text-[#92778f]">
-                            {orderForm.entry_type === "tip"
-                              ? salaryRate === 95
-                                ? "打賞特別設定 95%"
-                                : "打賞固定 90%"
-                              : getStaffSalaryLevelLabel(
-                                  selectedStaff,
-                                  orderForm.order_finished_at
-                                )}
-                          </p>
-                        </>
-                      );
-                    })()
-                  ) : (
-                    <>
-                      <p className="font-bold text-[#80647d]">請先選擇陪陪</p>
-                      <p className="mt-1 text-xs text-[#92778f]">
-                        選擇陪陪後會自動帶入她的抽成檔位
-                      </p>
-                    </>
-                  )}
+              {orderForm.entry_type === "order" ? (
+                <Input
+                  label="員工抽成（預設可修改）"
+                  type="number"
+                  value={orderForm.salary_rate}
+                  onChange={(value) =>
+                    setOrderForm((prev) => ({
+                      ...prev,
+                      salary_rate: value,
+                    }))
+                  }
+                />
+              ) : (
+                <div className="block">
+                  <span className="text-sm text-[#6f526d]">員工抽成</span>
+                  <div className="mt-2 rounded-xl border border-pink-100 bg-pink-50 px-4 py-3 font-bold text-[#7b4f85]">
+                    {orderForm.discord_id
+                      ? `${orderForm.salary_rate}%（打賞固定）`
+                      : "請先選擇陪陪"}
+                  </div>
                 </div>
-              </div>
+              )}
 
               <Input
                 label="訂單獎金"
@@ -1827,25 +1873,17 @@ export default function AdminSalaryPage() {
                     }
                   />
 
-                  <label className="block">
-                    <span className="text-sm text-[#6f526d]">抽成檔位</span>
-
-                    <select
-                      value={String(editingOrder.salary_rate || 80)}
-                      onChange={(e) =>
-                        setEditingOrder({
-                          ...editingOrder,
-                          salary_rate: Number(e.target.value),
-                        })
-                      }
-                      className="mt-2 w-full rounded-xl border border-pink-100 bg-pink-50 px-4 py-3 text-[#3f2947] outline-none"
-                    >
-                      <option value="80">80% 一般陪陪</option>
-                      <option value="85">85% 進階陪陪</option>
-                      <option value="90">90% 年度高階</option>
-                      <option value="95">95% 主管津貼</option>
-                    </select>
-                  </label>
+                  <Input
+                    label="員工抽成（1–100%）"
+                    type="number"
+                    value={String(editingOrder.salary_rate || 80)}
+                    onChange={(value) =>
+                      setEditingOrder({
+                        ...editingOrder,
+                        salary_rate: Number(value),
+                      })
+                    }
+                  />
 
                   <Input
                     label="後台備註"
@@ -1948,11 +1986,13 @@ function SearchableStaffSelect({
   value,
   onChange,
   staffList,
+  allowAll = false,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   staffList: Staff[];
+  allowAll?: boolean;
 }) {
   const selectedStaff =
     staffList.find((staff) => staff.discord_id === value) || null;
@@ -1995,7 +2035,9 @@ function SearchableStaffSelect({
           placeholder={
             selectedStaff
               ? `已選擇：${getDisplayStaffName(selectedStaff)}`
-              : "輸入陪陪名字 / Discord ID"
+              : allowAll && value === "all"
+                ? "目前顯示全部員工，可輸入搜尋"
+                : "輸入陪陪名字 / Discord ID"
           }
           className="w-full bg-transparent text-[#3f2947] outline-none placeholder:text-zinc-600"
         />
@@ -2013,50 +2055,52 @@ function SearchableStaffSelect({
           <button
             type="button"
             onClick={() => {
-              onChange("");
+              onChange(allowAll ? "all" : "");
               setKeyword("");
             }}
             className="rounded-lg border border-pink-100 px-3 py-1 text-xs text-[#6f526d] hover:bg-white/10"
           >
-            清除
+            {allowAll ? "顯示全部" : "清除"}
           </button>
         </div>
       ) : null}
 
-      <div className="mt-2 max-h-56 overflow-y-auto rounded-xl border border-pink-100 bg-pink-50">
-        {filteredStaff.length === 0 ? (
-          <div className="px-4 py-4 text-sm text-[#92778f]">
-            找不到符合的陪陪
-          </div>
-        ) : (
-          filteredStaff.map((staff) => (
-            <button
-              key={staff.id}
-              type="button"
-              onClick={() => {
-                onChange(staff.discord_id);
-                setKeyword("");
-              }}
-              className={`flex w-full items-center gap-3 border-b border-white/5 px-4 py-3 text-left last:border-b-0 hover:bg-white/10 ${
-                value === staff.discord_id ? "bg-pink-50" : ""
-              }`}
-            >
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-pink-50 text-[#7b4f85]">
-                <UserRound size={18} />
-              </div>
+      {!allowAll || keyword ? (
+        <div className="mt-2 max-h-56 overflow-y-auto rounded-xl border border-pink-100 bg-pink-50">
+          {filteredStaff.length === 0 ? (
+            <div className="px-4 py-4 text-sm text-[#92778f]">
+              找不到符合的陪陪
+            </div>
+          ) : (
+            filteredStaff.map((staff) => (
+              <button
+                key={staff.id}
+                type="button"
+                onClick={() => {
+                  onChange(staff.discord_id);
+                  setKeyword("");
+                }}
+                className={`flex w-full items-center gap-3 border-b border-white/5 px-4 py-3 text-left last:border-b-0 hover:bg-white/10 ${
+                  value === staff.discord_id ? "bg-pink-50" : ""
+                }`}
+              >
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-pink-50 text-[#7b4f85]">
+                  <UserRound size={18} />
+                </div>
 
-              <div className="min-w-0">
-                <p className="truncate text-sm font-bold text-[#3f2947]">
-                  {getDisplayStaffName(staff)}
-                </p>
-                <p className="truncate text-xs text-[#92778f]">
-                  {staff.discord_name || staff.discord_id}
-                </p>
-              </div>
-            </button>
-          ))
-        )}
-      </div>
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-bold text-[#3f2947]">
+                    {getDisplayStaffName(staff)}
+                  </p>
+                  <p className="truncate text-xs text-[#92778f]">
+                    {staff.discord_name || staff.discord_id}
+                  </p>
+                </div>
+              </button>
+            ))
+          )}
+        </div>
+      ) : null}
     </div>
   );
 }
