@@ -161,9 +161,9 @@ export default function AccountingPage() {
       setRows(payload.rows || []);
       setSummary(payload.summary || emptySummary);
       setLedgerMissing(Boolean(payload.ledgerMissing));
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("load accounting report error:", err);
-      setError(err.message || "讀取會計報表失敗");
+      setError(err instanceof Error ? err.message : "讀取會計報表失敗");
     } finally {
       setLoading(false);
     }

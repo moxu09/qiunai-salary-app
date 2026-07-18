@@ -25,10 +25,7 @@ export default function ActivityCommissionPanel({
   const [endsAt, setEndsAt] = useState("");
   const [saving, setSaving] = useState(false);
   const [loaded, setLoaded] = useState(false);
-
-  useEffect(() => {
-    void load();
-  }, [appKey]);
+  const [now] = useState(() => Date.now());
 
   async function load() {
     const { data, error } = await supabase
@@ -47,15 +44,19 @@ export default function ActivityCommissionPanel({
     setLoaded(true);
   }
 
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => void load(), 0);
+    return () => window.clearTimeout(timeoutId);
+  }, [appKey]);
+
   const status = useMemo(() => {
     if (!rate || !startsAt || !endsAt) return "尚未設定";
-    const now = Date.now();
     const start = new Date(startsAt).getTime();
     const end = new Date(endsAt).getTime();
     if (now < start) return "尚未開始";
     if (now >= end) return "已結束";
     return "活動中";
-  }, [rate, startsAt, endsAt]);
+  }, [rate, startsAt, endsAt, now]);
 
   async function save() {
     const numericRate = Number(rate);

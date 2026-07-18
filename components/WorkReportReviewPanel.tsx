@@ -20,6 +20,37 @@ export type WorkReport = {
   submitted_at?: string | null;
 };
 
+type WorkReportMeta = {
+  customerId?: string | null;
+  customerName?: string | null;
+  orderType?: string;
+  serviceName?: string;
+  startedAt?: string;
+  endedAt?: string;
+  durationMinutes?: number;
+};
+
+type WorkReportRow = {
+  id: string;
+  customer_id?: string | null;
+  customer_name?: string | null;
+  discord_id: string;
+  staff_name?: string | null;
+  order_type?: string | null;
+  service_name?: string | null;
+  service?: string | null;
+  order_amount?: number | null;
+  final_price?: number | null;
+  price?: number | null;
+  accepted_at?: string | null;
+  paid_at?: string | null;
+  order_finished_at?: string | null;
+  completed_at?: string | null;
+  duration_minutes?: number | null;
+  note?: string | null;
+  admin_note?: string | null;
+};
+
 export default function WorkReportReviewPanel({
   appKey,
   accent = "sky",
@@ -55,10 +86,12 @@ export default function WorkReportReviewPanel({
       .order("order_finished_at", { ascending: true });
     if (error) console.error("load work reports error", error);
     setReports(
-      (data || []).map((row: any) => {
-        let meta: any = {};
+      ((data || []) as WorkReportRow[]).map((row) => {
+        let meta: WorkReportMeta = {};
         try {
-          meta = JSON.parse(row.note || row.admin_note || "{}");
+          meta = JSON.parse(
+            row.note || row.admin_note || "{}"
+          ) as WorkReportMeta;
         } catch {}
         return {
           id: row.id,
@@ -82,10 +115,11 @@ export default function WorkReportReviewPanel({
       })
     );
     setLoading(false);
-  }, [appKey]);
+  }, [appKey, salaryTable]);
 
   useEffect(() => {
-    load();
+    const timeoutId = window.setTimeout(() => void load(), 0);
+    return () => window.clearTimeout(timeoutId);
   }, [load]);
 
   async function approve(report: WorkReport) {
@@ -97,8 +131,8 @@ export default function WorkReportReviewPanel({
     try {
       await onApprove(report);
       await load();
-    } catch (error: any) {
-      alert(`審核失敗：${error?.message || "未知錯誤"}`);
+    } catch (error: unknown) {
+      alert(`審核失敗：${error instanceof Error ? error.message : "未知錯誤"}`);
     } finally {
       setWorkingId("");
     }

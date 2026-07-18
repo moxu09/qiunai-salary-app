@@ -152,16 +152,11 @@ export default function AdminPayrollPage() {
   >(DEFAULT_WALLET_OPTIONS);
   const [walletManualAmount, setWalletManualAmount] = useState("");
   const [walletSendingId, setWalletSendingId] = useState<string | null>(null);
+  const [markingPaidId, setMarkingPaidId] = useState<string | null>(null);
   const [filter, setFilter] = useState({
     start: getMonthStartInput(),
     end: getNowInput(),
   });
-
-  useEffect(() => {
-    if (isAdmin) {
-      loadPayrollData();
-    }
-  }, [isAdmin]);
 
   const rows = useMemo(() => {
     const staffMap = new Map<string, Staff>();
@@ -415,6 +410,13 @@ export default function AdminPayrollPage() {
     }
   }
 
+  useEffect(() => {
+    if (isAdmin) {
+      const timeoutId = window.setTimeout(() => void loadPayrollData(), 0);
+      return () => window.clearTimeout(timeoutId);
+    }
+  }, [isAdmin]);
+
   async function reviewWithdrawRequest(
     id: string,
     action: "approve" | "reject"
@@ -573,6 +575,50 @@ export default function AdminPayrollPage() {
     } finally {
       setWalletSendingId(null);
     }
+  }
+
+  async function markStaffPaid(row: PayrollRow) {
+    const ok = confirm(
+      `確定要將「${row.staffName}」目前查詢範圍內的未發薪訂單標記為已發薪嗎？`
+    );
+    if (!ok) return;
+
+    setMarkingPaidId(row.discordId);
+    const settledAt = new Date().toISOString();
+    const orderIds = orders
+      .filter((order) => order.discord_id === row.discordId)
+      .map((order) => order.id);
+    const bonusIds = bonusList
+      .filter((bonus) => bonus.discord_id === row.discordId)
+      .map((bonus) => bonus.id);
+    const [orderResult, bonusResult] = await Promise.all([
+      orderIds.length
+        ? supabase
+            .from(ORDER_TABLE)
+            .update({
+              status: "已發薪",
+              paid_at: settledAt,
+              wallet_settled_at: settledAt,
+            })
+            .in("id", orderIds)
+        : Promise.resolve({ error: null }),
+      bonusIds.length
+        ? supabase
+            .from(BONUS_TABLE)
+            .update({ wallet_settled_at: settledAt })
+            .in("id", bonusIds)
+        : Promise.resolve({ error: null }),
+    ]);
+    setMarkingPaidId(null);
+
+    if (orderResult.error || bonusResult.error) {
+      console.error("標記發薪失敗:", orderResult.error || bonusResult.error);
+      alert("標記發薪失敗");
+      return;
+    }
+
+    alert(`已將 ${row.staffName} 的薪資項目標記為已發薪`);
+    await loadPayrollData({ silent: true });
   }
 
   if (adminLoading || !isAdmin) {
@@ -847,14 +893,24 @@ export default function AdminPayrollPage() {
                         </p>
                       </td>
                       <td className="px-4 py-3">
-                        <button
-                          onClick={() => openWalletModal(row)}
-                          disabled={walletSendingId === row.discordId}
-                          className="inline-flex items-center gap-2 rounded-2xl bg-violet-500 px-3 py-2 text-xs font-bold text-white hover:bg-violet-400 disabled:opacity-60"
-                        >
-                          <WalletCards size={14} />
-                          發送
-                        </button>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => openWalletModal(row)}
+                            disabled={walletSendingId === row.discordId}
+                            className="inline-flex items-center gap-2 rounded-2xl bg-violet-500 px-3 py-2 text-xs font-bold text-white hover:bg-violet-400 disabled:opacity-60"
+                          >
+                            <WalletCards size={14} />
+                            發送
+                          </button>
+                          <button
+                            onClick={() => markStaffPaid(row)}
+                            disabled={markingPaidId === row.discordId}
+                            className="inline-flex items-center gap-2 rounded-2xl bg-emerald-500 px-3 py-2 text-xs font-bold text-white hover:bg-emerald-400 disabled:opacity-60"
+                          >
+                            <CheckCircle2 size={14} />
+                            標記發薪
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}

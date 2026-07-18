@@ -12,6 +12,7 @@ import {
   CalendarDays,
   ClipboardList,
   Search,
+  Trash2,
   UserRound,
   WalletCards,
 } from "lucide-react";
@@ -730,6 +731,28 @@ export default function AdminSalaryPage() {
     return true;
   }
 
+  async function deleteDeduction(bonus: BonusItem) {
+    const ok = window.confirm(
+      `確定要刪除「${bonus.note || bonus.title || "薪水扣除"}」這筆扣薪嗎？`
+    );
+    if (!ok) return;
+
+    const { error } = await supabase
+      .from("qiunai_staff_bonus")
+      .delete()
+      .eq("id", bonus.id)
+      .lt("amount", 0);
+
+    if (error) {
+      console.error("刪除扣薪失敗:", error);
+      alert("刪除扣薪失敗");
+      return;
+    }
+
+    alert("扣薪已刪除");
+    await loadAll();
+  }
+
   async function updateStaffCommissionTier(staffId: string, tier: string) {
     const { error } = await supabase
       .from("qiunai_staff")
@@ -1079,6 +1102,7 @@ export default function AdminSalaryPage() {
                           <th className="px-4 py-3">獎金名稱</th>
                           <th className="px-4 py-3">金額</th>
                           <th className="px-4 py-3">備註</th>
+                          <th className="px-4 py-3">操作</th>
                         </tr>
                       </thead>
 
@@ -1105,6 +1129,19 @@ export default function AdminSalaryPage() {
                             </td>
 
                             <td className="px-4 py-3">{bonus.note || "-"}</td>
+                            <td className="px-4 py-3">
+                              {Number(bonus.amount || 0) < 0 ? (
+                                <button
+                                  onClick={() => deleteDeduction(bonus)}
+                                  className="inline-flex items-center gap-2 rounded-xl bg-red-500 px-3 py-2 text-xs font-semibold text-white hover:bg-red-400"
+                                >
+                                  <Trash2 size={14} />
+                                  刪除扣薪
+                                </button>
+                              ) : (
+                                "-"
+                              )}
+                            </td>
                           </tr>
                         ))}
                       </tbody>
@@ -1674,6 +1711,7 @@ export default function AdminSalaryPage() {
                     <th className="px-4 py-3">獎金名稱</th>
                     <th className="px-4 py-3">金額</th>
                     <th className="px-4 py-3">備註</th>
+                    <th className="px-4 py-3">操作</th>
                   </tr>
                 </thead>
 
@@ -1711,6 +1749,19 @@ export default function AdminSalaryPage() {
                       </td>
 
                       <td className="px-4 py-3">{bonus.note || "-"}</td>
+                      <td className="px-4 py-3">
+                        {Number(bonus.amount || 0) < 0 ? (
+                          <button
+                            onClick={() => deleteDeduction(bonus)}
+                            className="inline-flex items-center gap-2 rounded-xl bg-red-500 px-3 py-2 text-xs font-semibold text-white hover:bg-red-400"
+                          >
+                            <Trash2 size={14} />
+                            刪除扣薪
+                          </button>
+                        ) : (
+                          "-"
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>

@@ -17,11 +17,6 @@ export default function AdminSettingsPage() {
   });
 
   const { adminLoading, isAdmin } = useQiunaiAdminGuard();
-  useEffect(() => {
-    if (isAdmin) {
-      loadSettings();
-    }
-  }, [isAdmin]);
 
   async function loadSettings() {
     setLoading(true);
@@ -50,6 +45,13 @@ export default function AdminSettingsPage() {
 
     setLoading(false);
   }
+
+  useEffect(() => {
+    if (isAdmin) {
+      const timeoutId = window.setTimeout(() => void loadSettings(), 0);
+      return () => window.clearTimeout(timeoutId);
+    }
+  }, [isAdmin]);
 
   async function saveSettings() {
     setSaving(true);
