@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useEffectEvent, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -122,9 +122,11 @@ export default function AdminSalaryPage() {
     paid_at: getNowInput(),
   });
 
+  const loadAllEffect = useEffectEvent(loadAll);
+
   useEffect(() => {
     if (isAdmin) {
-      loadAll();
+      loadAllEffect();
     }
   }, [isAdmin]);
 
@@ -438,7 +440,7 @@ export default function AdminSalaryPage() {
     const staffName = getStaffNameByDiscordId(orderForm.discord_id);
 
     const { error } = await supabase.from("qiunai_salary_orders").insert({
-      order_id: `MANUAL-${Date.now()}`,
+      order_id: `MANUAL-${finishedAt}-${orderForm.discord_id}`,
       discord_id: orderForm.discord_id,
       staff_name: staffName,
       customer_name: orderForm.customer_name || null,
@@ -2131,25 +2133,6 @@ function getStaffSalaryRate(
   }
 
   return 80;
-}
-
-function getStaffSalaryLevelLabel(
-  staff: Staff | null | undefined,
-  orderFinishedAt?: string
-) {
-  const sourceDate = orderFinishedAt ? new Date(orderFinishedAt) : new Date();
-  const openingEnd = new Date("2026-09-01T00:00:00+08:00");
-
-  if (staff?.commission_tier === "rate_80") return "個人檔位 80%";
-  if (staff?.commission_tier === "rate_85") return "個人檔位 85%";
-  if (staff?.commission_tier === "rate_90") return "個人檔位 90%";
-  if (staff?.commission_tier === "manager_95") return "主管津貼 95%";
-
-  if (sourceDate < openingEnd) {
-    return "開幕期預設 90%";
-  }
-
-  return "個人檔位 80%";
 }
 
 function getNowInput() {

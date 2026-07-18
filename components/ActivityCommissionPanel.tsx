@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useEffectEvent, useMemo, useState } from "react";
 import { CalendarClock, Save } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
@@ -44,8 +44,10 @@ export default function ActivityCommissionPanel({
     setLoaded(true);
   }
 
+  const loadEffect = useEffectEvent(load);
+
   useEffect(() => {
-    const timeoutId = window.setTimeout(() => void load(), 0);
+    const timeoutId = window.setTimeout(() => void loadEffect(), 0);
     return () => window.clearTimeout(timeoutId);
   }, [appKey]);
 

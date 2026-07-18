@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+/* eslint-disable @next/next/no-img-element */
+
+import { useEffect, useEffectEvent, useMemo, useState } from "react";
 import {
   Save,
   LogOut,
@@ -171,8 +173,10 @@ export default function StaffPage() {
     bank_account: "",
   });
 
+  const initEffect = useEffectEvent(init);
+
   useEffect(() => {
-    init();
+    initEffect();
   }, []);
 
   const groupedServices = useMemo(() => {

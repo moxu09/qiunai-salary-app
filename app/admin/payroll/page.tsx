@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useEffectEvent, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -410,9 +410,14 @@ export default function AdminPayrollPage() {
     }
   }
 
+  const loadPayrollDataEffect = useEffectEvent(loadPayrollData);
+
   useEffect(() => {
     if (isAdmin) {
-      const timeoutId = window.setTimeout(() => void loadPayrollData(), 0);
+      const timeoutId = window.setTimeout(
+        () => void loadPayrollDataEffect(),
+        0
+      );
       return () => window.clearTimeout(timeoutId);
     }
   }, [isAdmin]);

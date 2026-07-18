@@ -1,13 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+/* eslint-disable @next/next/no-img-element */
+
+import { useEffect, useEffectEvent, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
   CalendarDays,
   RefreshCw,
   Search,
-  Trophy,
   UserRound,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
@@ -77,9 +78,11 @@ export default function AdminRankingPage() {
     end: getNowInput(),
   });
 
+  const loadAllEffect = useEffectEvent(loadAll);
+
   useEffect(() => {
     if (isAdmin) {
-      loadAll();
+      loadAllEffect();
     }
   }, [isAdmin]);
 

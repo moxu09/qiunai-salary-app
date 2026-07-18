@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useEffectEvent, useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, Download, Loader2, RefreshCw } from "lucide-react";
 import { supabase } from "@/lib/supabase";
@@ -128,8 +128,10 @@ export default function AccountingPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  const loadReportEffect = useEffectEvent(loadReport);
+
   useEffect(() => {
-    loadReport();
+    loadReportEffect();
   }, []);
 
   const displayedRows = useMemo(() => rows.slice(0, 1000), [rows]);

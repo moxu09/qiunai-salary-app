@@ -1,5 +1,7 @@
 "use client";
 
+/* eslint-disable @next/next/no-img-element */
+
 import { useEffect, useMemo, useState } from "react";
 import { Save, RefreshCw, Gamepad2, Trophy } from "lucide-react";
 import { supabase } from "@/lib/supabase";
