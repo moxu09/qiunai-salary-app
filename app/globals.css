@@ -360,14 +360,15 @@ textarea {
   }
 }
 
-/* 薪資總表完全沿用 DeepNight 的區塊順序與雙欄配置。 */
+/* 薪資總表沿用 DeepNight 的全寬橫式區塊，避免表單欄位被擠成直排。 */
 .qiunai-admin-shell .salary-template {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  display: flex;
+  flex-direction: column;
   gap: 20px;
 }
 
 .qiunai-admin-shell .salary-template > * {
+  width: 100%;
   min-width: 0;
   margin-top: 0 !important;
 }
@@ -420,16 +421,6 @@ textarea {
 .qiunai-admin-shell .salary-commission-panel {
   grid-column: 1 / -1;
   order: 8;
-}
-
-@media (max-width: 900px) {
-  .qiunai-admin-shell .salary-template {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .qiunai-admin-shell .salary-template > * {
-    grid-column: 1 !important;
-  }
 }
 
 /* 響應式護欄：前台、後台在手機與桌機都保持整齊 */

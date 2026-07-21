@@ -3,7 +3,7 @@
 /* eslint-disable @next/next/no-img-element */
 
 import { useEffect, useMemo, useState } from "react";
-import { Save, RefreshCw, Gamepad2, Trophy } from "lucide-react";
+import { Save, RefreshCw, Gamepad2, Search, Trophy } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { SERVICE_OPTIONS, type ServiceOption } from "@/lib/serviceOptions";
 import { useQiunaiAdminGuard } from "@/lib/useQiunaiAdminGuard";
@@ -20,6 +20,7 @@ type Staff = {
   bank_name: string | null;
   bank_account: string | null;
   salary_channel_id: string | null;
+  commission_tier?: string | null;
   is_online: boolean;
   can_take_order: boolean;
   role_checked: boolean;
@@ -50,6 +51,8 @@ export default function AdminStaffPage() {
   const [selectedStaffId, setSelectedStaffId] = useState<string | null>(null);
   const [featuredIds, setFeaturedIds] = useState<string[]>([]);
   const [featuredSaving, setFeaturedSaving] = useState(false);
+  const [keyword, setKeyword] = useState("");
+  const [salarySort, setSalarySort] = useState("created_desc");
 
   const groupedServices = useMemo(() => {
     const groups: Record<string, ServiceOption[]> = {};
@@ -73,6 +76,50 @@ export default function AdminStaffPage() {
       canTakeOrder: staffList.filter((staff) => staff.can_take_order).length,
     };
   }, [staffList]);
+
+  const filteredStaff = useMemo(() => {
+    const searchText = keyword.trim().toLowerCase();
+    let list = [...staffList];
+
+    if (searchText) {
+      list = list.filter((staff) =>
+        [
+          staff.display_name,
+          staff.real_name,
+          staff.discord_name,
+          staff.discord_id,
+          staff.salary_channel_id,
+          getCommissionTierLabel(staff.commission_tier),
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase()
+          .includes(searchText)
+      );
+    }
+
+    if (salarySort.startsWith("tier_")) {
+      const tier = salarySort.replace("tier_", "");
+      list = list.filter((staff) => (staff.commission_tier || "auto") === tier);
+    } else if (salarySort === "name_asc" || salarySort === "name_desc") {
+      list.sort((a, b) => {
+        const aName = getStaffDisplayName(a);
+        const bName = getStaffDisplayName(b);
+        return salarySort === "name_asc"
+          ? aName.localeCompare(bName, "zh-Hant")
+          : bName.localeCompare(aName, "zh-Hant");
+      });
+    } else if (salarySort === "commission_desc" || salarySort === "commission_asc") {
+      list.sort((a, b) => {
+        const result = getCommissionTierRank(a.commission_tier) - getCommissionTierRank(b.commission_tier);
+        return salarySort === "commission_asc" ? result : -result;
+      });
+    } else {
+      list.sort((a, b) => String(b.created_at || "").localeCompare(String(a.created_at || "")));
+    }
+
+    return list;
+  }, [keyword, salarySort, staffList]);
 
   useEffect(() => {
     if (isAdmin) {
@@ -378,9 +425,34 @@ export default function AdminStaffPage() {
                 <p className="mt-1 text-xs font-semibold text-[#8b5a8f]">
                   選擇一位員工後，在右側編輯完整資料。
                 </p>
+                <div className="mt-4 flex items-center gap-2 rounded-2xl border border-pink-100 bg-pink-50/60 px-3 py-2">
+                  <Search size={17} className="shrink-0 text-pink-500" />
+                  <input
+                    value={keyword}
+                    onChange={(event) => setKeyword(event.target.value)}
+                    placeholder="搜尋名稱、Discord ID、頻道 ID、薪資檔位"
+                    className="min-h-0 flex-1 border-none bg-transparent p-0 text-sm outline-none focus:shadow-none"
+                  />
+                </div>
+                <select
+                  value={salarySort}
+                  onChange={(event) => setSalarySort(event.target.value)}
+                  className="qiunai-input mt-3"
+                >
+                  <option value="created_desc">薪資排序：最新建立</option>
+                  <option value="commission_desc">薪資排序：抽成高到低</option>
+                  <option value="commission_asc">薪資排序：抽成低到高</option>
+                  <option value="name_asc">名稱排序：A 到 Z</option>
+                  <option value="name_desc">名稱排序：Z 到 A</option>
+                  <option value="tier_auto">只看：自動判定</option>
+                  <option value="tier_rate_80">只看：80%</option>
+                  <option value="tier_rate_85">只看：85%</option>
+                  <option value="tier_rate_90">只看：90%</option>
+                  <option value="tier_manager_95">只看：主管津貼 95%</option>
+                </select>
               </div>
               <div className="mt-2 max-h-[720px] space-y-2 overflow-y-auto">
-                {staffList.map((staff) => {
+                {filteredStaff.map((staff) => {
                   const active = selectedStaffId === staff.id;
                   return (
                     <button
@@ -412,12 +484,18 @@ export default function AdminStaffPage() {
                         <span className="mt-1 block truncate text-xs text-[#8b5a8f]">
                           {staff.discord_id}
                         </span>
+                        <span className="mt-1 block truncate text-xs font-bold text-pink-600">
+                          薪資檔位：{getCommissionTierLabel(staff.commission_tier)}
+                        </span>
                       </span>
-                      <span
-                        className={`h-2.5 w-2.5 shrink-0 rounded-full ${
-                          staff.is_online ? "bg-emerald-400" : "bg-slate-300"
-                        }`}
-                      />
+                      <span className="flex shrink-0 flex-col items-end gap-1">
+                        <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${staff.is_active ? "bg-emerald-50 text-emerald-600" : "bg-slate-100 text-slate-500"}`}>
+                          {staff.is_active ? "啟用" : "停用"}
+                        </span>
+                        <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${staff.is_online ? "bg-pink-50 text-pink-600" : "bg-slate-100 text-slate-500"}`}>
+                          {staff.is_online ? "上線" : "下線"}
+                        </span>
+                      </span>
                     </button>
                   );
                 })}
@@ -663,6 +741,26 @@ function Stat({ title, value }: { title: string; value: string }) {
       <p className="qiunai-title-gradient mt-2 text-2xl font-black">{value}</p>
     </div>
   );
+}
+
+function getStaffDisplayName(staff: Staff) {
+  return staff.display_name || staff.real_name || staff.discord_name || staff.discord_id || "未知員工";
+}
+
+function getCommissionTierLabel(value?: string | null) {
+  if (value === "rate_80") return "80%｜一般陪陪";
+  if (value === "rate_85") return "85%｜進階陪陪";
+  if (value === "rate_90") return "90%｜年度高階";
+  if (value === "manager_95") return "95%｜主管津貼";
+  return "自動判定";
+}
+
+function getCommissionTierRank(value?: string | null) {
+  if (value === "manager_95") return 95;
+  if (value === "rate_90") return 90;
+  if (value === "rate_85") return 85;
+  if (value === "rate_80") return 80;
+  return 0;
 }
 
 function AdminInput({
