@@ -195,13 +195,13 @@ export default function WorkReportReviewPanel({
               key={report.id}
               className="grid gap-4 rounded-2xl border border-slate-100 p-4 lg:grid-cols-[1fr_auto] lg:items-center"
             >
-              <div className="grid gap-2 text-sm sm:grid-cols-2 lg:grid-cols-4">
-                <p>
+              <div className="grid min-w-0 gap-2 text-sm sm:grid-cols-2 lg:grid-cols-4">
+                <p className="min-w-0 break-words">
                   <span className="text-slate-400">陪陪</span>
                   <br />
                   <b>{report.staff_name || report.staff_id}</b>
                 </p>
-                <p>
+                <p className="min-w-0 break-words">
                   <span className="text-slate-400">老闆／項目</span>
                   <br />
                   <b>
@@ -209,7 +209,7 @@ export default function WorkReportReviewPanel({
                     {report.service_name}
                   </b>
                 </p>
-                <p>
+                <p className="min-w-0 break-words">
                   <span className="text-slate-400">時間</span>
                   <br />
                   <b>
@@ -217,7 +217,7 @@ export default function WorkReportReviewPanel({
                     {formatTaipeiDateTime(report.ended_at)}
                   </b>
                 </p>
-                <p>
+                <p className="min-w-0 break-words">
                   <span className="text-slate-400">時長／金額</span>
                   <br />
                   <b>
@@ -227,7 +227,7 @@ export default function WorkReportReviewPanel({
                   </b>
                 </p>
               </div>
-              <div className="flex gap-2">
+              <div className="flex min-w-0 flex-col gap-2 min-[360px]:flex-row">
                 <button
                   type="button"
                   disabled={workingId === report.id}
