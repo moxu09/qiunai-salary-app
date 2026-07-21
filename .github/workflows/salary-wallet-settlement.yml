@@ -1,0 +1,22 @@
+name: Salary wallet settlement
+
+on:
+  schedule:
+    - cron: "0 16 4,19 * *"
+  workflow_dispatch:
+
+jobs:
+  settle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Settle due salary wallet period
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          ENDPOINT: https://qiunai.wearestilllhere.com/api/qiunai/salary-wallet/cron
+        run: |
+          curl --silent --show-error --fail-with-body \
+            --retry 3 --retry-all-errors \
+            --request POST \
+            --header "Authorization: Bearer ${CRON_SECRET}" \
+            "${ENDPOINT}"
