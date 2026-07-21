@@ -13,6 +13,8 @@ import {
   Heart,
   Sparkles,
   HandCoins,
+  FileDown,
+  Search,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
@@ -148,8 +150,24 @@ type SalaryWalletData = {
   };
 };
 
+type WithdrawalStatementSummary = {
+  requestCount: number;
+  approvedCount: number;
+  requestedAmount: number;
+  welfareFee: number;
+  serviceFee: number;
+  payoutAmount: number;
+};
+
+type WithdrawalStatementData = {
+  range: { from: string; to: string };
+  requests: SalaryWithdrawRequest[];
+  summary: WithdrawalStatementSummary;
+};
+
 export default function StaffPage() {
   const router = useRouter();
+  const defaultStatementRange = getDefaultStatementRange();
 
   const [loading, setLoading] = useState(true);
   const [pageError, setPageError] = useState("");
@@ -167,6 +185,14 @@ export default function StaffPage() {
   const [savingOnline, setSavingOnline] = useState(false);
   const [walletLoading, setWalletLoading] = useState(false);
   const [withdrawing, setWithdrawing] = useState(false);
+  const [statementLoading, setStatementLoading] = useState(false);
+  const [statementDownloading, setStatementDownloading] = useState(false);
+  const [statementFrom, setStatementFrom] = useState(
+    defaultStatementRange.from
+  );
+  const [statementTo, setStatementTo] = useState(defaultStatementRange.to);
+  const [statementData, setStatementData] =
+    useState<WithdrawalStatementData | null>(null);
   const [withdrawAmount, setWithdrawAmount] = useState("");
   const [salaryWallet, setSalaryWallet] = useState<SalaryWalletData | null>(
     null
@@ -639,6 +665,89 @@ export default function StaffPage() {
     }
   }
 
+  async function loadWithdrawalStatement() {
+    if (!statementFrom || !statementTo) {
+      alert("請選擇開始與結束日期");
+      return;
+    }
+
+    setStatementLoading(true);
+
+    try {
+      const { data } = await supabase.auth.getSession();
+      const session = data.session;
+      if (!session) throw new Error("請重新登入");
+
+      const params = new URLSearchParams({
+        from: statementFrom,
+        to: statementTo,
+        format: "json",
+      });
+      const res = await fetch(
+        `/api/qiunai/salary-wallet/statement?${params.toString()}`,
+        {
+          headers: { Authorization: `Bearer ${session.access_token}` },
+          cache: "no-store",
+        }
+      );
+      const payload = await res.json();
+
+      if (!res.ok || !payload.ok) {
+        throw new Error(payload.message || "查詢提領紀錄失敗");
+      }
+
+      setStatementData(payload as WithdrawalStatementData);
+    } catch (error: unknown) {
+      console.error("load withdrawal statement error:", error);
+      alert(error instanceof Error ? error.message : "查詢提領紀錄失敗");
+    } finally {
+      setStatementLoading(false);
+    }
+  }
+
+  async function downloadWithdrawalStatement() {
+    setStatementDownloading(true);
+
+    try {
+      const { data } = await supabase.auth.getSession();
+      const session = data.session;
+      if (!session) throw new Error("請重新登入");
+
+      const params = new URLSearchParams({
+        from: statementFrom,
+        to: statementTo,
+        format: "pdf",
+      });
+      const res = await fetch(
+        `/api/qiunai/salary-wallet/statement?${params.toString()}`,
+        {
+          headers: { Authorization: `Bearer ${session.access_token}` },
+          cache: "no-store",
+        }
+      );
+
+      if (!res.ok) {
+        const payload = await res.json().catch(() => ({}));
+        throw new Error(payload.message || "匯出提領薪資單失敗");
+      }
+
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = `秋奈電競陪玩-提領薪資單-${statementFrom}-${statementTo}.pdf`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(url);
+    } catch (error: unknown) {
+      console.error("download withdrawal statement error:", error);
+      alert(error instanceof Error ? error.message : "匯出提領薪資單失敗");
+    } finally {
+      setStatementDownloading(false);
+    }
+  }
+
   function updateProfileField(key: string, value: string) {
     setProfileForm((prev) => ({
       ...prev,
@@ -1077,6 +1186,145 @@ export default function StaffPage() {
                   >
                     {getRequestStatusText(salaryWallet.latestRequest)}
                   </span>
+                </div>
+
+                <div className="mt-4 rounded-[24px] border border-pink-100 bg-white/90 p-4">
+                  <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+                    <div>
+                      <h3 className="flex items-center gap-2 font-black text-[#5b3768]">
+                        <FileDown size={18} className="text-pink-500" />
+                        提領薪資單
+                      </h3>
+                      <p className="mt-1 text-sm text-[#8b5a8f]">
+                        選擇提領申請時間，查詢自己的紀錄並匯出 PDF。
+                      </p>
+                    </div>
+
+                    <div className="grid w-full gap-2 sm:grid-cols-2 lg:w-auto lg:grid-cols-[150px_150px_auto_auto]">
+                      <label className="text-xs font-bold text-[#8b5a8f]">
+                        開始日期
+                        <input
+                          type="date"
+                          value={statementFrom}
+                          onChange={(event) => {
+                            setStatementFrom(event.target.value);
+                            setStatementData(null);
+                          }}
+                          className="qiunai-input mt-1"
+                        />
+                      </label>
+                      <label className="text-xs font-bold text-[#8b5a8f]">
+                        結束日期
+                        <input
+                          type="date"
+                          value={statementTo}
+                          onChange={(event) => {
+                            setStatementTo(event.target.value);
+                            setStatementData(null);
+                          }}
+                          className="qiunai-input mt-1"
+                        />
+                      </label>
+                      <button
+                        type="button"
+                        onClick={loadWithdrawalStatement}
+                        disabled={statementLoading}
+                        className="inline-flex items-center justify-center gap-2 rounded-full bg-pink-100 px-4 py-2.5 text-sm font-black text-pink-700 hover:bg-pink-200 disabled:opacity-50"
+                      >
+                        <Search size={16} />
+                        {statementLoading ? "查詢中..." : "查詢"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={downloadWithdrawalStatement}
+                        disabled={!statementData || statementDownloading}
+                        className="qiunai-button inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-black disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        <FileDown size={16} />
+                        {statementDownloading ? "產生中..." : "匯出 PDF"}
+                      </button>
+                    </div>
+                  </div>
+
+                  {statementData ? (
+                    <div className="mt-4">
+                      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                        <WalletStat
+                          title="提領申請"
+                          value={`${statementData.summary.requestCount} 筆`}
+                        />
+                        <WalletStat
+                          title="已核准"
+                          value={`${statementData.summary.approvedCount} 筆`}
+                        />
+                        <WalletStat
+                          title="福利金 / 手續費"
+                          value={statementMoney(
+                            statementData.summary.welfareFee +
+                              statementData.summary.serviceFee
+                          )}
+                        />
+                        <WalletStat
+                          title="已核准實際匯款"
+                          value={statementMoney(statementData.summary.payoutAmount)}
+                        />
+                      </div>
+
+                      <div className="mt-3 overflow-x-auto rounded-[18px] border border-pink-100">
+                        <table className="min-w-[820px]">
+                          <thead>
+                            <tr>
+                              <th>申請時間</th>
+                              <th>申請金額</th>
+                              <th>福利金</th>
+                              <th>手續費</th>
+                              <th>實際匯款</th>
+                              <th>狀態</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {statementData.requests.length === 0 ? (
+                              <tr>
+                                <td colSpan={6} className="py-8 text-center text-[#a36b9e]">
+                                  此時間段沒有提領紀錄
+                                </td>
+                              </tr>
+                            ) : (
+                              statementData.requests.map((request) => (
+                                <tr key={request.id}>
+                                  <td>{formatDateTime(request.requested_at)}</td>
+                                  <td>{statementMoney(request.amount)}</td>
+                                  <td>{statementMoney(request.welfare_fee)}</td>
+                                  <td>{statementMoney(request.service_fee)}</td>
+                                  <td className="font-black text-pink-600">
+                                    {request.status === "rejected"
+                                      ? "-"
+                                      : statementMoney(
+                                          Number(
+                                            request.payout_amount ||
+                                              Number(request.amount || 0) -
+                                                Number(request.welfare_fee || 0) -
+                                                Number(request.service_fee || 0)
+                                          )
+                                        )}
+                                  </td>
+                                  <td>
+                                    <span
+                                      className={`rounded-full px-3 py-1 text-xs font-bold ${getRequestStatusClass(
+                                        request
+                                      )}`}
+                                    >
+                                      {getRequestStatusText(request)}
+                                    </span>
+                                  </td>
+                                </tr>
+                              ))
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
 
               </>
@@ -1806,6 +2054,22 @@ function getMonthText(date: Date) {
 
 function getCurrentMonthInput() {
   return getTaipeiMonthInput();
+}
+
+function getDefaultStatementRange() {
+  const month = getCurrentMonthInput();
+  const today = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Taipei",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+
+  return { from: `${month}-01`, to: today };
+}
+
+function statementMoney(value: number | string | null | undefined) {
+  return `$${Number(value || 0).toLocaleString("zh-TW")}`;
 }
 
 function getMonthRange(monthText: string) {
