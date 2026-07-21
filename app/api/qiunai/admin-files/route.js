@@ -5,6 +5,7 @@ import {
   ADMIN_FILE_CATEGORIES,
   createAdminFileDownload,
   listAdminFiles,
+  saveAdminFileOrder,
   uploadAdminFile,
 } from "@/lib/adminFileStorage";
 
@@ -85,6 +86,23 @@ export async function POST(request) {
   } catch (error) {
     return NextResponse.json(
       { ok: false, message: error.message || "檔案上傳失敗" },
+      { status: 400 }
+    );
+  }
+}
+
+export async function PATCH(request) {
+  try {
+    const auth = await authorize(request);
+    if (!auth.canUpload) throw new Error("此帳號只有下載權限");
+    const body = await request.json().catch(() => ({}));
+    const category = validCategory(body.category);
+    if (!Array.isArray(body.orderedPaths)) throw new Error("檔案排序資料不正確");
+    const files = await saveAdminFileOrder(ORGANIZATION, category, body.orderedPaths);
+    return NextResponse.json({ ok: true, category, files });
+  } catch (error) {
+    return NextResponse.json(
+      { ok: false, message: error.message || "調整檔案排序失敗" },
       { status: 400 }
     );
   }
