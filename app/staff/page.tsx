@@ -1045,47 +1045,6 @@ export default function StaffPage() {
                   </span>
                 </div>
 
-                <div className="mt-5 overflow-x-auto">
-                  <table className="min-w-[760px] w-full text-left text-sm">
-                    <thead className="bg-pink-50 text-[#8b5a8f]">
-                      <tr>
-                        <th className="px-4 py-3">時間</th>
-                        <th className="px-4 py-3">項目</th>
-                        <th className="px-4 py-3">期別</th>
-                        <th className="px-4 py-3">金額</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {salaryWallet.entries.slice(0, 8).map((entry) => (
-                        <tr key={entry.id} className="border-t border-pink-100">
-                          <td className="px-4 py-3 text-[#8b5a8f]">
-                            {formatDateTime(entry.created_at)}
-                          </td>
-                          <td className="px-4 py-3">
-                            <p className="font-bold text-[#5b3768]">
-                              {formatEntryType(entry.entry_type)}
-                            </p>
-                            <p className="text-xs text-[#a36b9e]">
-                              {entry.source_label || "-"}
-                            </p>
-                          </td>
-                          <td className="px-4 py-3 text-[#8b5a8f]">
-                            {entry.period_key || "-"}
-                          </td>
-                          <td
-                            className={`px-4 py-3 font-bold ${
-                              Number(entry.amount || 0) < 0
-                                ? "text-red-500"
-                                : "text-pink-500"
-                            }`}
-                          >
-                            ${Number(entry.amount || 0).toLocaleString()}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
               </>
             ) : null}
           </Card>
@@ -1832,13 +1791,6 @@ function formatMonthLabel(monthText: string) {
 
 function formatDateTime(value?: string | null) {
   return formatTaipeiDateTime(value, { hour12: true });
-}
-
-function formatEntryType(type: string) {
-  if (type === "order_salary") return "訂單薪水";
-  if (type === "order_bonus") return "訂單獎金";
-  if (type === "staff_bonus") return "獎金 / 扣除";
-  return "薪資明細";
 }
 
 function getRequestStatusText(request?: SalaryWithdrawRequest | null) {
