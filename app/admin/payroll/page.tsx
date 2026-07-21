@@ -8,6 +8,7 @@ import {
   Banknote,
   CalendarDays,
   Clipboard,
+  Loader2,
   RefreshCw,
   Search,
   CheckCircle2,
@@ -153,6 +154,12 @@ export default function AdminPayrollPage() {
   const [walletManualAmount, setWalletManualAmount] = useState("");
   const [walletSendingId, setWalletSendingId] = useState<string | null>(null);
   const [markingPaidId, setMarkingPaidId] = useState<string | null>(null);
+  const [bulkWalletOpen, setBulkWalletOpen] = useState(false);
+  const [bulkStartDate, setBulkStartDate] = useState(() =>
+    getTaipeiMonthStartInput()
+  );
+  const [bulkEndDate, setBulkEndDate] = useState(() => getTaipeiDateInput());
+  const [bulkWalletSending, setBulkWalletSending] = useState(false);
   const [filter, setFilter] = useState({
     start: getMonthStartInput(),
     end: getNowInput(),
@@ -582,6 +589,73 @@ export default function AdminPayrollPage() {
     }
   }
 
+  function openBulkWalletModal() {
+    setBulkStartDate(filter.start || getTaipeiMonthStartInput());
+    setBulkEndDate(filter.end || getTaipeiDateInput());
+    setBulkWalletOpen(true);
+  }
+
+  async function sendBulkWallet() {
+    if (!bulkStartDate || !bulkEndDate) {
+      alert("請選擇完整的開始與結束日期");
+      return;
+    }
+
+    if (bulkStartDate > bulkEndDate) {
+      alert("開始日期不能晚於結束日期");
+      return;
+    }
+
+    setBulkWalletSending(true);
+
+    try {
+      const { data } = await supabase.auth.getSession();
+      const session = data.session;
+
+      if (!session) {
+        throw new Error("請重新登入");
+      }
+
+      const res = await fetch("/api/qiunai/salary-wallet/admin", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          action: "bulk-deposit-wallet",
+          startDate: bulkStartDate,
+          endDate: bulkEndDate,
+        }),
+      });
+      const payload = await res.json();
+
+      if (!res.ok || !payload.ok) {
+        throw new Error(payload.message || "批次匯入錢包失敗");
+      }
+
+      const result = payload.result;
+      setBulkWalletOpen(false);
+      await loadPayrollData({ silent: true });
+
+      if (!result?.count) {
+        alert("這個時間區間沒有尚未匯入錢包的薪資項目");
+        return;
+      }
+
+      alert(
+        `批次匯入完成：${result.staffCount || 0} 位員工、${
+          result.count || 0
+        } 筆，共 ${money(result.amount || 0)}`
+      );
+    } catch (error) {
+      console.error("批次匯入錢包失敗:", error);
+      alert(error instanceof Error ? error.message : "批次匯入錢包失敗");
+    } finally {
+      setBulkWalletSending(false);
+    }
+  }
+
   async function markStaffPaid(row: PayrollRow) {
     const ok = confirm(
       `確定要將「${row.staffName}」目前查詢範圍內的未發薪訂單標記為已發薪嗎？`
@@ -652,6 +726,15 @@ export default function AdminPayrollPage() {
           </div>
 
           <div className="flex flex-wrap gap-3">
+            <button
+              onClick={openBulkWalletModal}
+              disabled={bulkWalletSending}
+              className="inline-flex items-center gap-2 rounded-2xl bg-emerald-500 px-4 py-2 text-sm font-bold text-white hover:bg-emerald-400 disabled:opacity-60"
+            >
+              <WalletCards size={16} />
+              批次匯入錢包
+            </button>
+
             <button
               onClick={copyPayrollList}
               className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-bold text-zinc-100 hover:bg-white/10"
@@ -1020,6 +1103,66 @@ export default function AdminPayrollPage() {
               {walletSendingId === walletModalRow.discordId
                 ? "發送中..."
                 : "發送"}
+            </button>
+          </div>
+        </div>
+      ) : null}
+
+      {bulkWalletOpen ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 py-6">
+          <div className="w-full max-w-md rounded-3xl border border-white/10 bg-[#181127] p-5 shadow-2xl">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-sm font-bold text-emerald-300">
+                  批次匯入錢包
+                </p>
+                <h3 className="mt-1 text-xl font-bold text-white">
+                  選擇薪資時間段
+                </h3>
+              </div>
+              <button
+                onClick={() => setBulkWalletOpen(false)}
+                disabled={bulkWalletSending}
+                className="rounded-2xl border border-white/10 px-3 py-2 text-xs font-bold text-zinc-300 hover:bg-white/10 disabled:opacity-60"
+              >
+                關閉
+              </button>
+            </div>
+
+            <div className="mt-5 grid gap-4 sm:grid-cols-2">
+              <Field label="開始日期">
+                <input
+                  type="date"
+                  value={bulkStartDate}
+                  onChange={(event) => setBulkStartDate(event.target.value)}
+                  disabled={bulkWalletSending}
+                />
+              </Field>
+              <Field label="結束日期">
+                <input
+                  type="date"
+                  value={bulkEndDate}
+                  onChange={(event) => setBulkEndDate(event.target.value)}
+                  disabled={bulkWalletSending}
+                />
+              </Field>
+            </div>
+
+            <div className="mt-5 rounded-2xl bg-white/5 px-4 py-3 text-sm font-semibold leading-6 text-zinc-300">
+              會匯入此區間內所有尚未入帳的訂單、打賞、獎金與扣除。訂單與打賞使用已計算抽成後的員工實得薪資；已匯入的來源會自動略過。
+            </div>
+
+            <button
+              onClick={sendBulkWallet}
+              disabled={bulkWalletSending}
+              className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-500 px-4 py-3 text-sm font-bold text-white hover:bg-emerald-400 disabled:opacity-60"
+            >
+              {bulkWalletSending ? (
+                <Loader2 size={16} className="animate-spin" />
+              ) : (
+                <WalletCards size={16} />
+              )}
+              {bulkWalletSending ? "批次匯入中..." : "確認批次匯入"}
             </button>
           </div>
         </div>
