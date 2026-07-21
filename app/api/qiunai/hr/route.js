@@ -9,6 +9,14 @@ const DEPARTMENT = "秋奈電競陪玩";
 const ADMIN_TYPES = ["查掛津貼", "代支報銷", "離職申請書", "留職停薪申請書", "逾期補登單申請書", "證照津貼申請書", "過失報告書", "懲處決議書"];
 const WELFARE_TYPES = ["生日禮金", "開工紅包", "肉粽補助", "月餅補助", "聖誕補助"];
 
+function friendlyError(error, fallback) {
+  const message = String(error?.message || "");
+  if (message.includes("schema cache") || message.includes("salary_requests")) {
+    return "簽核資料正在初始化，請稍後重新整理；若持續發生請聯繫管理員。";
+  }
+  return message || fallback;
+}
+
 function monthRange(value, offset = 0) {
   const matched = String(value || "").match(/^(\d{4})-(\d{2})$/);
   const base = matched ? new Date(Date.UTC(Number(matched[1]), Number(matched[2]) - 1 + offset, 1)) : new Date();
@@ -62,7 +70,7 @@ export async function GET(request) {
     if (error) throw error;
     return NextResponse.json({ ok: true, requests: requests || [], announcements: announcements || [], priorMonthSalary: salary, welfareEligible: salary === null ? null : salary > 5000 });
   } catch (error) {
-    return NextResponse.json({ ok: false, message: error.message || "讀取申請資料失敗" }, { status: 400 });
+    return NextResponse.json({ ok: false, message: friendlyError(error, "讀取申請資料失敗") }, { status: 400 });
   }
 }
 
@@ -90,7 +98,7 @@ export async function POST(request) {
     if (error) throw error;
     return NextResponse.json({ ok: true, request: data });
   } catch (error) {
-    return NextResponse.json({ ok: false, message: error.message || "送出申請失敗" }, { status: 400 });
+    return NextResponse.json({ ok: false, message: friendlyError(error, "送出申請失敗") }, { status: 400 });
   }
 }
 
@@ -104,6 +112,6 @@ export async function PATCH(request) {
     if (error) throw error;
     return NextResponse.json({ ok: true, request: data });
   } catch (error) {
-    return NextResponse.json({ ok: false, message: error.message || "更新簽核失敗" }, { status: 400 });
+    return NextResponse.json({ ok: false, message: friendlyError(error, "更新簽核失敗") }, { status: 400 });
   }
 }

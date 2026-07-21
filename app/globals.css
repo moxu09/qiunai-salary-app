@@ -933,3 +933,307 @@ tbody tr:hover {
     flex-basis: 28px !important;
   }
 }
+
+/* SAP-like salary workspace: full-height navigation and wide data canvas. */
+.staff-workspace,
+.admin-workspace-shell {
+  min-height: 100vh;
+  width: 100%;
+}
+
+.staff-workspace {
+  padding: 0 !important;
+  overflow: visible;
+}
+
+.staff-workspace-header {
+  margin-left: 264px;
+}
+
+.staff-workspace-header > div {
+  max-width: none !important;
+  padding-inline: clamp(20px, 2.2vw, 40px) !important;
+}
+
+.staff-workspace-section {
+  margin-left: 264px;
+  width: calc(100% - 264px);
+  padding: 24px clamp(20px, 2.2vw, 40px) 48px;
+}
+
+.staff-portal-grid {
+  display: block;
+  width: 100%;
+}
+
+.staff-main-column {
+  width: 100%;
+  max-width: none;
+}
+
+.staff-portal-nav,
+.admin-portal-nav {
+  position: fixed;
+  inset: 0 auto 0 0;
+  z-index: 60;
+  width: 264px;
+  height: 100vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  border: 0;
+  border-radius: 0 !important;
+  background: linear-gradient(180deg, #251348 0%, #1b1037 100%) !important;
+  color: #fff !important;
+  box-shadow: 10px 0 28px rgba(59, 20, 75, 0.12);
+}
+
+.staff-portal-nav {
+  padding: 28px 18px;
+}
+
+.staff-portal-brand,
+.admin-portal-brand {
+  display: block;
+  padding: 4px 12px 22px;
+  color: #fff !important;
+  text-decoration: none;
+}
+
+.staff-portal-eyebrow,
+.admin-portal-eyebrow {
+  color: #e9d5ff !important;
+  font-size: 11px !important;
+  font-weight: 800;
+  letter-spacing: 0.2em;
+}
+
+.staff-portal-company,
+.admin-portal-company {
+  margin-top: 8px;
+  color: #fff !important;
+  font-size: 18px !important;
+  font-weight: 900;
+  line-height: 1.35;
+}
+
+.staff-portal-name {
+  margin-top: 5px;
+  overflow: hidden;
+  color: #f9a8d4 !important;
+  font-size: 13px !important;
+  font-weight: 750;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.staff-portal-menu,
+.admin-portal-menu {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.staff-portal-group {
+  min-width: 0;
+}
+
+.staff-portal-group-title {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 0 0 5px;
+  padding: 7px 12px;
+  color: #f5d0fe !important;
+  font-size: 13px !important;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+}
+
+.staff-portal-items {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.staff-portal-link,
+.admin-portal-link {
+  display: flex;
+  width: 100%;
+  min-height: 44px !important;
+  align-items: center;
+  gap: 12px;
+  border: 0;
+  border-radius: 8px !important;
+  background: transparent !important;
+  color: #ede9fe !important;
+  padding: 10px 13px;
+  font-size: 14px !important;
+  font-weight: 750 !important;
+  line-height: 1.25;
+  text-align: left;
+  text-decoration: none;
+  transition: background-color 160ms ease, color 160ms ease, transform 160ms ease;
+}
+
+.staff-portal-link svg,
+.admin-portal-link svg {
+  flex: 0 0 auto;
+  color: #d8b4fe !important;
+}
+
+.staff-portal-link:hover,
+.admin-portal-link:hover {
+  background: rgba(255, 255, 255, 0.1) !important;
+  color: #fff !important;
+}
+
+.staff-portal-link.is-active,
+.admin-portal-link.is-active {
+  background: linear-gradient(90deg, #db2777 0%, #9333ea 100%) !important;
+  color: #fff !important;
+  box-shadow: 0 8px 18px rgba(17, 8, 37, 0.26) !important;
+}
+
+.staff-portal-link.is-active svg,
+.admin-portal-link.is-active svg {
+  color: #fff !important;
+}
+
+.admin-workspace-shell {
+  display: grid;
+  grid-template-columns: 264px minmax(0, 1fr);
+  background: #fff7fb !important;
+}
+
+.admin-portal-nav {
+  padding: 28px 18px;
+}
+
+.admin-portal-menu {
+  gap: 4px;
+}
+
+.admin-workspace-content {
+  grid-column: 2;
+  min-width: 0;
+  width: 100%;
+}
+
+.qiunai-admin-shell main,
+.qiunai-admin-shell .admin-page {
+  width: 100% !important;
+  max-width: none !important;
+}
+
+.qiunai-admin-shell .admin-page-header,
+.qiunai-admin-shell .admin-page-content,
+.qiunai-admin-shell main > section,
+.qiunai-admin-shell main > div {
+  width: 100% !important;
+  max-width: none !important;
+}
+
+.staff-main-column img,
+.admin-workspace-content img {
+  max-width: 100%;
+  height: auto;
+  object-fit: contain;
+}
+
+.staff-main-column .overflow-x-auto,
+.admin-workspace-content .overflow-x-auto,
+.staff-main-column .overflow-auto,
+.admin-workspace-content .overflow-auto {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.staff-main-column table,
+.admin-workspace-content table {
+  width: 100%;
+  min-width: 760px;
+  table-layout: auto;
+}
+
+.staff-main-column td,
+.staff-main-column th,
+.admin-workspace-content td,
+.admin-workspace-content th {
+  max-width: 420px;
+}
+
+@media (max-width: 1023px) {
+  .staff-workspace-header {
+    margin-left: 0;
+  }
+
+  .staff-workspace-section {
+    margin-left: 0;
+    width: 100%;
+    padding: 0 14px 32px;
+  }
+
+  .staff-portal-nav,
+  .admin-portal-nav {
+    position: sticky;
+    inset: 0 auto auto 0;
+    width: 100%;
+    height: auto;
+    max-height: none;
+    overflow-x: auto;
+    overflow-y: hidden;
+    box-shadow: 0 8px 22px rgba(59, 20, 75, 0.14);
+  }
+
+  .staff-portal-nav {
+    margin-inline: -14px;
+    width: calc(100% + 28px);
+    padding: 10px 14px;
+  }
+
+  .staff-portal-brand,
+  .admin-portal-brand {
+    display: none;
+  }
+
+  .staff-portal-menu,
+  .admin-portal-menu {
+    min-width: max-content;
+    flex-direction: row;
+    gap: 10px;
+  }
+
+  .staff-portal-group {
+    display: flex;
+    align-items: center;
+  }
+
+  .staff-portal-group-title {
+    margin: 0 4px 0 0;
+    white-space: nowrap;
+  }
+
+  .staff-portal-items {
+    flex-direction: row;
+  }
+
+  .staff-portal-link,
+  .admin-portal-link {
+    width: auto;
+    white-space: nowrap;
+  }
+
+  .admin-workspace-shell {
+    display: block;
+  }
+
+  .admin-portal-nav {
+    padding: 10px 14px;
+  }
+
+  .admin-workspace-content {
+    width: 100%;
+  }
+}

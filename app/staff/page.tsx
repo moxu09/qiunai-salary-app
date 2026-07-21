@@ -851,12 +851,12 @@ export default function StaffPage() {
   }
 
   return (
-    <main className="qiunai-page">
+    <main className="qiunai-page staff-workspace">
       <div className="qiunai-glow left-[-90px] top-[-90px] h-72 w-72 bg-pink-300" />
       <div className="qiunai-glow right-[-100px] top-32 h-80 w-80 bg-purple-300" />
       <div className="qiunai-glow bottom-[-120px] left-1/2 h-80 w-80 -translate-x-1/2 bg-rose-200" />
 
-      <header className="relative z-10 border-b border-pink-200/50 bg-white/45 backdrop-blur-xl">
+      <header className="staff-workspace-header relative z-10 border-b border-pink-200/50 bg-white/45 backdrop-blur-xl">
         <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-5 md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-4">
             {staff.avatar_url ? (
@@ -907,11 +907,11 @@ export default function StaffPage() {
         </div>
       </header>
 
-      <section id="overview" className="relative z-10 mx-auto max-w-[1500px] scroll-mt-24 px-4 py-8">
-        <div className="grid gap-5 lg:grid-cols-[250px_minmax(0,1fr)]">
+      <section id="overview" className="staff-workspace-section relative z-10 scroll-mt-24">
+        <div className="staff-portal-grid">
           <StaffPortalNav activeTab={activeTab} onSelect={setActiveTab} employeeName={staff.display_name || staff.discord_name || staff.discord_id} company="秋奈電競陪玩" />
 
-          <div className="min-w-0">
+          <div className="staff-main-column min-w-0">
         <HrPortalPanel activeTab={activeTab} apiPath="/api/qiunai/hr" department="秋奈電競陪玩" staffName={staff.display_name || staff.discord_name || staff.discord_id} selectedMonth={selectedMonth} onMonthChange={setSelectedMonth} />
         <div className={activeTab === "profile" ? "mt-6 grid gap-4 md:grid-cols-4" : "hidden"}>
           <Stat title="月份訂單" value={`${totals.orderCount} 筆`} />
