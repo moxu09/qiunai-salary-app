@@ -2,7 +2,7 @@
   "crons": [
     {
       "path": "/api/qiunai/salary-wallet/cron",
-      "schedule": "0 0 2,17 * *"
+      "schedule": "0 16 4,19 * *"
     }
   ]
 }

@@ -110,6 +110,9 @@ type SalaryWalletEntry = {
 type SalaryWithdrawRequest = {
   id: string;
   amount: number | string;
+  service_fee?: number | string | null;
+  welfare_fee?: number | string | null;
+  payout_amount?: number | string | null;
   status: string;
   reject_reason?: string | null;
   requested_at?: string | null;
@@ -133,6 +136,15 @@ type SalaryWalletData = {
   withdrawWindow: {
     isOpen: boolean;
     note: string;
+    opensAt: string;
+    closesAt: string;
+  };
+  withdrawPolicy: {
+    minimumAmount: number;
+    welfareFundRate: number;
+    monthlyWithdrawalCount: number;
+    nextServiceFee: number;
+    processingNote: string;
   };
 };
 
@@ -563,8 +575,11 @@ export default function StaffPage() {
     const amountNumber = Number(withdrawAmount || 0);
     const amount = Math.floor(amountNumber);
 
-    if (!Number.isFinite(amountNumber) || amount <= 0) {
-      alert("請輸入要提領的金額");
+    if (
+      !Number.isFinite(amountNumber) ||
+      amount < salaryWallet.withdrawPolicy.minimumAmount
+    ) {
+      alert("提領金額必須高於 1,000 元");
       return;
     }
 
@@ -573,7 +588,18 @@ export default function StaffPage() {
       return;
     }
 
-    if (!confirm(`確定要申請提領 $${amount.toLocaleString()}？`)) {
+    const serviceFee = salaryWallet.withdrawPolicy.nextServiceFee;
+    const welfareFee =
+      Math.round(
+        amount * salaryWallet.withdrawPolicy.welfareFundRate * 100
+      ) / 100;
+    const payoutAmount = amount - serviceFee - welfareFee;
+
+    if (
+      !confirm(
+        `確定要申請提領 $${amount.toLocaleString()}？\n福利金：$${welfareFee.toLocaleString()}\n手續費：$${serviceFee.toLocaleString()}\n實際匯款：$${payoutAmount.toLocaleString()}`
+      )
+    ) {
       return;
     }
 
@@ -941,7 +967,7 @@ export default function StaffPage() {
                   可累積提領的薪資餘額
                 </h2>
                 <p className="mt-2 text-sm leading-6 text-[#8b5a8f]">
-                  每月 17 號入帳 1-15 號薪水；每月 2 號入帳上月 16-月底薪水。
+                  每月 5 日 00:00 入帳上月 16 日至月底薪資；每月 20 日 00:00 入帳當月 1 日至 15 日薪資。
                 </p>
               </div>
 
@@ -950,7 +976,7 @@ export default function StaffPage() {
                   提領金額
                   <input
                     type="number"
-                    min="1"
+                    min="1001"
                     step="1"
                     inputMode="numeric"
                     value={withdrawAmount}
@@ -975,15 +1001,23 @@ export default function StaffPage() {
                     !salaryWallet.withdrawWindow.isOpen ||
                     !!salaryWallet.pendingRequest ||
                     Number(salaryWallet.totals.available || 0) <= 0 ||
-                    Number(withdrawAmount || 0) <= 0
+                    Number(withdrawAmount || 0) < 1001
                   }
                   className="qiunai-button w-full px-5 py-3 font-bold disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {withdrawing ? "申請中..." : "提領"}
                 </button>
-                <p className="text-xs font-semibold text-[#a36b9e]">
-                  每月 2 到 10 號可以提領，提領需要三個工作天。
-                </p>
+                <div className="space-y-1 text-xs font-semibold text-[#8b5a8f]">
+                  <p>每月 5 日 09:00 至 25 日 15:30 開放提領。</p>
+                  <p>金額須高於 $1,000；本月首次免手續費，第二次起每次 $15。</p>
+                  <p>依法扣除提領金額 0.2% 福利金，銀行作業需 0 到 3 個工作日。</p>
+                  {salaryWallet ? (
+                    <p className="font-black text-pink-600">
+                      本月下一次提領手續費：$
+                      {salaryWallet.withdrawPolicy.nextServiceFee.toLocaleString()}
+                    </p>
+                  ) : null}
+                </div>
               </div>
             </div>
 
@@ -1796,7 +1830,7 @@ function formatDateTime(value?: string | null) {
 function getRequestStatusText(request?: SalaryWithdrawRequest | null) {
   if (!request) return "尚未申請";
   if (request.status === "pending") return "申請中";
-  if (request.status === "approved") return "申請成功，請稍等三個工作日";
+  if (request.status === "approved") return "申請成功，請稍等 0 到 3 個工作日";
   if (request.status === "rejected") {
     return `申請遭駁回${
       request.reject_reason ? `，原因是${request.reject_reason}` : ""

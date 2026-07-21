@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import {
+  calculateWithdrawFees,
   getAuthUserFromRequest,
   getSalaryWalletSummary,
   settleSalaryWallet,
@@ -93,7 +94,8 @@ export async function POST(request) {
       return NextResponse.json(
         {
           ok: false,
-          message: "目前不在提領期間，每月 2 到 10 號可以提領。",
+          message:
+            "目前不在提領期間，開放時間為每月 5 日 09:00 至 25 日 15:30。",
         },
         { status: 403 }
       );
@@ -118,22 +120,22 @@ export async function POST(request) {
 
     if (
       hasRequestedAmount &&
-      (!Number.isFinite(requestedAmountNumber) || requestedAmount <= 0)
+      (!Number.isFinite(requestedAmountNumber) || requestedAmount < 1001)
     ) {
       return NextResponse.json(
         {
           ok: false,
-          message: "提領金額必須是大於 0 的數字。",
+          message: "提領金額必須高於 1,000 元。",
         },
         { status: 400 }
       );
     }
 
-    if (amount <= 0) {
+    if (amount < 1001) {
       return NextResponse.json(
         {
           ok: false,
-          message: "目前沒有可提領薪資。",
+          message: "可提領薪資需高於 1,000 元。",
         },
         { status: 400 }
       );
@@ -151,6 +153,18 @@ export async function POST(request) {
       );
     }
 
+    const { serviceFee, welfareFee, payoutAmount } = calculateWithdrawFees(
+      amount,
+      wallet.withdrawPolicy.monthlyWithdrawalCount
+    );
+
+    if (payoutAmount <= 0) {
+      return NextResponse.json(
+        { ok: false, message: "扣除手續費與福利金後沒有可匯款金額。" },
+        { status: 400 }
+      );
+    }
+
     const { error } = await supabaseAdmin
       .from("salary_withdraw_requests")
       .insert({
@@ -158,6 +172,9 @@ export async function POST(request) {
         discord_id: discordId,
         staff_name: staffName(staff, discordId),
         amount,
+        service_fee: serviceFee,
+        welfare_fee: welfareFee,
+        payout_amount: payoutAmount,
         status: "pending",
         request_note: body.note || null,
       });
