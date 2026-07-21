@@ -509,7 +509,7 @@ textarea {
   }
 }
 
-/* 薪資總表沿用 DeepNight 的全寬橫式區塊，避免表單欄位被擠成直排。 */
+/* 薪資總表沿用 DeepNight 的卡片比例與左右分欄。 */
 .qiunai-admin-shell .salary-template {
   display: flex;
   flex-direction: column;
@@ -570,6 +570,70 @@ textarea {
 .qiunai-admin-shell .salary-commission-panel {
   grid-column: 1 / -1;
   order: 8;
+}
+
+.qiunai-admin-shell .salary-overview-content {
+  width: 100% !important;
+  max-width: 80rem !important;
+  margin-inline: auto;
+}
+
+@media (min-width: 1280px) {
+  .qiunai-admin-shell .salary-template {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+  }
+
+  .qiunai-admin-shell .salary-template > :first-child {
+    grid-column: 1 / -1;
+    grid-row: 1;
+  }
+
+  .qiunai-admin-shell .salary-stat-grid {
+    grid-row: 2;
+  }
+
+  .qiunai-admin-shell .salary-filter-panel {
+    grid-row: 3;
+  }
+
+  .qiunai-admin-shell .salary-order-form {
+    grid-column: 1;
+    grid-row: 4 / span 3;
+    align-self: stretch;
+  }
+
+  .qiunai-admin-shell .salary-bonus-form {
+    grid-column: 2;
+    grid-row: 4;
+  }
+
+  .qiunai-admin-shell .salary-deduction-form {
+    grid-column: 2;
+    grid-row: 5;
+  }
+
+  .qiunai-admin-shell .salary-pay-panel {
+    grid-column: 2;
+    grid-row: 6;
+  }
+
+  .qiunai-admin-shell .salary-orders-table {
+    grid-row: 7;
+  }
+
+  .qiunai-admin-shell .salary-bonus-table {
+    grid-row: 8;
+  }
+
+  .qiunai-admin-shell .salary-personal-panel {
+    grid-row: 9;
+  }
+
+  .qiunai-admin-shell .salary-commission-panel {
+    grid-row: 10;
+  }
 }
 
 /* 響應式護欄：前台、後台在手機與桌機都保持整齊 */

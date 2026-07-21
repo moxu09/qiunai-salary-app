@@ -855,8 +855,8 @@ export default function AdminSalaryPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#fff7fb] px-5 py-6 text-[#3f2947]">
-      <div className="mx-auto max-w-7xl space-y-5">
+    <main className="salary-overview-page min-h-screen bg-[#fff7fb] px-5 py-6 text-[#3f2947]">
+      <div className="salary-overview-content mx-auto max-w-7xl space-y-5">
         <header className="rounded-[30px] border border-pink-100 bg-white px-6 py-5 shadow-sm shadow-pink-100">
           <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
             <div>
@@ -1244,7 +1244,7 @@ export default function AdminSalaryPage() {
               完成時間預設為現在，可自行修改。選擇陪陪後會自動套用她的個人抽成檔位。
             </p>
 
-            <div className="mt-5 grid gap-4 md:grid-cols-4">
+            <div className="mt-5 grid gap-4 md:grid-cols-2">
               <SearchableStaffSelect
                 label="員工"
                 value={orderForm.discord_id}
@@ -1399,7 +1399,7 @@ export default function AdminSalaryPage() {
               獎金時間預設為現在，可自行修改。
             </p>
 
-            <div className="mt-5 grid gap-4 md:grid-cols-5">
+            <div className="mt-5 grid gap-4 md:grid-cols-2">
               <SearchableStaffSelect
                 label="員工"
                 value={bonusForm.discord_id}
@@ -1446,7 +1446,7 @@ export default function AdminSalaryPage() {
 
               <button
                 onClick={addBonus}
-                className="md:col-span-5 flex items-center justify-center gap-2 rounded-xl bg-pink-500 px-4 py-3 font-semibold hover:bg-pink-400"
+                className="md:col-span-2 flex items-center justify-center gap-2 rounded-xl bg-pink-500 px-4 py-3 font-semibold hover:bg-pink-400"
               >
                 <Plus size={18} />
                 新增獎金
@@ -1466,7 +1466,7 @@ export default function AdminSalaryPage() {
               扣除金額請輸入正數，系統會以負數列入薪資明細。
             </p>
 
-            <div className="mt-5 grid gap-4 md:grid-cols-5">
+            <div className="mt-5 grid gap-4 md:grid-cols-2">
               <SearchableStaffSelect
                 label="員工"
                 value={deductionForm.discord_id}
@@ -1506,7 +1506,7 @@ export default function AdminSalaryPage() {
 
               <button
                 onClick={addDeduction}
-                className="mt-6 flex items-center justify-center gap-2 rounded-xl bg-red-500 px-4 py-3 font-semibold hover:bg-red-400"
+                className="flex items-center justify-center gap-2 rounded-xl bg-red-500 px-4 py-3 font-semibold hover:bg-red-400 md:col-span-2"
               >
                 <MinusCircle size={18} />
                 新增扣除
@@ -1521,7 +1521,7 @@ export default function AdminSalaryPage() {
               預設為上個月整個月，可自行調整時間段。
             </p>
 
-            <div className="mt-5 grid gap-4 md:grid-cols-5">
+            <div className="mt-5 grid gap-4 md:grid-cols-2">
               <label className="block">
                 <span className="text-sm text-[#6f526d]">發薪對象</span>
 
@@ -1574,7 +1574,7 @@ export default function AdminSalaryPage() {
 
               <button
                 onClick={markRangePaid}
-                className="mt-6 flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 py-3 font-semibold hover:bg-emerald-400"
+                className="flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 py-3 font-semibold hover:bg-emerald-400 md:col-span-2"
               >
                 <CheckCircle2 size={18} />
                 批次標記已發薪
