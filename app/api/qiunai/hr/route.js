@@ -144,8 +144,8 @@ export async function POST(request) {
     const allowed = group === "welfare" ? WELFARE_TYPES : ADMIN_TYPES;
     const requestType = String(body.requestType || "");
     if (!allowed.includes(requestType)) throw new Error("申請項目不正確");
-    if (requestType === "代支報銷" && files.length === 0) {
-      throw new Error("代支報銷必須上傳發票或付款證明");
+    if (["查掛津貼", "代支報銷"].includes(requestType) && files.length === 0) {
+      throw new Error(requestType === "查掛津貼" ? "查掛津貼必須上傳付款證明" : "代支報銷必須上傳發票或付款證明");
     }
     if (group === "welfare") {
       const salary = await priorMonthSalary(discordId, new Date().toISOString().slice(0, 7));
