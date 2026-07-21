@@ -22,6 +22,9 @@ type Row = {
   needed_date?: string | null;
   status: string;
   review_result?: string | null;
+  reviewer_name?: string | null;
+  reviewer_discord_id?: string | null;
+  reviewed_at?: string | null;
   form_data?: { details?: string; attachments?: Attachment[] };
 };
 
@@ -134,7 +137,10 @@ export default function AdminApprovals({ apiPath }: { apiPath: string }) {
                     <button onClick={() => review(row.id, "rejected")} className="rounded-xl bg-rose-500 px-5 py-2 font-black text-white">駁回</button>
                   </div>
                 ) : (
-                  <p className="mt-4 rounded-xl bg-slate-50 p-3 text-sm text-slate-600">簽核結果：{row.review_result || "-"}</p>
+                  <div className="mt-4 rounded-xl bg-slate-50 p-3 text-sm text-slate-600">
+                    <p>簽核結果：{row.review_result || "-"}</p>
+                    <p className="mt-1 font-bold text-slate-700">簽核人：{row.reviewer_name || "未知簽核人"}{row.reviewer_discord_id ? `（${row.reviewer_discord_id}）` : ""}</p>
+                  </div>
                 )}
               </article>
             ))

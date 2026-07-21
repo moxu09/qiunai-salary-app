@@ -12,22 +12,16 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const ORGANIZATION = "qiunai";
-const DEFAULT_UPLOAD_EMAIL = "vince930927@gmail.com";
+const DEFAULT_UPLOAD_DISCORD_ID = "847840193859682304";
 
-function normalizedEmail(user) {
-  return String(user?.email || user?.user_metadata?.email || "")
-    .trim()
-    .toLowerCase();
-}
-
-function canUpload(user) {
+function canUpload(discordId) {
   const allowed = String(
-    process.env.SALARY_FILE_UPLOAD_EMAILS || DEFAULT_UPLOAD_EMAIL
+    process.env.SALARY_FILE_UPLOAD_DISCORD_IDS || DEFAULT_UPLOAD_DISCORD_ID
   )
     .split(",")
-    .map((email) => email.trim().toLowerCase())
+    .map((id) => id.trim())
     .filter(Boolean);
-  return allowed.includes(normalizedEmail(user));
+  return allowed.includes(String(discordId || "").trim());
 }
 
 async function requireAdmin(discordId) {
@@ -42,8 +36,8 @@ async function requireAdmin(discordId) {
 
 async function authorize(request) {
   const auth = await getAuthUserFromRequest(supabaseAdmin, request);
-  const uploader = canUpload(auth.user);
-  if (!uploader) await requireAdmin(auth.discordId);
+  await requireAdmin(auth.discordId);
+  const uploader = canUpload(auth.discordId);
   return { ...auth, canUpload: uploader };
 }
 

@@ -49,6 +49,10 @@ export default function HrPortalPanel({ activeTab, apiPath, department, staffNam
       const { data } = await supabase.auth.getSession();
       const options = group === "welfare" ? WELFARE_TYPES : ADMIN_TYPES;
       const requestType = options.includes(type) ? type : options[0];
+      if (requestType === "代支報銷" && images.length === 0) {
+        alert("代支報銷必須上傳發票或付款證明");
+        return;
+      }
       const body = new FormData();
       body.append("requestGroup", group);
       body.append("requestType", requestType);
@@ -106,6 +110,7 @@ export default function HrPortalPanel({ activeTab, apiPath, department, staffNam
     const welfare = activeTab === "welfare";
     const typeOptions = welfare ? WELFARE_TYPES : ADMIN_TYPES;
     const selectedType = typeOptions.includes(type) ? type : typeOptions[0];
+    const requiresPaymentProof = !welfare && selectedType === "代支報銷";
     return <section className="rounded-[28px] border border-violet-100 bg-white p-6 shadow-sm shadow-violet-100">
       <div className="flex items-center gap-3"><span className="rounded-2xl bg-violet-100 p-3 text-violet-600"><FilePenLine size={22}/></span><div><h2 className="text-xl font-black">{welfare ? "福利申請" : "行政服務申請"}</h2><p className="mt-1 text-sm text-slate-500">申請送出後，可至簽核分類查看結果。</p></div></div>
       <div className="mt-6 grid gap-4 md:grid-cols-2">
@@ -115,14 +120,14 @@ export default function HrPortalPanel({ activeTab, apiPath, department, staffNam
       </div>
       {welfare && <div className={`mt-5 rounded-2xl p-4 text-sm font-bold ${eligible ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}><p>前一個月薪資：{money(priorSalary)}</p><p className="mt-1">{eligible ? "符合超過 5,000 元的申請資格" : "前一個月薪資需超過 5,000 元才可申請"}</p></div>}
       <Field label="申請內容 / 補充說明（選填）" className="mt-5"><textarea rows={7} maxLength={10000} value={details} onChange={(e) => setDetails(e.target.value)} placeholder="可填寫申請原因與補充資料，也可以留空。" /></Field>
-      <Field label="上傳圖片（選填）" className="mt-5">
+      <Field label={requiresPaymentProof ? "發票或付款證明（必填）" : "上傳圖片（選填）"} className="mt-5">
         <div className="rounded-2xl border border-dashed border-violet-200 bg-violet-50/60 p-4">
           <input key={fileInputKey} type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/heic,image/heif" multiple onChange={(event) => selectImages(event.target.files)} />
-          <p className="mt-2 text-xs font-normal text-slate-500">最多 5 張，每張 5 MB；支援 JPG、PNG、WebP、GIF、HEIC。附件會在核准或駁回後自動刪除。</p>
+          <p className="mt-2 text-xs font-normal text-slate-500">{requiresPaymentProof ? "請上傳清楚可辨識的發票或付款證明。" : "可上傳申請相關圖片，也可以留空。"} 最多 5 張，每張 5 MB；支援 JPG、PNG、WebP、GIF、HEIC。附件會在核准或駁回後自動刪除。</p>
           {images.length ? <div className="mt-3 grid gap-2 sm:grid-cols-2">{images.map((image, index) => <div key={`${image.name}-${image.lastModified}`} className="flex items-center gap-2 rounded-xl bg-white px-3 py-2 text-xs text-slate-600"><FileImage size={16} className="shrink-0 text-violet-500"/><span className="min-w-0 flex-1 truncate">{image.name}</span><button type="button" aria-label={`移除 ${image.name}`} onClick={() => setImages((current) => current.filter((_, itemIndex) => itemIndex !== index))} className="rounded-full p-1 text-slate-400 hover:bg-rose-50 hover:text-rose-500"><X size={14}/></button></div>)}</div> : null}
         </div>
       </Field>
-      <button type="button" onClick={() => submit(welfare ? "welfare" : "administrative")} disabled={submitting || (welfare && !eligible)} className="mt-5 w-full rounded-2xl bg-violet-600 px-5 py-3 font-black text-white hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-40">{submitting ? "送出中…" : "送出申請"}</button>
+      <button type="button" onClick={() => submit(welfare ? "welfare" : "administrative")} disabled={submitting || (welfare && !eligible) || (requiresPaymentProof && images.length === 0)} className="mt-5 w-full rounded-2xl bg-violet-600 px-5 py-3 font-black text-white hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-40">{submitting ? "送出中…" : "送出申請"}</button>
     </section>;
   }
 

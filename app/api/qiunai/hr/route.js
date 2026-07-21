@@ -37,8 +37,13 @@ async function getStaff(discordId) {
 }
 
 async function requireAdmin(discordId) {
-  const { data } = await supabaseAdmin.from("qiunai_admins").select("discord_id").eq("discord_id", discordId).eq("is_active", true).maybeSingle();
+  const { data } = await supabaseAdmin.from("qiunai_admins").select("*").eq("discord_id", discordId).eq("is_active", true).maybeSingle();
   if (!data) throw new Error("沒有後台管理權限");
+  return data;
+}
+
+function reviewerName(admin) {
+  return admin?.display_name || admin?.real_name || admin?.discord_name || admin?.name || null;
 }
 
 function approvalCategory(type, group) {
@@ -112,7 +117,19 @@ export async function GET(request) {
             adminRequestPriority(left) - adminRequestPriority(right)
         )
       : requests || [];
-    return NextResponse.json({ ok: true, requests: await signRequestAttachments(orderedRequests), announcements: announcements || [], priorMonthSalary: salary, welfareEligible: salary === null ? null : salary > 5000 });
+    const reviewerIds = adminMode
+      ? [...new Set(orderedRequests.map((item) => item.reviewed_by).filter(Boolean))]
+      : [];
+    const { data: reviewers } = reviewerIds.length
+      ? await supabaseAdmin.from("qiunai_admins").select("*").in("discord_id", reviewerIds)
+      : { data: [] };
+    const reviewerMap = new Map((reviewers || []).map((admin) => [String(admin.discord_id), reviewerName(admin)]));
+    const requestsWithReviewer = orderedRequests.map((item) => ({
+      ...item,
+      reviewer_discord_id: item.reviewed_by || item.form_data?.reviewer_discord_id || null,
+      reviewer_name: item.form_data?.reviewer_name || reviewerMap.get(String(item.reviewed_by || "")) || null,
+    }));
+    return NextResponse.json({ ok: true, requests: await signRequestAttachments(requestsWithReviewer), announcements: announcements || [], priorMonthSalary: salary, welfareEligible: salary === null ? null : salary > 5000 });
   } catch (error) {
     return NextResponse.json({ ok: false, message: friendlyError(error, "讀取申請資料失敗") }, { status: 400 });
   }
@@ -127,6 +144,9 @@ export async function POST(request) {
     const allowed = group === "welfare" ? WELFARE_TYPES : ADMIN_TYPES;
     const requestType = String(body.requestType || "");
     if (!allowed.includes(requestType)) throw new Error("申請項目不正確");
+    if (requestType === "代支報銷" && files.length === 0) {
+      throw new Error("代支報銷必須上傳發票或付款證明");
+    }
     if (group === "welfare") {
       const salary = await priorMonthSalary(discordId, new Date().toISOString().slice(0, 7));
       if (salary <= 5000) throw new Error("前一個月薪資需超過 5,000 元才可申請福利");
@@ -156,7 +176,7 @@ export async function POST(request) {
 export async function PATCH(request) {
   try {
     const { discordId } = await getAuthUserFromRequest(supabaseAdmin, request);
-    await requireAdmin(discordId);
+    const admin = await requireAdmin(discordId);
     const body = await request.json().catch(() => ({}));
     if (!body.id || !["approved", "rejected"].includes(body.status)) throw new Error("簽核資料不正確");
     const { data: existing, error: existingError } = await supabaseAdmin
@@ -175,7 +195,7 @@ export async function PATCH(request) {
       { strict: true }
     );
     const reviewedAt = new Date().toISOString();
-    const { data, error } = await supabaseAdmin.from("salary_requests").update({ status: body.status, review_result: String(body.reviewResult || "").trim() || (body.status === "approved" ? "核准" : "駁回"), reviewed_by: discordId, reviewed_at: reviewedAt, updated_at: reviewedAt, form_data: { ...formData, attachments: [], attachments_expired_at: reviewedAt } }).eq("id", body.id).eq("organization_code", ORG).select("*").single();
+    const { data, error } = await supabaseAdmin.from("salary_requests").update({ status: body.status, review_result: String(body.reviewResult || "").trim() || (body.status === "approved" ? "核准" : "駁回"), reviewed_by: discordId, reviewed_at: reviewedAt, updated_at: reviewedAt, form_data: { ...formData, attachments: [], attachments_expired_at: reviewedAt, reviewer_name: reviewerName(admin), reviewer_discord_id: discordId } }).eq("id", body.id).eq("organization_code", ORG).select("*").single();
     if (error) throw error;
     return NextResponse.json({ ok: true, request: data });
   } catch (error) {
