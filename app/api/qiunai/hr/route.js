@@ -48,6 +48,13 @@ function approvalCategory(type, group) {
   return "administrative";
 }
 
+function adminRequestPriority(request) {
+  const pendingOffset = request.status === "pending" ? 0 : 2;
+  const urgencyOffset =
+    request.urgency === "急件" || request.urgency === "urgent" ? 0 : 1;
+  return pendingOffset + urgencyOffset;
+}
+
 async function readRequestBody(request) {
   const contentType = request.headers.get("content-type") || "";
   if (!contentType.includes("multipart/form-data")) {
@@ -99,7 +106,13 @@ export async function GET(request) {
       adminMode ? Promise.resolve(null) : priorMonthSalary(discordId, selectedMonth),
     ]);
     if (error) throw error;
-    return NextResponse.json({ ok: true, requests: await signRequestAttachments(requests || []), announcements: announcements || [], priorMonthSalary: salary, welfareEligible: salary === null ? null : salary > 5000 });
+    const orderedRequests = adminMode
+      ? [...(requests || [])].sort(
+          (left, right) =>
+            adminRequestPriority(left) - adminRequestPriority(right)
+        )
+      : requests || [];
+    return NextResponse.json({ ok: true, requests: await signRequestAttachments(orderedRequests), announcements: announcements || [], priorMonthSalary: salary, welfareEligible: salary === null ? null : salary > 5000 });
   } catch (error) {
     return NextResponse.json({ ok: false, message: friendlyError(error, "讀取申請資料失敗") }, { status: 400 });
   }
@@ -146,7 +159,23 @@ export async function PATCH(request) {
     await requireAdmin(discordId);
     const body = await request.json().catch(() => ({}));
     if (!body.id || !["approved", "rejected"].includes(body.status)) throw new Error("簽核資料不正確");
-    const { data, error } = await supabaseAdmin.from("salary_requests").update({ status: body.status, review_result: String(body.reviewResult || "").trim() || (body.status === "approved" ? "核准" : "駁回"), reviewed_by: discordId, reviewed_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq("id", body.id).eq("organization_code", ORG).select("*").single();
+    const { data: existing, error: existingError } = await supabaseAdmin
+      .from("salary_requests")
+      .select("id, form_data")
+      .eq("id", body.id)
+      .eq("organization_code", ORG)
+      .single();
+    if (existingError || !existing) throw new Error("找不到申請資料");
+    const formData = existing.form_data || {};
+    const attachments = Array.isArray(formData.attachments)
+      ? formData.attachments
+      : [];
+    await removeRequestImages(
+      attachments.map((item) => item?.path).filter(Boolean),
+      { strict: true }
+    );
+    const reviewedAt = new Date().toISOString();
+    const { data, error } = await supabaseAdmin.from("salary_requests").update({ status: body.status, review_result: String(body.reviewResult || "").trim() || (body.status === "approved" ? "核准" : "駁回"), reviewed_by: discordId, reviewed_at: reviewedAt, updated_at: reviewedAt, form_data: { ...formData, attachments: [], attachments_expired_at: reviewedAt } }).eq("id", body.id).eq("organization_code", ORG).select("*").single();
     if (error) throw error;
     return NextResponse.json({ ok: true, request: data });
   } catch (error) {

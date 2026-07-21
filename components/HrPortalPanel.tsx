@@ -118,7 +118,7 @@ export default function HrPortalPanel({ activeTab, apiPath, department, staffNam
       <Field label="上傳圖片（選填）" className="mt-5">
         <div className="rounded-2xl border border-dashed border-violet-200 bg-violet-50/60 p-4">
           <input key={fileInputKey} type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/heic,image/heif" multiple onChange={(event) => selectImages(event.target.files)} />
-          <p className="mt-2 text-xs font-normal text-slate-500">最多 5 張，每張 5 MB；支援 JPG、PNG、WebP、GIF、HEIC。</p>
+          <p className="mt-2 text-xs font-normal text-slate-500">最多 5 張，每張 5 MB；支援 JPG、PNG、WebP、GIF、HEIC。附件會在核准或駁回後自動刪除。</p>
           {images.length ? <div className="mt-3 grid gap-2 sm:grid-cols-2">{images.map((image, index) => <div key={`${image.name}-${image.lastModified}`} className="flex items-center gap-2 rounded-xl bg-white px-3 py-2 text-xs text-slate-600"><FileImage size={16} className="shrink-0 text-violet-500"/><span className="min-w-0 flex-1 truncate">{image.name}</span><button type="button" aria-label={`移除 ${image.name}`} onClick={() => setImages((current) => current.filter((_, itemIndex) => itemIndex !== index))} className="rounded-full p-1 text-slate-400 hover:bg-rose-50 hover:text-rose-500"><X size={14}/></button></div>)}</div> : null}
         </div>
       </Field>
