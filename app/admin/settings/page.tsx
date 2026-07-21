@@ -1,3 +1,5 @@
+import AnnouncementManager from "@/components/AnnouncementManager";
+
 export default function SettingsPage() {
-  return <main className="min-h-screen p-5 sm:p-8"><section className="mx-auto max-w-5xl rounded-3xl bg-white p-7 shadow-sm"><h1 className="text-2xl font-black text-slate-900">系統設定</h1><p className="mt-3 text-sm leading-6 text-slate-500">系統設定入口已建立。後續可在此集中管理薪資規則、公告與申請文件範本。</p></section></main>;
+  return <main className="min-h-screen p-4 sm:p-8"><div className="mx-auto max-w-5xl space-y-5"><section className="rounded-3xl bg-white p-6 shadow-sm sm:p-7"><h1 className="text-2xl font-black text-slate-900">系統設定</h1><p className="mt-3 text-sm leading-6 text-slate-500">集中管理員工公告與薪資網相關設定。</p></section><AnnouncementManager apiPath="/api/qiunai/announcements" accent="pink" /></div></main>;
 }

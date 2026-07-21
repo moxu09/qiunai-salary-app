@@ -1,6 +1,6 @@
 create table if not exists public.salary_announcements (
   id uuid primary key default gen_random_uuid(),
-  organization_code text not null check (organization_code in ('deepnight', 'qiunai', 'all')),
+  organization_code text not null check (organization_code in ('deepnight', 'qiunai', 'xy', 'all')),
   title text not null,
   content text not null,
   is_active boolean not null default true,
