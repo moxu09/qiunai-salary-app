@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { getAuthUserFromRequest } from "@/lib/salaryWallet";
+import {
+  removeRequestImages,
+  signRequestAttachments,
+  uploadRequestImages,
+} from "@/lib/requestAttachments";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -43,6 +48,32 @@ function approvalCategory(type, group) {
   return "administrative";
 }
 
+async function readRequestBody(request) {
+  const contentType = request.headers.get("content-type") || "";
+  if (!contentType.includes("multipart/form-data")) {
+    return { body: await request.json().catch(() => ({})), files: [] };
+  }
+
+  const contentLength = Number(request.headers.get("content-length") || 0);
+  if (contentLength > 27 * 1024 * 1024) {
+    throw new Error("上傳內容過大");
+  }
+  const form = await request.formData();
+  const files = form
+    .getAll("images")
+    .filter((value) => typeof value?.arrayBuffer === "function" && value.size > 0);
+  return {
+    body: {
+      requestGroup: form.get("requestGroup"),
+      requestType: form.get("requestType"),
+      urgency: form.get("urgency"),
+      neededDate: form.get("neededDate"),
+      details: form.get("details"),
+    },
+    files,
+  };
+}
+
 async function priorMonthSalary(discordId, selectedMonth) {
   const range = monthRange(selectedMonth, -1);
   const [{ data: orders }, { data: bonuses }] = await Promise.all([
@@ -68,7 +99,7 @@ export async function GET(request) {
       adminMode ? Promise.resolve(null) : priorMonthSalary(discordId, selectedMonth),
     ]);
     if (error) throw error;
-    return NextResponse.json({ ok: true, requests: requests || [], announcements: announcements || [], priorMonthSalary: salary, welfareEligible: salary === null ? null : salary > 5000 });
+    return NextResponse.json({ ok: true, requests: await signRequestAttachments(requests || []), announcements: announcements || [], priorMonthSalary: salary, welfareEligible: salary === null ? null : salary > 5000 });
   } catch (error) {
     return NextResponse.json({ ok: false, message: friendlyError(error, "讀取申請資料失敗") }, { status: 400 });
   }
@@ -78,7 +109,7 @@ export async function POST(request) {
   try {
     const { discordId } = await getAuthUserFromRequest(supabaseAdmin, request);
     const staff = await getStaff(discordId);
-    const body = await request.json().catch(() => ({}));
+    const { body, files } = await readRequestBody(request);
     const group = body.requestGroup === "welfare" ? "welfare" : "administrative";
     const allowed = group === "welfare" ? WELFARE_TYPES : ADMIN_TYPES;
     const requestType = String(body.requestType || "");
@@ -88,15 +119,22 @@ export async function POST(request) {
       if (salary <= 5000) throw new Error("前一個月薪資需超過 5,000 元才可申請福利");
     }
     const name = staff.display_name || staff.real_name || staff.discord_name || discordId;
+    const details = String(body.details || "").trim();
+    if (details.length > 10000) throw new Error("申請內容不得超過 10,000 字");
+    const attachments = await uploadRequestImages({ organization: ORG, discordId, files });
     const { data, error } = await supabaseAdmin.from("salary_requests").insert({
       organization_code: ORG, guild_id: null, discord_id: discordId, staff_name: name, department: DEPARTMENT,
       application_date: new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Taipei" }), needed_date: body.neededDate || null,
       urgency: body.urgency === "urgent" || body.urgency === "急件" ? "急件" : "一般", request_group: group,
       approval_category: approvalCategory(requestType, group), request_type: requestType,
-      form_data: { details: String(body.details || "").trim() }, status: "pending",
+      form_data: { details, attachments }, status: "pending",
     }).select("*").single();
-    if (error) throw error;
-    return NextResponse.json({ ok: true, request: data });
+    if (error) {
+      await removeRequestImages(attachments.map((item) => item.path));
+      throw error;
+    }
+    const [signedRequest] = await signRequestAttachments([data]);
+    return NextResponse.json({ ok: true, request: signedRequest });
   } catch (error) {
     return NextResponse.json({ ok: false, message: friendlyError(error, "送出申請失敗") }, { status: 400 });
   }
