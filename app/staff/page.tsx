@@ -17,6 +17,8 @@ import {
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { SERVICE_OPTIONS, type ServiceOption } from "@/lib/serviceOptions";
+import StaffPortalNav, { type PortalTab } from "@/components/StaffPortalNav";
+import HrPortalPanel from "@/components/HrPortalPanel";
 import {
   formatTaipeiDateTime,
   getNextTaipeiMonthText,
@@ -55,6 +57,7 @@ type SalaryOrder = {
   staff_name: string | null;
   customer_name: string | null;
   service_name: string | null;
+  order_type?: string | null;
   order_amount: number | null;
   staff_salary: number | null;
   bonus_amount: number | null;
@@ -157,9 +160,7 @@ export default function StaffPage() {
     null
   );
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonthInput());
-  const [activeTab, setActiveTab] = useState<
-    "overview" | "profile" | "wallet" | "games"
-  >("overview");
+  const [activeTab, setActiveTab] = useState<PortalTab>("profile");
 
   const [profileForm, setProfileForm] = useState({
     display_name: "",
@@ -230,6 +231,13 @@ export default function StaffPage() {
       unpaidSalary,
     };
   }, [orders, bonusList]);
+
+  const visibleOrders = useMemo(() => orders.filter((order) => {
+    const isTip = order.order_type === "打賞" || String(order.service_name || "").includes("打賞");
+    return activeTab === "tips" ? isTip : !isTip;
+  }), [activeTab, orders]);
+  const visibleBonuses = useMemo(() => bonusList.filter((bonus) => activeTab === "deductions" ? Number(bonus.amount || 0) < 0 : Number(bonus.amount || 0) >= 0), [activeTab, bonusList]);
+  const isOrderTab = activeTab === "orders" || activeTab === "tips" || activeTab === "bonuses" || activeTab === "deductions";
 
   const commissionInfo = useMemo(() => {
     if (!staff) {
@@ -901,48 +909,11 @@ export default function StaffPage() {
 
       <section id="overview" className="relative z-10 mx-auto max-w-[1500px] scroll-mt-24 px-4 py-8">
         <div className="grid gap-5 lg:grid-cols-[250px_minmax(0,1fr)]">
-          <aside className="sticky top-4 self-start overflow-x-auto rounded-[28px] bg-[#4a197f] p-3 text-white shadow-xl shadow-purple-200/60 lg:h-[calc(100vh-2rem)] lg:p-5">
-            <div className="hidden lg:block">
-              <p className="text-xs font-semibold text-purple-200">PLAYER CENTER</p>
-              <p className="mt-2 text-xl font-black">秋奈陪玩師</p>
-              <p className="mt-1 truncate text-sm text-purple-200">
-                {staff.display_name || staff.discord_name || staff.discord_id}
-              </p>
-            </div>
-            <nav className="flex min-w-max gap-2 lg:mt-8 lg:min-w-0 lg:flex-col">
-              {[
-                ["overview", "首頁總覽", Sparkles],
-                ["profile", "個人資料", Heart],
-                ["wallet", "薪資錢包", WalletCards],
-                ["games", "可接遊戲", Gamepad2],
-              ].map(([tab, label, Icon]) => {
-                const NavIcon = Icon as typeof Sparkles;
-                return (
-                  <button
-                    key={tab as string}
-                    type="button"
-                    onClick={() => {
-                      setActiveTab(tab as typeof activeTab);
-                      window.scrollTo({ top: 0, behavior: "smooth" });
-                    }}
-                    className={`flex items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm font-bold transition ${
-                      activeTab === tab
-                        ? "bg-fuchsia-500 text-white shadow-lg shadow-purple-950/20"
-                        : "text-purple-100 hover:bg-white/15 hover:text-white"
-                    }`}
-                  >
-                    <NavIcon size={18} /> {label as string}
-                  </button>
-                );
-              })}
-            </nav>
-            <p className="mt-auto hidden rounded-2xl bg-white/10 p-4 text-xs leading-6 text-purple-200 lg:block">
-              個人資料與可接遊戲儲存後，會同步更新官網陪陪介紹。
-            </p>
-          </aside>
+          <StaffPortalNav activeTab={activeTab} onSelect={setActiveTab} employeeName={staff.display_name || staff.discord_name || staff.discord_id} company="秋奈電競陪玩" />
 
           <div className="min-w-0">
-        <div className={activeTab === "overview" ? "grid gap-4 md:grid-cols-4" : "hidden"}>
+        <HrPortalPanel activeTab={activeTab} apiPath="/api/qiunai/hr" department="秋奈電競陪玩" staffName={staff.display_name || staff.discord_name || staff.discord_id} selectedMonth={selectedMonth} onMonthChange={setSelectedMonth} />
+        <div className={activeTab === "profile" ? "mt-6 grid gap-4 md:grid-cols-4" : "hidden"}>
           <Stat title="月份訂單" value={`${totals.orderCount} 筆`} />
           <Stat
             title="月份薪資"
@@ -959,7 +930,7 @@ export default function StaffPage() {
         </div>
 
         <div className="mt-6">
-          <Card id="wallet" className={activeTab === "wallet" ? "" : "hidden"}>
+          <Card id="wallet" className={activeTab === "profile" ? "" : "hidden"}>
             <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
               <div>
                 <p className="flex items-center gap-2 text-sm font-semibold text-pink-500">
@@ -1120,7 +1091,7 @@ export default function StaffPage() {
           </Card>
         </div>
 
-        <div className={activeTab === "overview" ? "mt-6" : "hidden"}>
+        <div className={isOrderTab ? "mt-6" : "hidden"}>
           <Card>
             <div className="grid gap-4 md:grid-cols-[1fr_auto] md:items-end">
               <Input
@@ -1141,7 +1112,7 @@ export default function StaffPage() {
           </Card>
         </div>
 
-        <div className={activeTab === "overview" ? "mt-6" : "hidden"}>
+        <div className={activeTab === "profile" ? "mt-6" : "hidden"}>
           <Card>
             <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
               <div>
@@ -1195,9 +1166,9 @@ export default function StaffPage() {
           </Card>
         </div>
 
-        <div className={activeTab === "overview" ? "mt-6 grid gap-6 lg:grid-cols-[420px_1fr]" : "mt-6 block"}>
+        <div className={activeTab === "profile" ? "mt-6 grid gap-6 lg:grid-cols-[420px_1fr]" : "mt-6 block"}>
           <div className="space-y-6">
-            <Card className={activeTab === "overview" ? "" : "hidden"}>
+            <Card className={activeTab === "profile" ? "" : "hidden"}>
               <div className="flex items-center justify-between">
                 <div>
                   <h2 className="text-xl font-black text-[#5b3768]">
@@ -1339,7 +1310,7 @@ export default function StaffPage() {
               </div>
             </Card>
 
-            <Card id="games" className={activeTab === "games" ? "" : "hidden"}>
+            <Card id="games" className={activeTab === "profile" ? "" : "hidden"}>
               <div className="flex items-center gap-2">
                 <Gamepad2 className="text-pink-400" size={20} />
                 <h2 className="text-xl font-black text-[#5b3768]">
@@ -1407,8 +1378,8 @@ export default function StaffPage() {
             </Card>
           </div>
 
-          <div className={activeTab === "overview" ? "space-y-6" : "hidden"}>
-            <Card noPadding>
+          <div className="space-y-6">
+            <Card noPadding className="hidden">
               <div className="border-b border-pink-100 p-5">
                 <h2 className="text-xl font-black text-[#5b3768]">
                   訂單審核紀錄
@@ -1480,7 +1451,7 @@ export default function StaffPage() {
               )}
             </Card>
 
-            <Card noPadding>
+            <Card noPadding className={activeTab === "orders" || activeTab === "tips" ? "" : "hidden"}>
               <div className="border-b border-pink-100 p-5">
                 <h2 className="text-xl font-black text-[#5b3768]">
                   {formatMonthLabel(selectedMonth)}訂單
@@ -1490,7 +1461,7 @@ export default function StaffPage() {
                 </p>
               </div>
 
-              {orders.length === 0 ? (
+              {visibleOrders.length === 0 ? (
                 <div className="p-8 text-center text-[#a36b9e]">
                   目前沒有這個月份的訂單
                 </div>
@@ -1512,7 +1483,7 @@ export default function StaffPage() {
                     </thead>
 
                     <tbody>
-                      {orders.map((order) => (
+                      {visibleOrders.map((order) => (
                         <tr key={order.id} className="border-t border-pink-100">
                           <td className="px-4 py-3 text-[#8b5a8f]">
                             {formatDateTime(order.order_finished_at)}
@@ -1579,14 +1550,14 @@ export default function StaffPage() {
               )}
             </Card>
 
-            <Card noPadding>
+            <Card noPadding className={activeTab === "bonuses" || activeTab === "deductions" ? "" : "hidden"}>
               <div className="border-b border-pink-100 p-5">
                 <h2 className="text-xl font-black text-[#5b3768]">
                   {formatMonthLabel(selectedMonth)}獎金 / 扣除
                 </h2>
               </div>
 
-              {bonusList.length === 0 ? (
+              {visibleBonuses.length === 0 ? (
                 <div className="p-8 text-center text-[#a36b9e]">
                   目前沒有這個月份的獎金或扣除
                 </div>
@@ -1603,7 +1574,7 @@ export default function StaffPage() {
                     </thead>
 
                     <tbody>
-                      {bonusList.map((bonus) => (
+                      {visibleBonuses.map((bonus) => (
                         <tr key={bonus.id} className="border-t border-pink-100">
                           <td className="px-4 py-3 text-[#8b5a8f]">
                             {formatDateTime(bonus.created_at)}
