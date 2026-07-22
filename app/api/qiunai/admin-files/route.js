@@ -4,6 +4,7 @@ import { getAuthUserFromRequest } from "@/lib/salaryWallet";
 import {
   ADMIN_FILE_CATEGORIES,
   createAdminFileDownload,
+  deleteAdminFile,
   listAdminFiles,
   saveAdminFileOrder,
   uploadAdminFile,
@@ -103,6 +104,24 @@ export async function PATCH(request) {
   } catch (error) {
     return NextResponse.json(
       { ok: false, message: error.message || "調整檔案排序失敗" },
+      { status: 400 }
+    );
+  }
+}
+
+export async function DELETE(request) {
+  try {
+    const auth = await authorize(request);
+    if (!auth.canUpload) throw new Error("此帳號只有下載權限");
+    const body = await request.json().catch(() => ({}));
+    const category = validCategory(body.category);
+    const path = String(body.path || "");
+    if (!path) throw new Error("請指定要刪除的檔案");
+    const files = await deleteAdminFile({ organization: ORGANIZATION, category, path });
+    return NextResponse.json({ ok: true, category, files });
+  } catch (error) {
+    return NextResponse.json(
+      { ok: false, message: error.message || "刪除檔案失敗" },
       { status: 400 }
     );
   }

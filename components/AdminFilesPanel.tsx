@@ -8,6 +8,7 @@ import {
   FolderKanban,
   GripVertical,
   Loader2,
+  Trash2,
   Upload,
   UsersRound,
 } from "lucide-react";
@@ -28,6 +29,7 @@ export default function AdminFilesPanel({ apiPath }: { apiPath: string }) {
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [downloading, setDownloading] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState<string | null>(null);
   const [sorting, setSorting] = useState(false);
   const [draggedPath, setDraggedPath] = useState<string | null>(null);
   const [dragOverPath, setDragOverPath] = useState<string | null>(null);
@@ -38,6 +40,7 @@ export default function AdminFilesPanel({ apiPath }: { apiPath: string }) {
   useEffect(() => { const timeoutId = window.setTimeout(() => { void loadFiles(); }, 0); return () => window.clearTimeout(timeoutId); }, [loadFiles]);
   async function uploadFile() { if (!selectedFile) return alert("請先選擇檔案"); if (selectedFile.size > 25 * 1024 * 1024) return alert("單一檔案不得超過 25 MB"); setUploading(true); try { const token = await getToken(); const body = new FormData(); body.append("category", category); body.append("file", selectedFile); const response = await fetch(apiPath, { method: "POST", headers: { Authorization: `Bearer ${token}` }, body }); const payload = await response.json().catch(() => ({})); if (!response.ok) throw new Error(payload.message || "檔案上傳失敗"); setSelectedFile(null); setFileInputKey((value) => value + 1); await loadFiles(); alert("檔案上傳完成"); } catch (error) { console.error("upload admin file failed", error); alert(error instanceof Error ? error.message : "檔案上傳失敗"); } finally { setUploading(false); } }
   async function downloadFile(file: StoredFile) { setDownloading(file.path); try { const token = await getToken(); const params = new URLSearchParams({ download: file.path }); const response = await fetch(`${apiPath}?${params.toString()}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }); const payload = await response.json().catch(() => ({})); if (!response.ok || !payload.url) throw new Error(payload.message || "建立下載連結失敗"); const fileResponse = await fetch(payload.url); if (!fileResponse.ok) throw new Error("下載檔案失敗"); const objectUrl = URL.createObjectURL(await fileResponse.blob()); const link = document.createElement("a"); link.href = objectUrl; link.download = payload.name || file.name; document.body.appendChild(link); link.click(); link.remove(); window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000); } catch (error) { console.error("download admin file failed", error); alert(error instanceof Error ? error.message : "檔案下載失敗"); } finally { setDownloading(null); } }
+  async function deleteFile(file: StoredFile) { if (!window.confirm(`確定要永久刪除「${file.name}」嗎？\n刪除後無法復原。`)) return; setDeleting(file.path); try { const token = await getToken(); const response = await fetch(apiPath, { method: "DELETE", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify({ category, path: file.path }) }); const payload = await response.json().catch(() => ({})); if (!response.ok) throw new Error(payload.message || "刪除檔案失敗"); setFiles(payload.files || files.filter((item) => item.path !== file.path)); alert("檔案已刪除"); } catch (error) { console.error("delete admin file failed", error); alert(error instanceof Error ? error.message : "刪除檔案失敗"); } finally { setDeleting(null); } }
   async function reorderFile(sourcePath: string, targetPath: string) { const sourceIndex = files.findIndex((file) => file.path === sourcePath); const targetIndex = files.findIndex((file) => file.path === targetPath); if (sourceIndex < 0 || targetIndex < 0 || sourceIndex === targetIndex || sorting) return; const previous = files; const next = [...files]; const [movedFile] = next.splice(sourceIndex, 1); next.splice(targetIndex, 0, movedFile); setFiles(next); setSorting(true); try { const token = await getToken(); const response = await fetch(apiPath, { method: "PATCH", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify({ category, orderedPaths: next.map((file) => file.path) }) }); const payload = await response.json().catch(() => ({})); if (!response.ok) throw new Error(payload.message || "調整檔案排序失敗"); setFiles(payload.files || next); } catch (error) { setFiles(previous); alert(error instanceof Error ? error.message : "調整檔案排序失敗"); } finally { setSorting(false); } }
   function beginDrag(path: string) { if (!canUpload || sorting) return; draggedPathRef.current = path; setDraggedPath(path); setDragOverPath(path); }
   function updateDragTarget(clientX: number, clientY: number) { if (!draggedPathRef.current) return; const target = document.elementFromPoint(clientX, clientY)?.closest<HTMLElement>("[data-file-path]"); const targetPath = target?.dataset.filePath || null; if (targetPath) setDragOverPath(targetPath); }
@@ -81,6 +84,7 @@ export default function AdminFilesPanel({ apiPath }: { apiPath: string }) {
               </div>
               <div className="flex shrink-0 items-center gap-2">
                 <button type="button" onClick={() => downloadFile(file)} disabled={downloading === file.path} className="admin-files-solid-button inline-flex items-center justify-center gap-2 rounded-xl bg-[#3f2947] px-4 py-2 text-sm font-black text-white hover:bg-pink-500 disabled:opacity-50">{downloading === file.path ? <Loader2 size={16} className="animate-spin"/> : <Download size={16}/>}下載</button>
+                {canUpload ? <button type="button" onClick={() => deleteFile(file)} disabled={deleting === file.path} className="inline-flex items-center justify-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-black text-rose-600 transition hover:border-rose-300 hover:bg-rose-100 disabled:opacity-50">{deleting === file.path ? <Loader2 size={16} className="animate-spin"/> : <Trash2 size={16}/>}刪除</button> : null}
               </div>
             </article>
           ))}
