@@ -408,6 +408,10 @@ textarea {
   color: #3f2947 !important;
 }
 
+.qiunai-admin-shell .admin-files-solid-button {
+  color: #ffffff !important;
+}
+
 .qiunai-admin-shell .text-zinc-400,
 .qiunai-admin-shell .text-zinc-500,
 .qiunai-admin-shell .text-zinc-600 {
