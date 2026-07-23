@@ -287,10 +287,10 @@ export default function AdminRankingPage() {
               className="mb-3 inline-flex items-center gap-2 text-sm text-violet-300 hover:text-violet-200"
             >
               <ArrowLeft size={16} />
-              回管理後台
+              回 ERP 首頁
             </Link>
 
-            <p className="text-sm text-violet-300">Qiunai Admin</p>
+            <p className="text-sm text-violet-300">Qiunai ERP</p>
             <h1 className="text-2xl font-bold">秋奈電競｜排行榜</h1>
           </div>
 

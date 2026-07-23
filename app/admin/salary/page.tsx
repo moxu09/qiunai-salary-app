@@ -74,7 +74,7 @@ type BonusItem = {
 };
 
 export default function AdminSalaryPage() {
-  const { adminLoading, isAdmin } = useQiunaiAdminGuard();
+  const { adminLoading, isAdmin, access } = useQiunaiAdminGuard();
 
   const [loading, setLoading] = useState(true);
   const [orders, setOrders] = useState<SalaryOrder[]>([]);
@@ -854,6 +854,10 @@ export default function AdminSalaryPage() {
     );
   }
 
+  if (access?.role === "customer_service") {
+    return <main className="min-h-screen bg-[#fff7fb] px-5 py-6 text-[#3f2947]"><div className="mx-auto max-w-7xl space-y-5"><header className="rounded-[30px] border border-pink-100 bg-white px-6 py-5 shadow-sm shadow-pink-100"><p className="text-sm font-bold text-pink-600">秋奈電競陪玩 ERP｜客服</p><h1 className="mt-1 text-2xl font-black">訂單與打賞審核</h1><p className="mt-2 text-sm text-[#80647d]">客服帳號僅能核准或駁回待審核的訂單與打賞。</p></header><WorkReportReviewPanel appKey="qiunai" accent="pink" onApprove={approveWorkReport} reviewApiPath="/api/qiunai/work-reports/review"/></div></main>;
+  }
+
   return (
     <main className="salary-overview-page min-h-screen bg-[#fff7fb] px-5 py-6 text-[#3f2947]">
       <div className="salary-overview-content mx-auto max-w-7xl space-y-5">
@@ -865,10 +869,10 @@ export default function AdminSalaryPage() {
                 className="inline-flex items-center gap-2 text-sm font-bold text-pink-600 hover:text-pink-700"
               >
                 <ArrowLeft size={16} />
-                回管理後台
+                回 ERP 首頁
               </Link>
               <p className="mt-4 text-sm font-bold text-pink-600">
-                Qiunai Admin
+                Qiunai ERP
               </p>
               <h1 className="mt-1 text-2xl font-black text-[#3f2947] md:text-3xl">
                 薪資總表
@@ -894,6 +898,7 @@ export default function AdminSalaryPage() {
             appKey="qiunai"
             accent="pink"
             onApprove={approveWorkReport}
+            reviewApiPath="/api/qiunai/work-reports/review"
           />
 
           <div className="salary-stat-grid grid gap-4 md:grid-cols-4">

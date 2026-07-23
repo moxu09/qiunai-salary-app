@@ -12,8 +12,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata = {
-  title: "秋奈電競｜薪資網",
-  description: "秋奈電競專用薪資系統",
+  title: "秋奈電競 ERP",
+  description: "秋奈電競企業資源規劃系統",
   icons: {
     icon: "/favicon.ico",
   },
@@ -26,7 +26,7 @@ export default function RootLayout({
 }>) {
   return (
     <html
-      lang="en"
+      lang="zh-Hant"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">{children}</body>

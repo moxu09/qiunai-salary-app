@@ -1,21 +1,10 @@
 import { NextResponse } from "next/server";
 import { loadQiunaiAccountingReport } from "@/lib/accountingReport";
-import { getAuthUserFromRequest } from "@/lib/salaryWallet";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { authorizeErpRequest } from "@/lib/erpAccess";
 
 async function requireAdmin(request) {
-  const { discordId } = await getAuthUserFromRequest(supabaseAdmin, request);
-
-  const { data, error } = await supabaseAdmin
-    .from("qiunai_admins")
-    .select("id, discord_id, is_active")
-    .eq("discord_id", discordId)
-    .eq("is_active", true)
-    .maybeSingle();
-
-  if (error || !data) {
-    throw new Error("你沒有後台管理權限");
-  }
+  return authorizeErpRequest(supabaseAdmin, request, "qiunai", "canViewAllAdmin");
 }
 
 export async function GET(request) {

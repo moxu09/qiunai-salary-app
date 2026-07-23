@@ -55,10 +55,12 @@ export default function WorkReportReviewPanel({
   appKey,
   accent = "sky",
   onApprove,
+  reviewApiPath,
 }: {
   appKey: "deepnight" | "qiunai";
   accent?: "sky" | "pink";
   onApprove: (report: WorkReport) => Promise<string>;
+  reviewApiPath?: string;
 }) {
   const [reports, setReports] = useState<WorkReport[]>([]);
   const [loading, setLoading] = useState(true);
@@ -122,6 +124,14 @@ export default function WorkReportReviewPanel({
     return () => window.clearTimeout(timeoutId);
   }, [load]);
 
+  async function reviewWithApi(report: WorkReport, action: "approve" | "reject", reason = "") {
+    const { data } = await supabase.auth.getSession();
+    if (!data.session) throw new Error("請重新登入 ERP");
+    const response = await fetch(reviewApiPath || `/api/${appKey}/work-reports/review`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${data.session.access_token}` }, body: JSON.stringify({ id: report.id, action, reason }) });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(payload.message || "審核失敗");
+  }
+
   async function approve(report: WorkReport) {
     if (
       !confirm(`確定通過 ${report.staff_name || report.staff_id} 的工時申報？`)
@@ -129,7 +139,8 @@ export default function WorkReportReviewPanel({
       return;
     setWorkingId(report.id);
     try {
-      await onApprove(report);
+      if (reviewApiPath) await reviewWithApi(report, "approve");
+      else await onApprove(report);
       await load();
     } catch (error: unknown) {
       alert(`審核失敗：${error instanceof Error ? error.message : "未知錯誤"}`);
@@ -142,23 +153,15 @@ export default function WorkReportReviewPanel({
     const reason = prompt("請輸入駁回原因：")?.trim();
     if (!reason) return;
     setWorkingId(report.id);
-    const rejectPayload =
-      appKey === "deepnight"
-        ? { status: "work_rejected", note: `工時申報駁回：${reason}` }
-        : {
-            status: "工時已駁回",
-            deleted_reason: reason,
-            edited_at: new Date().toISOString(),
-            edited_by: "salary_admin",
-          };
-    const { error } = await supabase
-      .from(salaryTable)
-      .update(rejectPayload)
-      .eq("id", report.id)
-      .in("status", appKey === "deepnight" ? ["work_pending"] : ["工時待審核"]);
-    setWorkingId("");
-    if (error) return alert(`駁回失敗：${error.message}`);
-    await load();
+    try {
+      if (reviewApiPath) await reviewWithApi(report, "reject", reason);
+      else {
+        const rejectPayload = appKey === "deepnight" ? { status: "work_rejected", note: `工時申報駁回：${reason}` } : { status: "工時已駁回", deleted_reason: reason, edited_at: new Date().toISOString(), edited_by: "salary_admin" };
+        const { error } = await supabase.from(salaryTable).update(rejectPayload).eq("id", report.id).in("status", appKey === "deepnight" ? ["work_pending"] : ["工時待審核"]);
+        if (error) throw error;
+      }
+      await load();
+    } catch (error) { alert(`駁回失敗：${error instanceof Error ? error.message : "未知錯誤"}`); } finally { setWorkingId(""); }
   }
 
   return (

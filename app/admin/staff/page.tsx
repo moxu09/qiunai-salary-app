@@ -356,7 +356,7 @@ export default function AdminStaffPage() {
       <header className="admin-page-header relative z-10 border border-pink-100 bg-white">
         <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-5 md:flex-row md:items-center md:justify-between">
           <div>
-            <p className="text-sm font-semibold text-pink-500">Qiunai Admin</p>
+            <p className="text-sm font-semibold text-pink-500">Qiunai ERP</p>
             <h1 className="qiunai-title-gradient text-2xl font-black">
               秋奈電競｜員工管理
             </h1>

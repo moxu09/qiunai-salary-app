@@ -954,7 +954,7 @@ export default function StaffPage() {
       <main className="qiunai-page flex items-center justify-center px-4">
         <div className="qiunai-card w-full max-w-lg rounded-[32px] p-6">
           <h1 className="text-xl font-black text-rose-600">
-            無法進入員工薪資網
+            無法進入員工 ERP
           </h1>
 
           <p className="mt-4 whitespace-pre-wrap text-sm leading-7 text-rose-500">

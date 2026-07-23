@@ -43,13 +43,13 @@ export default function LoginPage() {
 
             <span className="qiunai-badge flex items-center gap-1 px-3 py-1 text-xs font-semibold">
               <Sparkles size={13} />
-              Staff Only
+              員工入口
             </span>
           </div>
 
           <div className="mt-6 text-center">
             <h1 className="qiunai-title-gradient text-4xl font-black tracking-tight">
-              秋奈電競薪資網
+              秋奈電競 ERP
             </h1>
 
             <p className="mt-4 text-sm leading-7 text-[#6b4f71]">
@@ -70,7 +70,7 @@ export default function LoginPage() {
             <p className="text-xs leading-6 text-[#8b5a8f]">
               甜甜接單，安心發薪。
               <br />
-              秋奈電競專用員工薪資系統
+              秋奈電競員工 ERP
             </p>
           </div>
         </div>

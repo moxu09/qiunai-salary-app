@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { getAuthUserFromRequest } from "@/lib/salaryWallet";
+import { getErpAccessByDiscordId } from "@/lib/erpAccess";
 import {
   removeRequestImages,
   signRequestAttachments,
@@ -37,9 +38,9 @@ async function getStaff(discordId) {
 }
 
 async function requireAdmin(discordId) {
-  const { data } = await supabaseAdmin.from("qiunai_admins").select("*").eq("discord_id", discordId).eq("is_active", true).maybeSingle();
-  if (!data) throw new Error("沒有後台管理權限");
-  return data;
+  const access = await getErpAccessByDiscordId(supabaseAdmin, ORG, discordId);
+  if (!access.capabilities.canReviewAll) throw new Error("你沒有簽核申請的權限");
+  return access.assignment || access.legacyAdmin;
 }
 
 function reviewerName(admin) {

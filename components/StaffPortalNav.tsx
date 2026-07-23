@@ -97,7 +97,7 @@ export default function StaffPortalNav({
   return (
     <aside className="staff-portal-nav">
       <div className="staff-portal-brand">
-        <p className="staff-portal-eyebrow">STAFF CENTER</p>
+        <p className="staff-portal-eyebrow">ERP｜員工端</p>
         <p className="staff-portal-company">{company}</p>
         <p className="staff-portal-name">{employeeName}</p>
       </div>

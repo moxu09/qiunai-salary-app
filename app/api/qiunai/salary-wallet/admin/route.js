@@ -2,10 +2,10 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import {
   bulkDepositSalaryWallet,
-  getAuthUserFromRequest,
   manuallyDepositSalaryWallet,
   settleSalaryWallet,
 } from "@/lib/salaryWallet";
+import { authorizeErpRequest } from "@/lib/erpAccess";
 
 const walletConfig = {
   appKey: "qiunai",
@@ -19,23 +19,8 @@ const walletConfig = {
 };
 
 async function requireAdmin(request) {
-  const { discordId } = await getAuthUserFromRequest(supabaseAdmin, request);
-
-  const { data, error } = await supabaseAdmin
-    .from("qiunai_admins")
-    .select("*")
-    .eq("discord_id", discordId)
-    .eq("is_active", true)
-    .maybeSingle();
-
-  if (error || !data) {
-    throw new Error("你沒有後台管理權限");
-  }
-
-  return {
-    discordId,
-    admin: data,
-  };
+  const access = await authorizeErpRequest(supabaseAdmin, request, "qiunai", "canViewAllAdmin");
+  return { discordId: access.discordId, admin: access.assignment || access.legacyAdmin };
 }
 
 function normalizeGiftText(value) {

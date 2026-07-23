@@ -47,7 +47,7 @@ export async function POST(req) {
       return NextResponse.json(
         {
           ok: false,
-          message: "你目前不在秋奈電競伺服器內，無法使用薪資網。",
+          message: "你目前不在秋奈電競伺服器內，無法使用 ERP。",
         },
         { status: 403 }
       );
@@ -78,7 +78,7 @@ export async function POST(req) {
       return NextResponse.json(
         {
           ok: false,
-          message: "你尚未擁有秋奈員工身分組，無法使用薪資網。",
+          message: "你尚未擁有秋奈員工身分組，無法使用 ERP。",
         },
         { status: 403 }
       );

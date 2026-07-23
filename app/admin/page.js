@@ -34,10 +34,10 @@ export default function AdminHomePage() {
       <div className="mx-auto max-w-7xl space-y-8">
         <header className="rounded-[36px] border border-pink-100 bg-white px-8 py-10 shadow-sm shadow-pink-100">
           <p className="text-sm font-black text-pink-600 md:text-lg">
-            Qiunai Admin
+            Qiunai ERP
           </p>
           <h1 className="mt-5 text-3xl font-black text-[#3f2947] md:text-4xl">
-            秋奈電競｜管理後台
+            秋奈電競｜ERP
           </h1>
           <p className="mt-6 text-base font-semibold leading-8 text-[#80647d] md:text-lg">
             管理員可在這裡維護員工資料、薪資資料、系統通知與發薪設定。

@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { authorizeErpRequest } from "@/lib/erpAccess";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const ORG = "qiunai";
-const ADMIN_TABLE = "qiunai_admins";
 
 function getDiscordId(user) {
   const metadata = user?.user_metadata || {};
@@ -25,10 +25,8 @@ async function authenticate(request) {
 }
 
 async function requireAdmin(request) {
-  const discordId = await authenticate(request);
-  const { data, error } = await supabaseAdmin.from(ADMIN_TABLE).select("discord_id").eq("discord_id", discordId).eq("is_active", true).maybeSingle();
-  if (error || !data) throw new Error("你沒有後台管理權限");
-  return discordId;
+  const access = await authorizeErpRequest(supabaseAdmin, request, ORG, "canViewAllAdmin");
+  return access.discordId;
 }
 
 function jsonError(error, fallback) {
@@ -110,4 +108,3 @@ export async function DELETE(request) {
     return jsonError(error, "刪除公告失敗");
   }
 }
-

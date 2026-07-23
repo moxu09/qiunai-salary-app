@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { getAuthUserFromRequest } from "@/lib/salaryWallet";
+import { getErpAccessByDiscordId } from "@/lib/erpAccess";
 
 const APP_KEY = "qiunai";
 const STAFF_TABLE = "qiunai_staff";
-const ADMIN_TABLE = "qiunai_admins";
 
 function cleanText(value, maxLength = 500) {
   const text = String(value || "").trim();
@@ -55,9 +55,8 @@ export async function GET(request) {
   try {
     const { discordId } = await auth(request);
     if (new URL(request.url).searchParams.get("admin") === "1") {
-      const { data: admin } = await supabaseAdmin.from(ADMIN_TABLE)
-        .select("discord_id").eq("discord_id", discordId).eq("is_active", true).maybeSingle();
-      if (!admin) throw new Error("你沒有後台管理權限");
+      const access = await getErpAccessByDiscordId(supabaseAdmin, APP_KEY, discordId);
+      if (!access.capabilities.canViewAllAdmin) throw new Error("你沒有員工管理權限");
       const { data, error } = await supabaseAdmin.from("salary_public_profiles")
         .select("*").eq("app_key", APP_KEY).order("display_name");
       if (error) throw error;

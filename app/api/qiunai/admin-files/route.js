@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { getAuthUserFromRequest } from "@/lib/salaryWallet";
+import { authorizeErpRequest } from "@/lib/erpAccess";
 import {
   ADMIN_FILE_CATEGORIES,
   createAdminFileDownload,
@@ -14,33 +14,8 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const ORGANIZATION = "qiunai";
-const DEFAULT_UPLOAD_DISCORD_ID = "847840193859682304";
-
-function canUpload(discordId) {
-  const allowed = String(
-    process.env.SALARY_FILE_UPLOAD_DISCORD_IDS || DEFAULT_UPLOAD_DISCORD_ID
-  )
-    .split(",")
-    .map((id) => id.trim())
-    .filter(Boolean);
-  return allowed.includes(String(discordId || "").trim());
-}
-
-async function requireAdmin(discordId) {
-  const { data, error } = await supabaseAdmin
-    .from("qiunai_admins")
-    .select("discord_id")
-    .eq("discord_id", discordId)
-    .eq("is_active", true)
-    .maybeSingle();
-  if (error || !data) throw new Error("沒有後台管理權限");
-}
-
 async function authorize(request) {
-  const auth = await getAuthUserFromRequest(supabaseAdmin, request);
-  await requireAdmin(auth.discordId);
-  const uploader = canUpload(auth.discordId);
-  return { ...auth, canUpload: uploader };
+  return authorizeErpRequest(supabaseAdmin, request, ORGANIZATION, "canViewAllAdmin");
 }
 
 function validCategory(value) {
@@ -62,7 +37,9 @@ export async function GET(request) {
     return NextResponse.json({
       ok: true,
       category,
-      canUpload: auth.canUpload,
+      canUpload: auth.capabilities.canUploadFiles,
+      canDelete: auth.capabilities.canDeleteFiles,
+      canReorder: auth.capabilities.canReorderFiles,
       files: await listAdminFiles(ORGANIZATION, category),
     });
   } catch (error) {
@@ -76,7 +53,7 @@ export async function GET(request) {
 export async function POST(request) {
   try {
     const auth = await authorize(request);
-    if (!auth.canUpload) throw new Error("此帳號只有下載權限");
+    if (!auth.capabilities.canUploadFiles) throw new Error("此帳號沒有上傳權限");
     const contentLength = Number(request.headers.get("content-length") || 0);
     if (contentLength > 27 * 1024 * 1024) throw new Error("上傳內容過大");
     const form = await request.formData();
@@ -95,7 +72,7 @@ export async function POST(request) {
 export async function PATCH(request) {
   try {
     const auth = await authorize(request);
-    if (!auth.canUpload) throw new Error("此帳號只有下載權限");
+    if (!auth.capabilities.canReorderFiles) throw new Error("只有最高管理員可以調整檔案排序");
     const body = await request.json().catch(() => ({}));
     const category = validCategory(body.category);
     if (!Array.isArray(body.orderedPaths)) throw new Error("檔案排序資料不正確");
@@ -112,7 +89,7 @@ export async function PATCH(request) {
 export async function DELETE(request) {
   try {
     const auth = await authorize(request);
-    if (!auth.canUpload) throw new Error("此帳號只有下載權限");
+    if (!auth.capabilities.canDeleteFiles) throw new Error("只有最高管理員可以刪除檔案");
     const body = await request.json().catch(() => ({}));
     const category = validCategory(body.category);
     const path = String(body.path || "");
