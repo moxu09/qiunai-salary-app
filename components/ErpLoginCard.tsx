@@ -8,8 +8,10 @@ import {
   Mail,
   MessageCircle,
   ShieldCheck,
+  Smartphone,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { maskErpPhone, normalizeErpPhone } from "@/lib/phoneAuth";
 
 type Theme = "deepnight" | "qiunai";
 
@@ -23,6 +25,7 @@ type AuthLinkStatus = {
   discordLinked: boolean;
   googleReady: boolean;
   emailReady: boolean;
+  phoneReady: boolean;
 };
 
 const CONTENT = {
@@ -52,9 +55,12 @@ export default function ErpLoginCard({
   const apiPath = `/api/${organization}/auth-links`;
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [pending, setPending] = useState<"discord" | "google" | "email" | "">(
-    ""
-  );
+  const [phone, setPhone] = useState("");
+  const [phoneOtp, setPhoneOtp] = useState("");
+  const [phoneOtpSent, setPhoneOtpSent] = useState(false);
+  const [pending, setPending] = useState<
+    "discord" | "google" | "email" | "phone" | "phone-verify" | ""
+  >("");
   const [message, setMessage] = useState("");
 
   async function loginWithOAuth(provider: "discord" | "google") {
@@ -114,6 +120,68 @@ export default function ErpLoginCard({
     }
 
     window.location.assign(nextPath);
+  }
+
+  async function requestPhoneOtp(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setPending("phone");
+    setMessage("");
+
+    try {
+      const normalizedPhone = normalizeErpPhone(phone);
+      const { error } = await supabase.auth.signInWithOtp({
+        phone: normalizedPhone,
+        options: { shouldCreateUser: false },
+      });
+      if (error) throw error;
+      setPhone(normalizedPhone);
+      setPhoneOtpSent(true);
+    } catch (error) {
+      setMessage(
+        `電話登入失敗：${error instanceof Error ? error.message : "無法寄送驗證碼"}`
+      );
+    } finally {
+      setPending("");
+    }
+  }
+
+  async function verifyPhoneOtp(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setPending("phone-verify");
+    setMessage("");
+
+    try {
+      const normalizedPhone = normalizeErpPhone(phone);
+      const { data, error } = await supabase.auth.verifyOtp({
+        phone: normalizedPhone,
+        token: phoneOtp.trim(),
+        type: "sms",
+      });
+      if (error || !data.session) {
+        throw error || new Error("沒有取得登入狀態");
+      }
+
+      const response = await fetch(apiPath, {
+        headers: { Authorization: `Bearer ${data.session.access_token}` },
+        cache: "no-store",
+      });
+      const result = await response.json().catch(() => ({}));
+      const status = result.status as AuthLinkStatus | undefined;
+      if (!response.ok || !status?.discordLinked || !status.phoneReady) {
+        await supabase.auth.signOut();
+        throw new Error(
+          result.message ||
+            "此電話尚未從 Discord 首次登入後完成連結，請先使用 Discord 登入。"
+        );
+      }
+
+      window.location.assign(nextPath);
+    } catch (error) {
+      setMessage(
+        `電話驗證失敗：${error instanceof Error ? error.message : "驗證碼無效"}`
+      );
+      setPending("");
+    }
   }
 
   return (
@@ -198,7 +266,7 @@ export default function ErpLoginCard({
             }
           >
             第一次登入一定要使用 Discord。完成第一次登入並主動連結後，才可使用
-            Google（Gmail）或電子郵件密碼登入。
+            Google（Gmail）、電子郵件密碼或電話驗證碼登入。
           </div>
 
           <div className="mt-6 grid gap-3 sm:grid-cols-2">
@@ -302,6 +370,112 @@ export default function ErpLoginCard({
             </button>
           </form>
 
+          <div className="my-6 flex items-center gap-3 text-xs font-bold text-slate-400">
+            <span className="h-px flex-1 bg-current opacity-20" />
+            或使用已連結的電話
+            <span className="h-px flex-1 bg-current opacity-20" />
+          </div>
+
+          {phoneOtpSent ? (
+            <form onSubmit={verifyPhoneOtp} className="space-y-3">
+              <p className="text-sm font-semibold">
+                驗證碼已寄到 {maskErpPhone(phone)}
+              </p>
+              <label className="block">
+                <span className="text-sm font-bold">6 位數簡訊驗證碼</span>
+                <input
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  required
+                  minLength={6}
+                  maxLength={6}
+                  value={phoneOtp}
+                  onChange={(event) =>
+                    setPhoneOtp(event.target.value.replace(/\D/g, "").slice(0, 6))
+                  }
+                  className={
+                    isQiunai
+                      ? "qiunai-input mt-2"
+                      : "mt-2 w-full rounded-2xl border border-sky-200 bg-white px-4 py-3 text-sm outline-none focus:border-sky-400"
+                  }
+                  placeholder="輸入驗證碼"
+                />
+              </label>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPhoneOtpSent(false);
+                    setPhoneOtp("");
+                    setMessage("");
+                  }}
+                  disabled={Boolean(pending)}
+                  className="rounded-full border border-slate-200 px-5 py-3.5 text-sm font-bold disabled:opacity-60"
+                >
+                  更換電話號碼
+                </button>
+                <button
+                  type="submit"
+                  disabled={Boolean(pending) || phoneOtp.length !== 6}
+                  className={
+                    isQiunai
+                      ? "flex items-center justify-center gap-2 rounded-full bg-[#4b2d5a] px-5 py-3.5 text-sm font-bold text-white disabled:opacity-60"
+                      : "flex items-center justify-center gap-2 rounded-full bg-sky-600 px-5 py-3.5 text-sm font-bold text-white disabled:opacity-60"
+                  }
+                >
+                  {pending === "phone-verify" ? (
+                    <LoaderCircle className="animate-spin" size={18} />
+                  ) : (
+                    <ShieldCheck size={18} />
+                  )}
+                  驗證並登入
+                </button>
+              </div>
+            </form>
+          ) : (
+            <form onSubmit={requestPhoneOtp} className="space-y-3">
+              <label className="block">
+                <span className="text-sm font-bold">電話號碼</span>
+                <div className="relative mt-2">
+                  <Smartphone
+                    className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
+                    size={18}
+                  />
+                  <input
+                    type="tel"
+                    inputMode="tel"
+                    autoComplete="tel"
+                    required
+                    value={phone}
+                    onChange={(event) => setPhone(event.target.value)}
+                    className={
+                      isQiunai
+                        ? "qiunai-input pl-11"
+                        : "w-full rounded-2xl border border-sky-200 bg-white px-4 py-3 pl-11 text-sm outline-none focus:border-sky-400"
+                    }
+                    placeholder="0912345678"
+                  />
+                </div>
+              </label>
+              <button
+                type="submit"
+                disabled={Boolean(pending)}
+                className={
+                  isQiunai
+                    ? "flex w-full items-center justify-center gap-2 rounded-full bg-[#4b2d5a] px-5 py-3.5 text-sm font-bold text-white disabled:opacity-60"
+                    : "flex w-full items-center justify-center gap-2 rounded-full bg-sky-600 px-5 py-3.5 text-sm font-bold text-white disabled:opacity-60"
+                }
+              >
+                {pending === "phone" ? (
+                  <LoaderCircle className="animate-spin" size={18} />
+                ) : (
+                  <Smartphone size={18} />
+                )}
+                傳送電話登入驗證碼
+              </button>
+            </form>
+          )}
+
           {message ? (
             <p className="mt-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold leading-6 text-red-700">
               {message}
@@ -322,4 +496,3 @@ export default function ErpLoginCard({
     </main>
   );
 }
-

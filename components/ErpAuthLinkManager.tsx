@@ -7,8 +7,10 @@ import {
   LoaderCircle,
   Mail,
   ShieldCheck,
+  Smartphone,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { maskErpPhone, normalizeErpPhone } from "@/lib/phoneAuth";
 
 type Organization = "deepnight" | "qiunai";
 
@@ -23,6 +25,12 @@ type AuthLinkStatus = {
   currentEmail: string;
   pendingEmail: string;
   emailConfirmationPending: boolean;
+  phoneEnabled: boolean;
+  phoneReady: boolean;
+  phone: string;
+  currentPhone: string;
+  pendingPhone: string;
+  phoneConfirmationPending: boolean;
   onboardingCompleted: boolean;
   needsOnboarding: boolean;
 };
@@ -56,6 +64,11 @@ export default function ErpAuthLinkManager({
   const [confirmPassword, setConfirmPassword] = useState("");
   const [changeCode, setChangeCode] = useState("");
   const [reauthSent, setReauthSent] = useState(false);
+  const [phone, setPhone] = useState("");
+  const [phoneOtp, setPhoneOtp] = useState("");
+  const [phoneOtpSent, setPhoneOtpSent] = useState(false);
+  const [phoneChangeCode, setPhoneChangeCode] = useState("");
+  const [phoneReauthSent, setPhoneReauthSent] = useState(false);
   const [pending, setPending] = useState("");
   const [message, setMessage] = useState("");
   const [errorText, setErrorText] = useState("");
@@ -72,6 +85,7 @@ export default function ErpAuthLinkManager({
     }
     setStatus(result.status);
     setEmail(result.status.email || result.status.currentEmail || "");
+    setPhone(result.status.phone || result.status.currentPhone || "");
   }
 
   const loadStatusEffect = useEffectEvent(loadStatus);
@@ -223,6 +237,102 @@ export default function ErpAuthLinkManager({
     }
   }
 
+  async function sendPhoneChangeCode() {
+    setPending("phone-reauth");
+    setMessage("");
+    setErrorText("");
+    try {
+      const { error } = await supabase.auth.reauthenticate();
+      if (error) throw error;
+      setPhoneReauthSent(true);
+      setMessage(
+        `更換電話的驗證碼已寄到 ${status?.currentEmail || status?.email || "目前信箱"}。`
+      );
+    } catch (error) {
+      setErrorText(
+        error instanceof Error ? error.message : "寄送更換電話驗證碼失敗"
+      );
+    } finally {
+      setPending("");
+    }
+  }
+
+  async function requestPhoneLink(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setMessage("");
+    setErrorText("");
+
+    try {
+      const normalizedPhone = normalizeErpPhone(phone);
+      const changingPhone = Boolean(
+        status?.phoneEnabled &&
+          status.phone &&
+          normalizedPhone !== status.phone
+      );
+      if (
+        changingPhone &&
+        (!phoneReauthSent || phoneChangeCode.trim().length < 6)
+      ) {
+        throw new Error("更換已綁定電話前，請先完成目前信箱驗證");
+      }
+
+      setPending("phone");
+      const attributes: { phone: string; nonce?: string } = {
+        phone: normalizedPhone,
+      };
+      if (changingPhone) attributes.nonce = phoneChangeCode.trim();
+      const { error } = await supabase.auth.updateUser(attributes);
+      if (error) throw error;
+
+      await postAction("enable_phone", { phone: normalizedPhone });
+      setPhone(normalizedPhone);
+      setPhoneOtp("");
+      setPhoneOtpSent(true);
+      setMessage(`簡訊驗證碼已寄到 ${maskErpPhone(normalizedPhone)}。`);
+    } catch (error) {
+      setErrorText(
+        error instanceof Error ? error.message : "電話連結失敗"
+      );
+    } finally {
+      setPending("");
+    }
+  }
+
+  async function confirmPhoneLink(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setPending("phone-verify");
+    setMessage("");
+    setErrorText("");
+    try {
+      const normalizedPhone = normalizeErpPhone(phone);
+      const { error } = await supabase.auth.verifyOtp({
+        phone: normalizedPhone,
+        token: phoneOtp.trim(),
+        type: "phone_change",
+      });
+      if (error) throw error;
+
+      const nextStatus = await postAction("enable_phone", {
+        phone: normalizedPhone,
+      });
+      setPhoneOtp("");
+      setPhoneOtpSent(false);
+      setPhoneChangeCode("");
+      setPhoneReauthSent(false);
+      setMessage(
+        nextStatus.phoneReady
+          ? "電話已綁定，可直接使用簡訊驗證碼登入。"
+          : "電話驗證已送出，請稍後重新整理確認狀態。"
+      );
+    } catch (error) {
+      setErrorText(
+        error instanceof Error ? error.message : "電話驗證失敗"
+      );
+    } finally {
+      setPending("");
+    }
+  }
+
   async function finishOnboarding() {
     setPending("finish");
     setMessage("");
@@ -255,7 +365,7 @@ export default function ErpAuthLinkManager({
             {mode === "onboarding" ? "連結其他登入方式" : "ERP 登入方式"}
           </h2>
           <p className="mt-1 text-sm leading-6 opacity-70">
-            Discord 是你的主要員工身分。Google 與電子郵件只會連結到同一個帳號，不會另外建立薪資或錢包。
+            Discord 是你的主要員工身分。Google、電子郵件與電話只會連結到同一個帳號，不會另外建立薪資或錢包。
           </p>
         </div>
       </div>
@@ -434,6 +544,156 @@ export default function ErpAuthLinkManager({
             </button>
           </form>
 
+          <form
+            onSubmit={phoneOtpSent ? confirmPhoneLink : requestPhoneLink}
+            className={
+              isQiunai
+                ? "rounded-2xl border border-pink-100 bg-pink-50/70 p-4"
+                : "rounded-2xl border border-sky-100 bg-sky-50/70 p-4"
+            }
+          >
+            <div className="flex items-center gap-2 font-black">
+              <Smartphone size={18} />
+              電話驗證碼登入
+              {status.phoneReady ? (
+                <span className="rounded-full bg-emerald-100 px-2 py-1 text-xs text-emerald-700">
+                  已綁定
+                </span>
+              ) : null}
+            </div>
+            <p className="mt-1 text-xs leading-5 opacity-65">
+              {status.phoneConfirmationPending
+                ? `等待 ${maskErpPhone(status.phone)} 完成簡訊驗證。`
+                : status.phoneReady
+                  ? `目前登入電話：${maskErpPhone(status.phone)}`
+                  : "綁定後可使用一次性簡訊驗證碼登入；不會建立新的員工帳號。"}
+            </p>
+
+            {!phoneOtpSent ? (
+              <>
+                {status.phoneEnabled &&
+                phone &&
+                phone.trim() !== status.phone ? (
+                  <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-3">
+                    <p className="text-xs font-bold leading-5 text-amber-800">
+                      更換已綁定電話前，系統會先把驗證碼寄到目前信箱，再把簡訊驗證碼寄到新電話。
+                    </p>
+                    <div className="mt-3 grid gap-3 sm:grid-cols-[1fr_auto]">
+                      <input
+                        value={phoneChangeCode}
+                        onChange={(event) =>
+                          setPhoneChangeCode(
+                            event.target.value.replace(/\D/g, "").slice(0, 8)
+                          )
+                        }
+                        inputMode="numeric"
+                        autoComplete="one-time-code"
+                        placeholder="輸入信箱驗證碼"
+                        className={
+                          isQiunai
+                            ? "qiunai-input"
+                            : "rounded-2xl border border-amber-200 bg-white px-4 py-3 text-sm outline-none focus:border-amber-400"
+                        }
+                      />
+                      <button
+                        type="button"
+                        onClick={sendPhoneChangeCode}
+                        disabled={Boolean(pending)}
+                        className="inline-flex items-center justify-center gap-2 rounded-full bg-amber-600 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-60"
+                      >
+                        {pending === "phone-reauth" ? (
+                          <LoaderCircle className="animate-spin" size={16} />
+                        ) : (
+                          <Mail size={16} />
+                        )}
+                        {phoneReauthSent ? "重新寄送" : "寄送信箱驗證碼"}
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
+                <div className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto]">
+                  <input
+                    type="tel"
+                    inputMode="tel"
+                    autoComplete="tel"
+                    required
+                    value={phone}
+                    onChange={(event) => setPhone(event.target.value)}
+                    placeholder="0912345678"
+                    className={
+                      isQiunai
+                        ? "qiunai-input"
+                        : "rounded-2xl border border-sky-200 bg-white px-4 py-3 text-sm outline-none focus:border-sky-400"
+                    }
+                  />
+                  <button
+                    type="submit"
+                    disabled={Boolean(pending)}
+                    className={
+                      isQiunai
+                        ? "inline-flex items-center justify-center gap-2 rounded-full bg-[#4b2d5a] px-4 py-2.5 text-sm font-bold text-white disabled:opacity-60"
+                        : "inline-flex items-center justify-center gap-2 rounded-full bg-sky-600 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-60"
+                    }
+                  >
+                    {pending === "phone" ? (
+                      <LoaderCircle className="animate-spin" size={16} />
+                    ) : (
+                      <Smartphone size={16} />
+                    )}
+                    {status.phoneEnabled ? "更換並寄送驗證碼" : "寄送驗證碼"}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <div className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto_auto]">
+                <input
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  required
+                  minLength={6}
+                  maxLength={6}
+                  value={phoneOtp}
+                  onChange={(event) =>
+                    setPhoneOtp(event.target.value.replace(/\D/g, "").slice(0, 6))
+                  }
+                  placeholder="輸入 6 位數簡訊驗證碼"
+                  className={
+                    isQiunai
+                      ? "qiunai-input"
+                      : "rounded-2xl border border-sky-200 bg-white px-4 py-3 text-sm outline-none focus:border-sky-400"
+                  }
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPhoneOtpSent(false);
+                    setPhoneOtp("");
+                  }}
+                  disabled={Boolean(pending)}
+                  className="rounded-full border border-slate-200 px-4 py-2.5 text-sm font-bold disabled:opacity-60"
+                >
+                  重填電話
+                </button>
+                <button
+                  type="submit"
+                  disabled={Boolean(pending) || phoneOtp.length !== 6}
+                  className={
+                    isQiunai
+                      ? "inline-flex items-center justify-center gap-2 rounded-full bg-[#4b2d5a] px-4 py-2.5 text-sm font-bold text-white disabled:opacity-60"
+                      : "inline-flex items-center justify-center gap-2 rounded-full bg-sky-600 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-60"
+                  }
+                >
+                  {pending === "phone-verify" ? (
+                    <LoaderCircle className="animate-spin" size={16} />
+                  ) : (
+                    <CheckCircle2 size={16} />
+                  )}
+                  完成電話綁定
+                </button>
+              </div>
+            )}
+          </form>
+
           {message ? (
             <p className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold leading-6 text-emerald-700">
               {message}
@@ -461,7 +721,7 @@ export default function ErpAuthLinkManager({
               ) : (
                 <CheckCircle2 size={18} />
               )}
-              {status.googleReady || status.emailEnabled
+              {status.googleReady || status.emailEnabled || status.phoneEnabled
                 ? "完成設定並進入 ERP"
                 : "暫時不要連結，進入 ERP"}
             </button>
