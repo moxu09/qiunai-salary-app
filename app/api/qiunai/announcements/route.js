@@ -1,17 +1,12 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { authorizeErpRequest } from "@/lib/erpAccess";
+import { getDiscordIdFromAuthUser } from "@/lib/salaryWallet";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const ORG = "qiunai";
-
-function getDiscordId(user) {
-  const metadata = user?.user_metadata || {};
-  const identity = user?.identities?.[0]?.identity_data || {};
-  return String(metadata.provider_id || metadata.sub || metadata.user_id || identity.sub || identity.id || "").trim();
-}
 
 async function authenticate(request) {
   const auth = request.headers.get("authorization") || "";
@@ -19,7 +14,7 @@ async function authenticate(request) {
   if (!token) throw new Error("請先登入");
   const { data, error } = await supabaseAdmin.auth.getUser(token);
   if (error || !data.user) throw new Error("登入已失效，請重新登入");
-  const discordId = getDiscordId(data.user);
+  const discordId = getDiscordIdFromAuthUser(data.user);
   if (!discordId) throw new Error("無法取得 Discord ID");
   return discordId;
 }

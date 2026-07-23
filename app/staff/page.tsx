@@ -18,9 +18,11 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { getDiscordIdFromSession } from "@/lib/discordSession";
 import { SERVICE_OPTIONS, type ServiceOption } from "@/lib/serviceOptions";
 import StaffPortalNav, { type PortalTab } from "@/components/StaffPortalNav";
 import HrPortalPanel from "@/components/HrPortalPanel";
+import ErpAuthLinkManager from "@/components/ErpAuthLinkManager";
 import {
   formatTaipeiDateTime,
   getNextTaipeiMonthText,
@@ -400,29 +402,7 @@ export default function StaffPage() {
       return;
     }
 
-    const user = sessionData.session.user;
-
-    const discordId =
-      user.user_metadata?.provider_id ||
-      user.user_metadata?.sub ||
-      user.identities?.[0]?.identity_data?.provider_id ||
-      user.identities?.[0]?.identity_data?.sub ||
-      user.identities?.[0]?.id;
-
-    const discordName =
-      user.user_metadata?.full_name ||
-      user.user_metadata?.name ||
-      user.user_metadata?.user_name ||
-      user.user_metadata?.preferred_username ||
-      user.email ||
-      "Discord 使用者";
-
-    const avatarUrl =
-      user.user_metadata?.avatar_url ||
-      user.user_metadata?.picture ||
-      user.identities?.[0]?.identity_data?.avatar_url ||
-      user.identities?.[0]?.identity_data?.picture ||
-      null;
+    const discordId = getDiscordIdFromSession(sessionData.session);
 
     if (!discordId) {
       setPageError("讀取 Discord ID 失敗，請重新登入。");
@@ -434,12 +414,9 @@ export default function StaffPage() {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        Authorization: `Bearer ${sessionData.session.access_token}`,
       },
-      body: JSON.stringify({
-        discord_id: String(discordId),
-        discord_name: discordName,
-        avatar_url: avatarUrl,
-      }),
+      body: JSON.stringify({}),
     });
 
     const ensureData = await ensureRes.json();
@@ -1548,6 +1525,14 @@ export default function StaffPage() {
                   <Save size={18} />
                   {savingProfile ? "儲存中..." : "儲存個人資料"}
                 </button>
+
+                <div className="border-t border-pink-100 pt-6">
+                  <ErpAuthLinkManager
+                    organization="qiunai"
+                    mode="profile"
+                    embedded
+                  />
+                </div>
               </div>
             </Card>
 

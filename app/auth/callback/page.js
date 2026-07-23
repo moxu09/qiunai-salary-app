@@ -56,7 +56,75 @@ function CallbackInner() {
           return;
         }
 
-        router.replace("/staff");
+        const destination =
+          searchParams.get("next") === "/admin" ? "/admin" : "/staff";
+        const mode = searchParams.get("mode") || "";
+        const method = searchParams.get("method") || "discord";
+        const token = data.session.access_token;
+
+        async function getLinkStatus() {
+          const response = await fetch("/api/qiunai/auth-links", {
+            headers: { Authorization: `Bearer ${token}` },
+            cache: "no-store",
+          });
+          const result = await response.json().catch(() => ({}));
+          if (!response.ok || !result.status) {
+            throw new Error(result.message || "驗證 ERP 登入方式失敗");
+          }
+          return result.status;
+        }
+
+        async function postLinkAction(action) {
+          const response = await fetch("/api/qiunai/auth-links", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({ action }),
+          });
+          const result = await response.json().catch(() => ({}));
+          if (!response.ok || !result.status) {
+            throw new Error(result.message || "更新 ERP 登入方式失敗");
+          }
+          return result.status;
+        }
+
+        if (mode === "link-google") {
+          await postLinkAction("enable_google");
+          router.replace(destination);
+          return;
+        }
+
+        if (mode === "email-confirm") {
+          const status = await getLinkStatus();
+          router.replace(
+            status.emailReady
+              ? destination
+              : `/auth/connect?next=${encodeURIComponent(destination)}`
+          );
+          return;
+        }
+
+        if (method === "google") {
+          const status = await getLinkStatus();
+          if (!status.discordLinked || !status.googleReady) {
+            await supabase.auth.signOut();
+            setErrorText(
+              "此 Google 帳號尚未從 Discord 首次登入後完成連結。請先使用 Discord 登入，再到個人資料連結 Google。"
+            );
+            return;
+          }
+          router.replace(destination);
+          return;
+        }
+
+        const status = await postLinkAction("record_discord_login");
+        router.replace(
+          status.needsOnboarding
+            ? `/auth/connect?next=${encodeURIComponent(destination)}`
+            : destination
+        );
       } catch (err) {
         console.error("callback unexpected error:", err);
         setErrorText(err?.message || "未知登入錯誤");
