@@ -171,10 +171,10 @@ export default function WorkReportReviewPanel({
       <div className="flex items-center justify-between gap-3">
         <div>
           <h2 className="flex items-center gap-2 text-lg font-black text-slate-900">
-            <Clock3 size={20} /> 工時申報待審核
+            <Clock3 size={20} /> 訂單／打賞待審核
           </h2>
           <p className="mt-1 text-sm text-slate-500">
-            通過後才會寫入陪陪的個人訂單。
+            核准後會依員工抽成寫入薪資；駁回時需填寫原因。
           </p>
         </div>
         <button
