@@ -2,6 +2,9 @@
   --accent: #65c8ff;
   --accent-soft: rgba(101, 200, 255, 0.2);
   --accent-glow: rgba(32, 158, 255, 0.38);
+  --text-primary: #ffd39a;
+  --text-secondary: #ffb35c;
+  --text-muted: rgba(255, 221, 177, 0.74);
   position: relative;
   isolation: isolate;
   display: grid;
@@ -18,6 +21,9 @@
   --accent: #ff8ec8;
   --accent-soft: rgba(255, 142, 200, 0.2);
   --accent-glow: rgba(240, 75, 166, 0.34);
+  --text-primary: #baffd9;
+  --text-secondary: #67f0c1;
+  --text-muted: rgba(202, 255, 228, 0.74);
   background:
     radial-gradient(circle at 50% 115%, var(--accent-soft), transparent 44%),
     linear-gradient(145deg, #1b0b20 0%, #2a1130 48%, #15091a 100%);
@@ -102,7 +108,7 @@
   border-radius: 999px;
   background: rgba(8, 16, 28, 0.42);
   padding: 9px 14px;
-  color: var(--accent);
+  color: var(--text-secondary);
   font-size: 0.72rem;
   font-weight: 900;
   letter-spacing: 0.16em;
@@ -112,7 +118,7 @@
 
 .eyebrow {
   margin-top: 28px;
-  color: color-mix(in srgb, var(--accent) 74%, white);
+  color: var(--text-primary);
   font-size: clamp(0.68rem, 1.2vw, 0.82rem);
   font-weight: 800;
   letter-spacing: 0.22em;
@@ -130,7 +136,7 @@
 }
 
 .welcome {
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--text-muted);
   font-size: clamp(1.25rem, 2.7vw, 2rem);
   letter-spacing: 0.12em;
   animation: riseIn 0.85s 0.26s both;
@@ -138,7 +144,7 @@
 
 .company {
   margin-top: 16px;
-  color: white;
+  color: var(--text-primary);
   font-size: clamp(2.8rem, 8vw, 7.4rem);
   letter-spacing: -0.045em;
   text-shadow: 0 12px 60px rgba(0, 0, 0, 0.46);
@@ -147,7 +153,7 @@
 
 .erp {
   margin-top: 12px;
-  color: var(--accent);
+  color: var(--text-secondary);
   font-size: clamp(1.5rem, 3.6vw, 3rem);
   letter-spacing: 0.42em;
   text-indent: 0.42em;
@@ -158,7 +164,7 @@
 .hint {
   max-width: 650px;
   margin: 32px auto 0;
-  color: rgba(225, 235, 246, 0.68);
+  color: var(--text-muted);
   font-size: clamp(0.95rem, 1.7vw, 1.15rem);
   font-weight: 650;
   line-height: 1.9;
@@ -171,7 +177,7 @@
   justify-content: center;
   gap: 14px;
   margin-top: 46px;
-  color: rgba(225, 235, 246, 0.5);
+  color: color-mix(in srgb, var(--text-muted) 76%, transparent);
   font-size: 0.78rem;
   font-weight: 800;
   letter-spacing: 0.08em;
