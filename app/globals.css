@@ -1518,3 +1518,21 @@ tbody tr:hover {
     display: flex !important;
   }
 }
+
+/* ERP 登入欄位需固定保留圖示空間，避免全站 input 規則覆寫左側內距。 */
+.erp-login-field-icon {
+  z-index: 1;
+  pointer-events: none;
+}
+
+input.erp-login-icon-input[type][class] {
+  padding-left: 3rem !important;
+  padding-right: 1rem !important;
+}
+
+@media (max-width: 640px) {
+  input.erp-login-icon-input[type][class] {
+    padding-left: 3.25rem !important;
+    padding-right: 1rem !important;
+  }
+}

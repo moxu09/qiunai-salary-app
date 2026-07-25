@@ -249,7 +249,10 @@ export default function ErpLoginCard({
             <label className="block">
               <span className="text-sm font-bold">電子郵件</span>
               <div className="relative mt-2">
-                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                <Mail
+                  className="erp-login-field-icon absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
+                  size={18}
+                />
                 <input
                   type="email"
                   autoComplete="email"
@@ -258,8 +261,8 @@ export default function ErpLoginCard({
                   onChange={(event) => setEmail(event.target.value)}
                   className={
                     isQiunai
-                      ? "qiunai-input pl-11"
-                      : "w-full rounded-2xl border border-sky-200 bg-white px-4 py-3 pl-11 text-sm outline-none focus:border-sky-400"
+                      ? "erp-login-icon-input qiunai-input"
+                      : "erp-login-icon-input w-full rounded-2xl border border-sky-200 bg-white py-3 text-sm outline-none focus:border-sky-400"
                   }
                   placeholder="name@example.com"
                 />
@@ -268,7 +271,10 @@ export default function ErpLoginCard({
             <label className="block">
               <span className="text-sm font-bold">密碼</span>
               <div className="relative mt-2">
-                <LockKeyhole className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                <LockKeyhole
+                  className="erp-login-field-icon absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
+                  size={18}
+                />
                 <input
                   type="password"
                   autoComplete="current-password"
@@ -277,8 +283,8 @@ export default function ErpLoginCard({
                   onChange={(event) => setPassword(event.target.value)}
                   className={
                     isQiunai
-                      ? "qiunai-input pl-11"
-                      : "w-full rounded-2xl border border-sky-200 bg-white px-4 py-3 pl-11 text-sm outline-none focus:border-sky-400"
+                      ? "erp-login-icon-input qiunai-input"
+                      : "erp-login-icon-input w-full rounded-2xl border border-sky-200 bg-white py-3 text-sm outline-none focus:border-sky-400"
                   }
                   placeholder="已連結電子郵件時設定的密碼"
                 />
