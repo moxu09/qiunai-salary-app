@@ -75,12 +75,19 @@ export async function POST(request) {
     const { discordId } = await auth(request);
     const body = await request.json().catch(() => ({}));
 
-    if (body.action === "set-featured") {
-      const { data: admin } = await supabaseAdmin
-        .from(ADMIN_TABLE).select("discord_id").eq("discord_id", discordId)
-        .eq("is_active", true).maybeSingle();
-      if (!admin) throw new Error("你沒有後台管理權限");
+    if (body.action === "set-featured" || body.action === "sync-staff") {
+      const access = await getErpAccessByDiscordId(supabaseAdmin, APP_KEY, discordId);
+      if (!access.capabilities.canViewAllAdmin) throw new Error("你沒有員工管理權限");
+    }
 
+    if (body.action === "sync-staff") {
+      const targetDiscordId = String(body.discordId || "").trim();
+      if (!targetDiscordId) throw new Error("缺少要同步的員工 Discord ID");
+      const profile = await seedProfile(await getStaff(targetDiscordId));
+      return NextResponse.json({ ok: true, profile });
+    }
+
+    if (body.action === "set-featured") {
       const { data: staffRows, error: staffError } = await supabaseAdmin
         .from(STAFF_TABLE)
         .select("discord_id,discord_name,display_name,avatar_url,is_online,can_take_order,is_active");

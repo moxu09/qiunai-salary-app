@@ -331,7 +331,34 @@ export default function AdminStaffPage() {
       }
     }
 
+    const { data: sessionData } = await supabase.auth.getSession();
+    const token = sessionData.session?.access_token;
+    if (!token) {
+      setSavingId(null);
+      alert("員工資料已儲存，但登入已過期，官網顯示狀態尚未同步");
+      return;
+    }
+
+    const syncResponse = await fetch("/api/qiunai/public-profile", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        action: "sync-staff",
+        discordId: staff.discord_id,
+      }),
+    });
+    const syncResult = await syncResponse.json().catch(() => ({}));
     setSavingId(null);
+
+    if (!syncResponse.ok || !syncResult.ok) {
+      console.error("同步官網顯示狀態失敗:", syncResult);
+      alert("員工資料已儲存，但官網顯示狀態同步失敗，請稍後再試");
+      return;
+    }
+
     alert("已儲存");
     await loadStaff();
   }
