@@ -32,6 +32,8 @@ type AuditReport = {
     summary: {
       score: number;
       level: "high" | "review" | "low";
+      riskBand: string;
+      assessment: string;
       high: number;
       medium: number;
       dmaCandidateCount: number;
@@ -238,6 +240,15 @@ function AuditDetail({ report }: { report: AuditReport | null }) {
         <Metric label="需確認" value={summary.medium} tone="amber" />
         <Metric label="DMA 可存取裝置" value={summary.dmaCandidateCount} tone="violet" />
         <Metric label="管理員掃描" value={summary.isAdministrator ? "是" : "否"} tone={summary.isAdministrator ? "emerald" : "amber"} />
+      </div>
+      <div className={`mt-5 rounded-2xl border p-5 ${levelStyle(summary.level)}`}>
+        <p className="text-xs font-black tracking-[0.12em]">自動評語｜{summary.riskBand}</p>
+        <p className="mt-2 text-lg font-black">{summary.assessment}</p>
+      </div>
+      <div className="mt-3 flex flex-wrap gap-2 text-xs font-black">
+        {[["0–9", "低風險"], ["10–24", "需注意"], ["25–49", "高風險"], ["50–74", "嚴重風險"], ["75–100", "極高風險"]].map(([range, label]) => (
+          <span key={range} className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-slate-600">{range}｜{label}</span>
+        ))}
       </div>
       <p className="mt-3 text-xs font-bold text-slate-500">
         DMA 可存取裝置通常包含顯示卡、網卡及控制器；數量僅供硬體核對，不代表外掛數量，也不會因數量增加風險分數。
