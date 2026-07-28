@@ -236,9 +236,12 @@ function AuditDetail({ report }: { report: AuditReport | null }) {
       <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Metric label="高風險" value={summary.high} tone="rose" />
         <Metric label="需確認" value={summary.medium} tone="amber" />
-        <Metric label="DMA 候選裝置" value={summary.dmaCandidateCount} tone="violet" />
+        <Metric label="DMA 可存取裝置" value={summary.dmaCandidateCount} tone="violet" />
         <Metric label="管理員掃描" value={summary.isAdministrator ? "是" : "否"} tone={summary.isAdministrator ? "emerald" : "amber"} />
       </div>
+      <p className="mt-3 text-xs font-bold text-slate-500">
+        DMA 可存取裝置通常包含顯示卡、網卡及控制器；數量僅供硬體核對，不代表外掛數量，也不會因數量增加風險分數。
+      </p>
       <div className="mt-6 grid gap-3 sm:grid-cols-2">
         {Object.entries(report.analysis.security).map(([key, value]) => <div key={key} className="rounded-2xl border border-slate-200 px-4 py-3"><p className="text-xs font-black text-slate-500">{SECURITY_LABELS[key] || key}</p><p className="mt-1 text-sm font-black">{STATE_LABELS[value] || value}</p></div>)}
       </div>
