@@ -246,7 +246,7 @@ function AuditDetail({ report }: { report: AuditReport | null }) {
         <p className="mt-2 text-lg font-black">{summary.assessment}</p>
       </div>
       <div className="mt-3 flex flex-wrap gap-2 text-xs font-black">
-        {[["0–9", "低風險"], ["10–24", "需注意"], ["25–49", "高風險"], ["50–74", "嚴重風險"], ["75–100", "極高風險"]].map(([range, label]) => (
+        {[["0–10", "低風險"], ["11–24", "需注意"], ["25–49", "高風險"], ["50–74", "嚴重風險"], ["75–100", "極高風險"]].map(([range, label]) => (
           <span key={range} className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-slate-600">{range}｜{label}</span>
         ))}
       </div>
