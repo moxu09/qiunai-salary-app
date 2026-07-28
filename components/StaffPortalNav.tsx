@@ -7,6 +7,7 @@ import {
   ChevronDown,
   ClipboardCheck,
   Coins,
+  Cpu,
   FileText,
   Gift,
   HandCoins,
@@ -25,6 +26,7 @@ export type PortalTab =
   | "tips"
   | "bonuses"
   | "deductions"
+  | "device-audit"
   | "approval-administrative"
   | "approval-reimbursement"
   | "approval-welfare"
@@ -75,6 +77,7 @@ type StaffPortalNavProps = {
   onSelect: (tab: PortalTab) => void;
   employeeName: string;
   company: string;
+  showDeviceAudit?: boolean;
 };
 
 export default function StaffPortalNav({
@@ -82,6 +85,7 @@ export default function StaffPortalNav({
   onSelect,
   employeeName,
   company,
+  showDeviceAudit = false,
 }: StaffPortalNavProps) {
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(groups.map((group) => [group.title, true]))
@@ -103,7 +107,11 @@ export default function StaffPortalNav({
       </div>
 
       <nav className="staff-portal-menu">
-        {groups.map(({ title, icon: GroupIcon, items }) => {
+        {[...groups, ...(showDeviceAudit ? [{
+          title: "稽核",
+          icon: Cpu,
+          items: [["device-audit", "電腦稽核", Cpu]] as const,
+        }] : [])].map(({ title, icon: GroupIcon, items }) => {
           const isOpen = openGroups[title];
           const regionId = `staff-portal-${title}`;
 

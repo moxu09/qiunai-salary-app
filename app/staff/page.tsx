@@ -24,6 +24,7 @@ import { SERVICE_OPTIONS, type ServiceOption } from "@/lib/serviceOptions";
 import StaffPortalNav, { type PortalTab } from "@/components/StaffPortalNav";
 import HrPortalPanel from "@/components/HrPortalPanel";
 import ErpAuthLinkManager from "@/components/ErpAuthLinkManager";
+import StaffDeviceAuditPanel from "@/components/StaffDeviceAuditPanel";
 import {
   formatTaipeiDateTime,
   getNextTaipeiMonthText,
@@ -213,6 +214,7 @@ export default function StaffPage() {
     useState<PerformanceRanking | null>(null);
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonthInput());
   const [activeTab, setActiveTab] = useState<PortalTab>("profile");
+  const [canViewDeviceAudit, setCanViewDeviceAudit] = useState(false);
 
   const [profileForm, setProfileForm] = useState({
     display_name: "",
@@ -442,6 +444,15 @@ export default function StaffPage() {
     const staffData = ensureData.staff as Staff;
 
     setStaff(staffData);
+
+    const accessRes = await fetch("/api/qiunai/erp-access", {
+      headers: { Authorization: `Bearer ${sessionData.session.access_token}` },
+      cache: "no-store",
+    });
+    const accessData = await accessRes.json().catch(() => ({}));
+    setCanViewDeviceAudit(
+      Boolean(accessRes.ok && accessData.access?.role === "audit_reviewer")
+    );
 
     setProfileForm({
       display_name: staffData.display_name || "",
@@ -1066,10 +1077,13 @@ export default function StaffPage() {
 
       <section id="overview" className="staff-workspace-section relative z-10 scroll-mt-24">
         <div className="staff-portal-grid">
-          <StaffPortalNav activeTab={activeTab} onSelect={setActiveTab} employeeName={staff.display_name || staff.discord_name || staff.discord_id} company="秋奈電競陪玩" />
+          <StaffPortalNav activeTab={activeTab} onSelect={setActiveTab} employeeName={staff.display_name || staff.discord_name || staff.discord_id} company="秋奈電競陪玩" showDeviceAudit={canViewDeviceAudit} />
 
           <div className="staff-main-column min-w-0">
         <HrPortalPanel activeTab={activeTab} apiPath="/api/qiunai/hr" department="秋奈電競陪玩" staffName={staff.display_name || staff.discord_name || staff.discord_id} selectedMonth={selectedMonth} onMonthChange={setSelectedMonth} />
+        {activeTab === "device-audit" && canViewDeviceAudit ? (
+          <StaffDeviceAuditPanel />
+        ) : null}
         <div className={activeTab === "profile" ? "mt-6 grid gap-4 md:grid-cols-4" : "hidden"}>
           <Stat title="月份訂單" value={`${totals.orderCount} 筆`} />
           <Stat
