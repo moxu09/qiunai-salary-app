@@ -3,7 +3,14 @@
 /* eslint-disable @next/next/no-img-element */
 
 import { useEffect, useMemo, useState } from "react";
-import { Save, RefreshCw, Gamepad2, Search, Trophy } from "lucide-react";
+import {
+  Save,
+  RefreshCw,
+  Gamepad2,
+  Search,
+  Trophy,
+  Trash2,
+} from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { SERVICE_OPTIONS, type ServiceOption } from "@/lib/serviceOptions";
 import { useQiunaiAdminGuard } from "@/lib/useQiunaiAdminGuard";
@@ -48,6 +55,7 @@ export default function AdminStaffPage() {
     Record<string, string[]>
   >({});
   const [savingId, setSavingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [selectedStaffId, setSelectedStaffId] = useState<string | null>(null);
   const [featuredIds, setFeaturedIds] = useState<string[]>([]);
   const [featuredSaving, setFeaturedSaving] = useState(false);
@@ -361,6 +369,56 @@ export default function AdminStaffPage() {
 
     alert("已儲存");
     await loadStaff();
+  }
+
+  async function deleteStaff(staff: Staff) {
+    const name = getStaffDisplayName(staff);
+    const confirmed = window.confirm(
+      `確定要永久刪除「${name}」嗎？\n\n` +
+        "員工主資料、可接服務設定及官網展示資料會一併刪除；歷史訂單與薪資紀錄會保留。\n\n" +
+        "此操作無法復原。",
+    );
+    if (!confirmed) return;
+
+    const { data } = await supabase.auth.getSession();
+    const token = data.session?.access_token;
+    if (!token) {
+      alert("登入已過期，請重新登入後再試");
+      return;
+    }
+
+    setDeletingId(staff.id);
+    const response = await fetch("/api/qiunai/staff", {
+      method: "DELETE",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        staffId: staff.id,
+        discordId: staff.discord_id,
+      }),
+    });
+    const result = await response.json().catch(() => ({}));
+    setDeletingId(null);
+
+    if (!response.ok || !result.ok) {
+      alert(result.message || "刪除員工失敗");
+      return;
+    }
+
+    const remaining = staffList.filter((item) => item.id !== staff.id);
+    setStaffList(remaining);
+    setSelectedStaffId(remaining[0]?.id || null);
+    setStaffServiceMap((current) => {
+      const next = { ...current };
+      delete next[staff.discord_id];
+      return next;
+    });
+    setFeaturedIds((current) =>
+      current.filter((id) => id !== staff.discord_id),
+    );
+    alert(`已刪除員工「${name}」`);
   }
 
   if (adminLoading || !isAdmin) {
@@ -749,6 +807,24 @@ export default function AdminStaffPage() {
                             )
                           )}
                         </div>
+                      </div>
+
+                      <div className="mt-6 rounded-[28px] border border-rose-200 bg-rose-50/70 p-5">
+                        <h3 className="font-black text-rose-700">刪除員工</h3>
+                        <p className="mt-2 text-sm leading-6 text-rose-600">
+                          刪除員工主資料、可接服務設定及官網展示資料；歷史訂單與薪資紀錄會保留。
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => deleteStaff(staff)}
+                          disabled={deletingId === staff.id}
+                          className="mt-4 inline-flex items-center justify-center gap-2 rounded-full bg-rose-600 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          <Trash2 size={17} />
+                          {deletingId === staff.id
+                            ? "刪除中..."
+                            : "刪除此員工"}
+                        </button>
                       </div>
                     </div>
                   );
