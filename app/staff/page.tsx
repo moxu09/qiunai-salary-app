@@ -1110,7 +1110,9 @@ export default function StaffPage() {
                 <p className="mt-1 text-xl font-black text-pink-600">
                   {performanceRanking.isFirst
                     ? "目前位居第一"
-                    : `$${performanceRanking.gapToPrevious.toLocaleString()}`}
+                    : performanceRanking.gapToPrevious > 3000
+                      ? "再接再厲"
+                      : `$${performanceRanking.gapToPrevious.toLocaleString()}`}
                 </p>
               </div>
             </div>
