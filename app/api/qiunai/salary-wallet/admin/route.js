@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import {
   bulkDepositSalaryWallet,
+  getSalaryWalletSummary,
   manuallyDepositSalaryWallet,
   settleSalaryWallet,
 } from "@/lib/salaryWallet";
@@ -70,6 +71,18 @@ export async function GET(request) {
   try {
     await requireAdmin(request);
     await settleSalaryWallet(supabaseAdmin, walletConfig);
+    const discordId = new URL(request.url).searchParams
+      .get("discordId")
+      ?.trim();
+
+    if (discordId) {
+      const wallet = await getSalaryWalletSummary(
+        supabaseAdmin,
+        walletConfig.appKey,
+        discordId,
+      );
+      return NextResponse.json({ ok: true, wallet });
+    }
 
     const { data, error } = await supabaseAdmin
       .from("salary_withdraw_requests")

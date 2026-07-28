@@ -13,6 +13,7 @@ import {
   ArchiveRestore,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import AdminStaffWalletCard from "@/components/AdminStaffWalletCard";
 import { SERVICE_OPTIONS, type ServiceOption } from "@/lib/serviceOptions";
 import { useQiunaiAdminGuard } from "@/lib/useQiunaiAdminGuard";
 
@@ -844,6 +845,13 @@ export default function AdminStaffPage() {
                           )}
                         </div>
                       </div>
+
+                      <AdminStaffWalletCard
+                        key={staff.discord_id}
+                        discordId={staff.discord_id}
+                        staffName={getStaffDisplayName(staff)}
+                        apiPath="/api/qiunai/salary-wallet/admin"
+                      />
 
                       <div className="mt-6 rounded-[28px] border border-amber-200 bg-amber-50/70 p-5">
                         <h3 className="font-black text-amber-800">
