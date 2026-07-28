@@ -118,6 +118,12 @@ export async function POST(request) {
 
     const now = new Date().toISOString();
     if (existing) {
+      if (existing.is_active === false) {
+        return json(
+          { ok: false, message: "你的員工資料已封存，請聯繫管理員重新啟用。" },
+          403
+        );
+      }
       const { data: updated, error: updateError } = await supabaseAdmin
         .from("qiunai_staff")
         .update({
@@ -125,7 +131,6 @@ export async function POST(request) {
           display_name: existing.display_name || displayName,
           avatar_url: avatarUrl,
           role_checked: true,
-          is_active: true,
           updated_at: now,
         })
         .eq("discord_id", discordId)

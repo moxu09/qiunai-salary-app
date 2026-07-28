@@ -9,7 +9,8 @@ import {
   Gamepad2,
   Search,
   Trophy,
-  Trash2,
+  Archive,
+  ArchiveRestore,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { SERVICE_OPTIONS, type ServiceOption } from "@/lib/serviceOptions";
@@ -55,12 +56,13 @@ export default function AdminStaffPage() {
     Record<string, string[]>
   >({});
   const [savingId, setSavingId] = useState<string | null>(null);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [archivingId, setArchivingId] = useState<string | null>(null);
   const [selectedStaffId, setSelectedStaffId] = useState<string | null>(null);
   const [featuredIds, setFeaturedIds] = useState<string[]>([]);
   const [featuredSaving, setFeaturedSaving] = useState(false);
   const [keyword, setKeyword] = useState("");
   const [salarySort, setSalarySort] = useState("created_desc");
+  const [showArchived, setShowArchived] = useState(false);
 
   const groupedServices = useMemo(() => {
     const groups: Record<string, ServiceOption[]> = {};
@@ -77,17 +79,20 @@ export default function AdminStaffPage() {
   }, []);
 
   const totals = useMemo(() => {
+    const activeStaff = staffList.filter((staff) => staff.is_active);
     return {
-      total: staffList.length,
-      online: staffList.filter((staff) => staff.is_online).length,
-      active: staffList.filter((staff) => staff.is_active).length,
-      canTakeOrder: staffList.filter((staff) => staff.can_take_order).length,
+      total: activeStaff.length,
+      online: activeStaff.filter((staff) => staff.is_online).length,
+      active: activeStaff.length,
+      canTakeOrder: activeStaff.filter((staff) => staff.can_take_order).length,
     };
   }, [staffList]);
 
   const filteredStaff = useMemo(() => {
     const searchText = keyword.trim().toLowerCase();
-    let list = [...staffList];
+    let list = staffList.filter((staff) =>
+      showArchived ? !staff.is_active : staff.is_active,
+    );
 
     if (searchText) {
       list = list.filter((staff) =>
@@ -127,7 +132,7 @@ export default function AdminStaffPage() {
     }
 
     return list;
-  }, [keyword, salarySort, staffList]);
+  }, [keyword, salarySort, showArchived, staffList]);
 
   useEffect(() => {
     if (isAdmin) {
@@ -371,14 +376,17 @@ export default function AdminStaffPage() {
     await loadStaff();
   }
 
-  async function deleteStaff(staff: Staff) {
+  async function setStaffArchived(staff: Staff, archived: boolean) {
     const name = getStaffDisplayName(staff);
-    const confirmed = window.confirm(
-      `確定要永久刪除「${name}」嗎？\n\n` +
-        "員工主資料、可接服務設定及官網展示資料會一併刪除；歷史訂單與薪資紀錄會保留。\n\n" +
-        "此操作無法復原。",
-    );
-    if (!confirmed) return;
+    if (
+      archived &&
+      !window.confirm(
+        `確定要封存「${name}」嗎？\n\n` +
+          "封存後會立即停用、下線並禁止接單，也不會出現在官網及一般員工清單。之後仍可從「查看已封存員工」重新啟用。",
+      )
+    ) {
+      return;
+    }
 
     const { data } = await supabase.auth.getSession();
     const token = data.session?.access_token;
@@ -387,38 +395,51 @@ export default function AdminStaffPage() {
       return;
     }
 
-    setDeletingId(staff.id);
+    setArchivingId(staff.id);
     const response = await fetch("/api/qiunai/staff", {
-      method: "DELETE",
+      method: "PATCH",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify({
+        action: archived ? "archive" : "restore",
         staffId: staff.id,
         discordId: staff.discord_id,
       }),
     });
     const result = await response.json().catch(() => ({}));
-    setDeletingId(null);
+    setArchivingId(null);
 
     if (!response.ok || !result.ok) {
-      alert(result.message || "刪除員工失敗");
+      alert(result.message || "更新員工封存狀態失敗");
       return;
     }
 
-    const remaining = staffList.filter((item) => item.id !== staff.id);
-    setStaffList(remaining);
-    setSelectedStaffId(remaining[0]?.id || null);
-    setStaffServiceMap((current) => {
-      const next = { ...current };
-      delete next[staff.discord_id];
-      return next;
-    });
-    setFeaturedIds((current) =>
-      current.filter((id) => id !== staff.discord_id),
+    const updated = {
+      ...staff,
+      is_active: !archived,
+      is_online: archived ? false : staff.is_online,
+      can_take_order: archived ? false : staff.can_take_order,
+    };
+    const nextStaffList = staffList.map((item) =>
+      item.id === staff.id ? updated : item,
     );
-    alert(`已刪除員工「${name}」`);
+    setStaffList(nextStaffList);
+    if (archived) {
+      setFeaturedIds((current) =>
+        current.filter((id) => id !== staff.discord_id),
+      );
+      setSelectedStaffId(
+        nextStaffList.find((item) => item.is_active)?.id || null,
+      );
+      alert(`已封存員工「${name}」`);
+      return;
+    }
+
+    setShowArchived(false);
+    setSelectedStaffId(staff.id);
+    alert(`已重新啟用員工「${name}」`);
   }
 
   if (adminLoading || !isAdmin) {
@@ -535,6 +556,21 @@ export default function AdminStaffPage() {
                   <option value="tier_rate_90">只看：90%</option>
                   <option value="tier_manager_95">只看：主管津貼 95%</option>
                 </select>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowArchived((current) => !current);
+                    setSelectedStaffId(null);
+                  }}
+                  className="mt-3 flex w-full items-center justify-center gap-2 rounded-2xl border border-pink-200 bg-white px-3 py-2 text-sm font-bold text-pink-600 transition hover:bg-pink-50"
+                >
+                  {showArchived ? (
+                    <ArchiveRestore size={16} />
+                  ) : (
+                    <Archive size={16} />
+                  )}
+                  {showArchived ? "回到啟用中員工" : "查看已封存員工"}
+                </button>
               </div>
               <div className="mt-2 max-h-[720px] space-y-2 overflow-y-auto">
                 {filteredStaff.map((staff) => {
@@ -809,21 +845,37 @@ export default function AdminStaffPage() {
                         </div>
                       </div>
 
-                      <div className="mt-6 rounded-[28px] border border-rose-200 bg-rose-50/70 p-5">
-                        <h3 className="font-black text-rose-700">刪除員工</h3>
+                      <div className="mt-6 rounded-[28px] border border-amber-200 bg-amber-50/70 p-5">
+                        <h3 className="font-black text-amber-800">
+                          {staff.is_active ? "封存員工" : "已封存員工"}
+                        </h3>
                         <p className="mt-2 text-sm leading-6 text-rose-600">
-                          刪除員工主資料、可接服務設定及官網展示資料；歷史訂單與薪資紀錄會保留。
+                          {staff.is_active
+                            ? "封存後會立即停用、下線並禁止接單，不再顯示於官網及一般員工清單。"
+                            : "重新啟用後，員工會恢復顯示；上線與接單狀態仍需另外設定。"}
                         </p>
                         <button
                           type="button"
-                          onClick={() => deleteStaff(staff)}
-                          disabled={deletingId === staff.id}
-                          className="mt-4 inline-flex items-center justify-center gap-2 rounded-full bg-rose-600 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
+                          onClick={() =>
+                            setStaffArchived(staff, staff.is_active)
+                          }
+                          disabled={archivingId === staff.id}
+                          className={`mt-4 inline-flex items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-bold text-white transition disabled:cursor-not-allowed disabled:opacity-60 ${
+                            staff.is_active
+                              ? "bg-amber-600 hover:bg-amber-700"
+                              : "bg-emerald-600 hover:bg-emerald-700"
+                          }`}
                         >
-                          <Trash2 size={17} />
-                          {deletingId === staff.id
-                            ? "刪除中..."
-                            : "刪除此員工"}
+                          {staff.is_active ? (
+                            <Archive size={17} />
+                          ) : (
+                            <ArchiveRestore size={17} />
+                          )}
+                          {archivingId === staff.id
+                            ? "處理中..."
+                            : staff.is_active
+                              ? "封存此員工"
+                              : "重新啟用員工"}
                         </button>
                       </div>
                     </div>
