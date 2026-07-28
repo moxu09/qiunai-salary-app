@@ -34,6 +34,10 @@ type AuditReport = {
       level: "high" | "review" | "low";
       riskBand: string;
       assessment: string;
+      plainLanguage: {
+        details: string[];
+        nextSteps: string[];
+      };
       high: number;
       medium: number;
       dmaCandidateCount: number;
@@ -244,6 +248,20 @@ function AuditDetail({ report }: { report: AuditReport | null }) {
       <div className={`mt-5 rounded-2xl border p-5 ${levelStyle(summary.level)}`}>
         <p className="text-xs font-black tracking-[0.12em]">自動評語｜{summary.riskBand}</p>
         <p className="mt-2 text-lg font-black">{summary.assessment}</p>
+      </div>
+      <div className="mt-4 grid gap-4 lg:grid-cols-2">
+        <section className="rounded-2xl border border-sky-200 bg-sky-50 p-5">
+          <h3 className="font-black text-sky-900">白話分析</h3>
+          <ul className="mt-3 space-y-2 text-sm font-semibold leading-6 text-slate-700">
+            {(summary.plainLanguage?.details || ["正在產生白話分析，請重新整理報告。"]).map((detail) => <li key={detail} className="flex gap-2"><span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-sky-500" /><span>{detail}</span></li>)}
+          </ul>
+        </section>
+        <section className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5">
+          <h3 className="font-black text-emerald-900">建議下一步</h3>
+          <ol className="mt-3 space-y-2 text-sm font-semibold leading-6 text-slate-700">
+            {(summary.plainLanguage?.nextSteps || ["請重新整理後再查看建議。"]).map((step, index) => <li key={step} className="flex gap-2"><span className="font-black text-emerald-700">{index + 1}.</span><span>{step}</span></li>)}
+          </ol>
+        </section>
       </div>
       <div className="mt-3 flex flex-wrap gap-2 text-xs font-black">
         {[["0–10", "低風險"], ["11–24", "需注意"], ["25–49", "高風險"], ["50–74", "嚴重風險"], ["75–100", "極高風險"]].map(([range, label]) => (
