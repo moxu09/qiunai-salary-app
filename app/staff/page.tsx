@@ -15,6 +15,7 @@ import {
   HandCoins,
   FileDown,
   Search,
+  Trophy,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
@@ -152,6 +153,15 @@ type SalaryWalletData = {
   };
 };
 
+type PerformanceRanking = {
+  month: string;
+  rank: number;
+  participantCount: number;
+  performanceAmount: number;
+  gapToPrevious: number;
+  isFirst: boolean;
+};
+
 type WithdrawalStatementSummary = {
   requestCount: number;
   approvedCount: number;
@@ -199,6 +209,8 @@ export default function StaffPage() {
   const [salaryWallet, setSalaryWallet] = useState<SalaryWalletData | null>(
     null
   );
+  const [performanceRanking, setPerformanceRanking] =
+    useState<PerformanceRanking | null>(null);
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonthInput());
   const [activeTab, setActiveTab] = useState<PortalTab>("profile");
 
@@ -458,8 +470,11 @@ export default function StaffPage() {
     }
 
     await loadSalaryWallet();
-    await loadSalaryData(staffData.discord_id);
-    await loadStaffServices(staffData.discord_id);
+    await Promise.all([
+      loadSalaryData(staffData.discord_id),
+      loadStaffServices(staffData.discord_id),
+      loadPerformanceRanking(),
+    ]);
 
     setLoading(false);
   }
@@ -568,6 +583,33 @@ export default function StaffPage() {
       alert(error instanceof Error ? error.message : "讀取薪資錢包失敗");
     } finally {
       setWalletLoading(false);
+    }
+  }
+
+  async function loadPerformanceRanking() {
+    try {
+      const { data } = await supabase.auth.getSession();
+      const session = data.session;
+      if (!session) return;
+
+      const params = new URLSearchParams({ month: selectedMonth });
+      const response = await fetch(
+        `/api/qiunai/performance-rank?${params.toString()}`,
+        {
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          cache: "no-store",
+        }
+      );
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok || !payload.ok) {
+        throw new Error(payload.message || "讀取業績排名失敗");
+      }
+      setPerformanceRanking(payload.ranking as PerformanceRanking);
+    } catch (error) {
+      console.error("load performance ranking error:", error);
+      setPerformanceRanking(null);
     }
   }
 
@@ -911,8 +953,11 @@ export default function StaffPage() {
     if (!staff) return;
 
     await loadSalaryWallet();
-    await loadSalaryData(staff.discord_id);
-    await loadStaffServices(staff.discord_id);
+    await Promise.all([
+      loadSalaryData(staff.discord_id),
+      loadStaffServices(staff.discord_id),
+      loadPerformanceRanking(),
+    ]);
   }
 
   if (loading) {
@@ -1040,6 +1085,40 @@ export default function StaffPage() {
             value={`$${totals.unpaidSalary.toLocaleString()}`}
           />
         </div>
+
+        {activeTab === "profile" && performanceRanking ? (
+          <div className="mt-4 rounded-[28px] border border-violet-100 bg-gradient-to-r from-violet-50 via-white to-pink-50 p-5 shadow-sm shadow-pink-100">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="flex items-center gap-2 text-sm font-black text-violet-600">
+                  <Trophy size={18} />
+                  {formatMonthLabel(performanceRanking.month)}業績排名
+                </p>
+                <p className="mt-2 text-3xl font-black text-[#5b3768]">
+                  第 {performanceRanking.rank} 名
+                  <span className="ml-2 text-sm font-bold text-[#8b5a8f]">
+                    ／{performanceRanking.participantCount} 人
+                  </span>
+                </p>
+                <p className="mt-2 text-sm text-[#8b5a8f]">
+                  本月接單業績 $
+                  {performanceRanking.performanceAmount.toLocaleString()}
+                </p>
+              </div>
+              <div className="rounded-2xl bg-white px-5 py-4 text-center shadow-sm">
+                <p className="text-xs font-bold text-[#8b5a8f]">距離上一名</p>
+                <p className="mt-1 text-xl font-black text-pink-600">
+                  {performanceRanking.isFirst
+                    ? "目前位居第一"
+                    : `$${performanceRanking.gapToPrevious.toLocaleString()}`}
+                </p>
+                <p className="mt-1 text-xs text-[#a77cab]">
+                  不會顯示其他陪陪身分
+                </p>
+              </div>
+            </div>
+          </div>
+        ) : null}
 
         <div className="mt-6">
           <Card id="wallet" className={activeTab === "profile" ? "" : "hidden"}>
