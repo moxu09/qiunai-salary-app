@@ -1,5 +1,7 @@
-import ErpLoginCard from "@/components/ErpLoginCard";
+import { redirect } from "next/navigation";
 
 export default function AdminLoginPage() {
-  return <ErpLoginCard organization="qiunai" nextPath="/admin" admin />;
+  redirect(
+    "https://salary.wearestilllhere.com/admin-login?department=qiunai",
+  );
 }
