@@ -1112,9 +1112,6 @@ export default function StaffPage() {
                     ? "目前位居第一"
                     : `$${performanceRanking.gapToPrevious.toLocaleString()}`}
                 </p>
-                <p className="mt-1 text-xs text-[#a77cab]">
-                  不會顯示其他陪陪身分
-                </p>
               </div>
             </div>
           </div>
