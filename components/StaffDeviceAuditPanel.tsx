@@ -19,6 +19,7 @@ type Finding = {
   severity: "high" | "medium" | "low";
   title: string;
   detail: string;
+  evidence?: string[];
 };
 
 type AuditReport = {
@@ -42,6 +43,15 @@ type AuditReport = {
       medium: number;
       dmaCandidateCount: number;
       isAdministrator: boolean;
+      activeCeCount: number;
+      historicalCeCount: number;
+      injectionEventCount: number;
+      accessEventCount: number;
+      codeIntegrityEventCount: number;
+      moduleScanIncomplete: boolean;
+      sysmonAvailable: boolean;
+      codeIntegrityAvailable: boolean;
+      loadedModuleCount: number;
     };
     security: Record<string, string>;
     findings: Finding[];
@@ -244,6 +254,14 @@ function AuditDetail({ report }: { report: AuditReport | null }) {
         <Metric label="需確認" value={summary.medium} tone="amber" />
         <Metric label="DMA 可存取裝置" value={summary.dmaCandidateCount} tone="violet" />
         <Metric label="管理員掃描" value={summary.isAdministrator ? "是" : "否"} tone={summary.isAdministrator ? "emerald" : "amber"} />
+        <Metric label="CE 即時跡象" value={summary.activeCeCount ?? 0} tone="rose" />
+        <Metric label="CE 歷史跡象" value={summary.historicalCeCount ?? 0} tone="amber" />
+        <Metric label="注入／篡改事件" value={(summary.injectionEventCount ?? 0) + (summary.accessEventCount ?? 0)} tone="rose" />
+        <Metric label="Code Integrity 警告" value={summary.codeIntegrityEventCount ?? 0} tone="amber" />
+        <Metric label="已列舉載入模組" value={summary.loadedModuleCount ?? 0} tone="violet" />
+        <Metric label="Sysmon 紀錄" value={summary.sysmonAvailable ? "可用" : "未安裝／未啟用"} tone={summary.sysmonAvailable ? "emerald" : "amber"} />
+        <Metric label="Code Integrity 紀錄" value={summary.codeIntegrityAvailable ? "可用" : "無法讀取"} tone={summary.codeIntegrityAvailable ? "emerald" : "amber"} />
+        <Metric label="模組檢查完整性" value={summary.moduleScanIncomplete ? "不完整" : "正常"} tone={summary.moduleScanIncomplete ? "amber" : "emerald"} />
       </div>
       <div className={`mt-5 rounded-2xl border p-5 ${levelStyle(summary.level)}`}>
         <p className="text-xs font-black tracking-[0.12em]">自動評語｜{summary.riskBand}</p>
@@ -277,7 +295,32 @@ function AuditDetail({ report }: { report: AuditReport | null }) {
       <div className="mt-6 rounded-2xl border border-slate-200 p-5">
         <h3 className="font-black">檢查摘要</h3>
         <div className="mt-4 space-y-3">
-          {report.analysis.findings.length === 0 ? <p className="flex items-center gap-2 text-sm font-bold text-emerald-700"><CheckCircle2 size={18} />目前沒有規則命中的風險項目</p> : report.analysis.findings.map((finding) => <div key={finding.id} className="rounded-xl bg-slate-50 p-4"><p className="flex items-center gap-2 text-sm font-black"><AlertTriangle size={16} className="text-amber-500" />{finding.title}</p><p className="mt-1 text-xs font-semibold leading-5 text-slate-500">{finding.detail}</p></div>)}
+          {report.analysis.findings.length === 0 ? (
+            <p className="flex items-center gap-2 text-sm font-bold text-emerald-700">
+              <CheckCircle2 size={18} />目前沒有規則命中的風險項目
+            </p>
+          ) : (
+            report.analysis.findings.map((finding) => (
+              <div key={finding.id} className="rounded-xl bg-slate-50 p-4">
+                <p className="flex items-center gap-2 text-sm font-black">
+                  <AlertTriangle size={16} className="text-amber-500" />
+                  {finding.title}
+                </p>
+                <p className="mt-1 text-xs font-semibold leading-5 text-slate-500">
+                  {finding.detail}
+                </p>
+                {finding.evidence?.length ? (
+                  <ul className="mt-3 space-y-1 rounded-xl border border-slate-200 bg-white p-3 text-[11px] font-semibold leading-5 text-slate-600">
+                    {finding.evidence.map((evidence) => (
+                      <li key={evidence} className="break-all">
+                        證據｜{evidence}
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+              </div>
+            ))
+          )}
         </div>
       </div>
       <p className="mt-5 text-xs font-semibold leading-5 text-slate-500">{report.analysis.disclaimer}</p>
