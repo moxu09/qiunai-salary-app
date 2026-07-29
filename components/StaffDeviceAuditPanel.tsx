@@ -52,6 +52,11 @@ type AuditReport = {
       sysmonAvailable: boolean;
       codeIntegrityAvailable: boolean;
       loadedModuleCount: number;
+      serverAttested: boolean;
+      bamHistoryCount: number;
+      userAssistHistoryCount: number;
+      compatibilityHistoryCount: number;
+      recentExecutableCount: number;
     };
     security: Record<string, string>;
     findings: Finding[];
@@ -262,6 +267,10 @@ function AuditDetail({ report }: { report: AuditReport | null }) {
         <Metric label="Sysmon 紀錄" value={summary.sysmonAvailable ? "可用" : "未安裝／未啟用"} tone={summary.sysmonAvailable ? "emerald" : "amber"} />
         <Metric label="Code Integrity 紀錄" value={summary.codeIntegrityAvailable ? "可用" : "無法讀取"} tone={summary.codeIntegrityAvailable ? "emerald" : "amber"} />
         <Metric label="模組檢查完整性" value={summary.moduleScanIncomplete ? "不完整" : "正常"} tone={summary.moduleScanIncomplete ? "amber" : "emerald"} />
+        <Metric label="伺服器防偽挑戰" value={summary.serverAttested ? "已驗證" : "舊版報告"} tone={summary.serverAttested ? "emerald" : "amber"} />
+        <Metric label="BAM 執行歷史" value={summary.bamHistoryCount ?? 0} tone="violet" />
+        <Metric label="UserAssist 歷史" value={summary.userAssistHistoryCount ?? 0} tone="violet" />
+        <Metric label="近期執行檔" value={summary.recentExecutableCount ?? 0} tone="violet" />
       </div>
       <div className={`mt-5 rounded-2xl border p-5 ${levelStyle(summary.level)}`}>
         <p className="text-xs font-black tracking-[0.12em]">自動評語｜{summary.riskBand}</p>
