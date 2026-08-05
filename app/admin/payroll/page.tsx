@@ -169,6 +169,11 @@ export default function AdminPayrollPage() {
     end: getNowInput(),
   });
 
+  const staffByDiscordId = useMemo(
+    () => new Map(staffList.map((staff) => [staff.discord_id, staff])),
+    [staffList]
+  );
+
   const rows = useMemo(() => {
     const staffMap = new Map<string, Staff>();
     const walletEntryKeySet = new Set(
@@ -839,7 +844,7 @@ export default function AdminPayrollPage() {
                 <thead className="bg-white/5 text-zinc-300">
                   <tr>
                     <th className="px-4 py-3">申請時間</th>
-                    <th className="px-4 py-3">員工</th>
+                    <th className="px-4 py-3">員工 / 銀行資料</th>
                     <th className="px-4 py-3">申請金額</th>
                     <th className="px-4 py-3">扣除費用</th>
                     <th className="px-4 py-3">實際入帳</th>
@@ -849,7 +854,12 @@ export default function AdminPayrollPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {withdrawRequests.map((request) => (
+                  {withdrawRequests.map((request) => {
+                    const requestStaff = staffByDiscordId.get(
+                      request.discord_id
+                    );
+
+                    return (
                     <tr key={request.id} className="border-t border-white/10">
                       <td className="px-4 py-3 text-zinc-300">
                         {formatDateTime(request.requested_at)}
@@ -861,6 +871,11 @@ export default function AdminPayrollPage() {
                         <p className="text-xs text-zinc-500">
                           {request.discord_id}
                         </p>
+                        <div className="mt-2 space-y-0.5 text-xs font-semibold text-zinc-300">
+                          <div>銀行：{requestStaff?.bank_name || "未填寫"}</div>
+                          <div>帳號：{requestStaff?.bank_account || "未填寫"}</div>
+                          <div>戶名：{requestStaff?.real_name || "未填寫"}</div>
+                        </div>
                       </td>
                       <td className="px-4 py-3 font-bold text-violet-200">
                         {money(request.amount)}
@@ -928,7 +943,8 @@ export default function AdminPayrollPage() {
                         )}
                       </td>
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
