@@ -160,7 +160,7 @@ export async function POST(request) {
 
     if (payoutAmount <= 0) {
       return NextResponse.json(
-        { ok: false, message: "扣除手續費與福利金後沒有可匯款金額。" },
+        { ok: false, message: "扣除手續費後沒有可匯款金額。" },
         { status: 400 }
       );
     }

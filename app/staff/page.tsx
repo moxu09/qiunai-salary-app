@@ -147,7 +147,6 @@ type SalaryWalletData = {
   };
   withdrawPolicy: {
     minimumAmount: number;
-    welfareFundRate: number;
     monthlyWithdrawalCount: number;
     nextServiceFee: number;
     processingNote: string;
@@ -628,7 +627,8 @@ export default function StaffPage() {
     if (!salaryWallet) return;
 
     const available = Math.floor(Number(salaryWallet.totals.available || 0));
-    const amountNumber = Number(withdrawAmount || 0);
+    const hasRequestedAmount = withdrawAmount.trim() !== "";
+    const amountNumber = hasRequestedAmount ? Number(withdrawAmount) : available;
     const amount = Math.floor(amountNumber);
 
     if (
@@ -645,15 +645,11 @@ export default function StaffPage() {
     }
 
     const serviceFee = salaryWallet.withdrawPolicy.nextServiceFee;
-    const welfareFee =
-      Math.round(
-        amount * salaryWallet.withdrawPolicy.welfareFundRate * 100
-      ) / 100;
-    const payoutAmount = amount - serviceFee - welfareFee;
+    const payoutAmount = amount - serviceFee;
 
     if (
       !confirm(
-        `確定要申請提領 $${amount.toLocaleString()}？\n福利金：$${welfareFee.toLocaleString()}\n手續費：$${serviceFee.toLocaleString()}\n實際匯款：$${payoutAmount.toLocaleString()}`
+        `確定要申請提領 $${amount.toLocaleString()}？\n手續費：$${serviceFee.toLocaleString()}\n實際匯款：$${payoutAmount.toLocaleString()}`
       )
     ) {
       return;
@@ -1161,7 +1157,7 @@ export default function StaffPage() {
                     onChange={(event) => setWithdrawAmount(event.target.value)}
                     placeholder={
                       salaryWallet
-                        ? `最多 $${Number(
+                        ? `留空則提領全部 $${Number(
                             salaryWallet.totals.available || 0
                           ).toLocaleString()}`
                         : "輸入金額"
@@ -1178,8 +1174,11 @@ export default function StaffPage() {
                     !salaryWallet ||
                     !salaryWallet.withdrawWindow.isOpen ||
                     !!salaryWallet.pendingRequest ||
-                    Number(salaryWallet.totals.available || 0) <= 0 ||
-                    Number(withdrawAmount || 0) < 1001
+                    Number(salaryWallet.totals.available || 0) <
+                      salaryWallet.withdrawPolicy.minimumAmount ||
+                    (withdrawAmount.trim() !== "" &&
+                      Number(withdrawAmount) <
+                        salaryWallet.withdrawPolicy.minimumAmount)
                   }
                   className="qiunai-button w-full px-5 py-3 font-bold disabled:cursor-not-allowed disabled:opacity-50"
                 >
@@ -1188,7 +1187,7 @@ export default function StaffPage() {
                 <div className="space-y-1 text-xs font-semibold text-[#8b5a8f]">
                   <p>每月 5 日 09:00 至 25 日 15:30 開放提領。</p>
                   <p>金額須高於 $1,000；本月首次免手續費，第二次起每次 $15。</p>
-                  <p>依法扣除提領金額 0.2% 福利金，銀行作業需 0 到 3 個工作日。</p>
+                  <p>不扣福利金，銀行作業需 0 到 3 個工作日。</p>
                   {salaryWallet ? (
                     <p className="font-black text-pink-600">
                       本月下一次提領手續費：$
