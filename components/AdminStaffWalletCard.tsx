@@ -17,6 +17,7 @@ type WithdrawRequest = {
   id: string;
   amount?: number | null;
   payout_amount?: number | null;
+  destination?: "bank" | "asd" | null;
   status?: string | null;
   requested_at?: string | null;
 };
@@ -207,7 +208,9 @@ export default function AdminStaffWalletCard({
                 >
                   <span>
                     <span className="block text-sm font-bold text-slate-800">
-                      {requestStatusLabel(request.status)}
+                      {request.destination === "asd"
+                        ? "已轉入本人 ASD"
+                        : requestStatusLabel(request.status)}
                     </span>
                     <span className="mt-1 block text-xs text-slate-500">
                       {formatDate(request.requested_at)}
@@ -219,7 +222,8 @@ export default function AdminStaffWalletCard({
                     </span>
                     {request.status === "approved" ? (
                       <span className="mt-1 block text-xs text-slate-500">
-                        實付 {money(request.payout_amount)}
+                        {request.destination === "asd" ? "轉入" : "實付"}{" "}
+                        {money(request.payout_amount)}
                       </span>
                     ) : null}
                   </span>

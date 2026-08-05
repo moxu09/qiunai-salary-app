@@ -18,6 +18,11 @@ const walletConfig = {
   bonusSelect:
     "id, discord_id, staff_name, title, note, amount, created_at, wallet_settled_at",
 };
+const SALARY_WALLET_START_DATE =
+  process.env.SALARY_WALLET_START_DATE || "2026-07-17";
+const SALARY_WALLET_START_ISO = new Date(
+  `${SALARY_WALLET_START_DATE}T00:00:00+08:00`
+).toISOString();
 
 async function getStaff(discordId) {
   const { data, error } = await supabaseAdmin
@@ -153,6 +158,40 @@ export async function POST(request) {
       );
     }
 
+    if (body.destination === "asd") {
+      const { data: transfer, error: transferError } = await supabaseAdmin.rpc(
+        "transfer_salary_to_asd_atomic",
+        {
+          p_app_key: walletConfig.appKey,
+          p_discord_id: discordId,
+          p_staff_name: staffName(staff, discordId),
+          p_amount: amount,
+          p_wallet_start_date: SALARY_WALLET_START_DATE,
+          p_wallet_start_iso: SALARY_WALLET_START_ISO,
+        }
+      );
+
+      if (transferError) {
+        console.error(
+          "[qiunai salary wallet] transfer to ASD failed",
+          transferError
+        );
+        throw new Error(transferError.message || "轉入 ASD 失敗");
+      }
+
+      const nextWallet = await getSalaryWalletSummary(
+        supabaseAdmin,
+        walletConfig.appKey,
+        discordId
+      );
+
+      return NextResponse.json({
+        ok: true,
+        wallet: nextWallet,
+        asdBalance: Number(transfer?.balance || 0),
+      });
+    }
+
     const { serviceFee, welfareFee, payoutAmount } = calculateWithdrawFees(
       amount,
       wallet.withdrawPolicy.monthlyWithdrawalCount
@@ -176,6 +215,7 @@ export async function POST(request) {
         welfare_fee: welfareFee,
         payout_amount: payoutAmount,
         status: "pending",
+        destination: "bank",
         request_note: body.note || null,
       });
 

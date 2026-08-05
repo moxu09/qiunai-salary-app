@@ -96,7 +96,7 @@ export async function GET(request) {
         supabaseAdmin
           .from("salary_withdraw_requests")
           .select(
-            "id, amount, service_fee, welfare_fee, payout_amount, status, reject_reason, request_note, requested_at, reviewed_at"
+            "id, amount, service_fee, welfare_fee, payout_amount, destination, status, reject_reason, request_note, requested_at, reviewed_at"
           )
           .eq("app_key", "qiunai")
           .eq("discord_id", discordId)

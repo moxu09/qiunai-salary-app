@@ -105,6 +105,7 @@ type WithdrawRequest = {
   service_fee?: number | string | null;
   welfare_fee?: number | string | null;
   payout_amount?: number | string | null;
+  destination?: "bank" | "asd" | null;
   status: string;
   reject_reason?: string | null;
   reviewed_at?: string | null;
@@ -841,7 +842,7 @@ export default function AdminPayrollPage() {
                     <th className="px-4 py-3">員工</th>
                     <th className="px-4 py-3">申請金額</th>
                     <th className="px-4 py-3">扣除費用</th>
-                    <th className="px-4 py-3">實際匯款</th>
+                    <th className="px-4 py-3">實際入帳</th>
                     <th className="px-4 py-3">狀態</th>
                     <th className="px-4 py-3">審核時間</th>
                     <th className="px-4 py-3">操作</th>
@@ -865,10 +866,20 @@ export default function AdminPayrollPage() {
                         {money(request.amount)}
                       </td>
                       <td className="px-4 py-3 text-zinc-300">
-                        <div>福利金 {money(request.welfare_fee)}</div>
-                        <div className="text-xs text-zinc-500">
-                          手續費 {money(request.service_fee)}
-                        </div>
+                        {request.destination === "asd" ? (
+                          <div className="font-bold text-violet-300">
+                            轉入本人 ASD
+                          </div>
+                        ) : (
+                          <>
+                            {Number(request.welfare_fee || 0) > 0 ? (
+                              <div>福利金 {money(request.welfare_fee)}</div>
+                            ) : null}
+                            <div className="text-xs text-zinc-500">
+                              手續費 {money(request.service_fee)}
+                            </div>
+                          </>
+                        )}
                       </td>
                       <td className="px-4 py-3 font-bold text-emerald-300">
                         {money(getWithdrawPayout(request))}
