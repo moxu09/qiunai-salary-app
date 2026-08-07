@@ -77,7 +77,10 @@ export default function AdminApprovals({ apiPath }: { apiPath: string }) {
     });
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) alert(payload.message || "簽核失敗");
-    else await load();
+    else {
+      await load();
+      window.dispatchEvent(new Event("erp-notifications-changed"));
+    }
   }
 
   const visible = category

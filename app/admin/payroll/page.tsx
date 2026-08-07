@@ -524,6 +524,7 @@ export default function AdminPayrollPage() {
       }
 
       await loadWithdrawRequests();
+      window.dispatchEvent(new Event("erp-notifications-changed"));
     } catch (error) {
       console.error("更新提領申請失敗:", error);
       alert(error instanceof Error ? error.message : "更新提領申請失敗");

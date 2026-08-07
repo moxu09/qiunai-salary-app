@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   BarChart3,
@@ -26,6 +26,16 @@ type AdminLink = {
   href: string;
   label: string;
   icon: typeof UsersRound;
+};
+
+type NotificationCounts = {
+  payroll: number;
+  approvals: number;
+};
+
+const EMPTY_NOTIFICATION_COUNTS: NotificationCounts = {
+  payroll: 0,
+  approvals: 0,
 };
 
 const ADMIN_LINKS: AdminLink[] = [
@@ -64,6 +74,32 @@ export default function AdminShell({
   const links = ADMIN_LINKS.filter(
     (link) => !supportOnly || link.href === "/admin/salary",
   );
+  const [notificationCounts, setNotificationCounts] = useState(
+    EMPTY_NOTIFICATION_COUNTS,
+  );
+
+  const loadNotificationCounts = useCallback(async () => {
+    if (embedded || loading || !access?.isAdmin || supportOnly) {
+      setNotificationCounts(EMPTY_NOTIFICATION_COUNTS);
+      return;
+    }
+
+    const { data } = await supabase.auth.getSession();
+    const token = data.session?.access_token;
+    if (!token) return;
+
+    const response = await fetch("/api/qiunai/admin-notifications", {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: "no-store",
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok || !payload.ok) return;
+
+    setNotificationCounts({
+      payroll: Number(payload.payroll || 0),
+      approvals: Number(payload.approvals || 0),
+    });
+  }, [access?.isAdmin, embedded, loading, supportOnly]);
 
   useEffect(() => {
     if (!embedded) return;
@@ -148,6 +184,31 @@ export default function AdminShell({
     }
   }, [access, allowedPath, embedded, loading, router]);
 
+  useEffect(() => {
+    if (loading || !access?.isAdmin || supportOnly) return;
+
+    const refresh = () => {
+      if (embedded) {
+        window.parent.postMessage(
+          { type: "ERP_NOTIFICATION_REFRESH" },
+          COMMON_ERP_ORIGIN,
+        );
+        return;
+      }
+      void loadNotificationCounts();
+    };
+
+    if (!embedded) refresh();
+    const intervalId = embedded ? null : window.setInterval(refresh, 30_000);
+    window.addEventListener("focus", refresh);
+    window.addEventListener("erp-notifications-changed", refresh);
+    return () => {
+      if (intervalId !== null) window.clearInterval(intervalId);
+      window.removeEventListener("focus", refresh);
+      window.removeEventListener("erp-notifications-changed", refresh);
+    };
+  }, [access?.isAdmin, embedded, loadNotificationCounts, loading, supportOnly]);
+
   if (loading || !access?.isAdmin || !allowedPath) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-[#fff7fb]">
@@ -176,6 +237,11 @@ export default function AdminShell({
           {links.map(({ href, label, icon: Icon }) => {
             const active =
               pathname === href || pathname.startsWith(`${href}/`);
+            const notificationCount = href === "/admin/payroll"
+              ? notificationCounts.payroll
+              : href === "/admin/approvals"
+                ? notificationCounts.approvals
+                : 0;
             return (
               <Link
                 key={href}
@@ -183,7 +249,15 @@ export default function AdminShell({
                 className={`admin-portal-link ${active ? "is-active" : ""}`}
               >
                 <Icon size={19} />
-                <span>{label}</span>
+                <span className="min-w-0 flex-1">{label}</span>
+                {notificationCount > 0 ? (
+                  <span
+                    aria-label={`${label}有 ${notificationCount} 筆待處理`}
+                    className="ml-auto inline-flex min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 py-0.5 text-[11px] font-black leading-none text-white shadow-sm shadow-red-950/30"
+                  >
+                    {notificationCount > 99 ? "99+" : notificationCount}
+                  </span>
+                ) : null}
               </Link>
             );
           })}
