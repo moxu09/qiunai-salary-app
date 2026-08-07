@@ -173,6 +173,53 @@ export default function AdminPayrollPage() {
     [staffList]
   );
 
+  const pendingWithdrawRequests = useMemo(
+    () => withdrawRequests.filter((request) => request.status === "pending"),
+    [withdrawRequests]
+  );
+  const completedWithdrawRequests = useMemo(
+    () =>
+      withdrawRequests.filter(
+        (request) =>
+          request.status === "approved" || request.status === "rejected"
+      ),
+    [withdrawRequests]
+  );
+  const currentWithdrawMonth = getTaipeiDateInput().slice(0, 7);
+  const monthlyWithdrawCounts = useMemo(() => {
+    const countByStaff = new Map<
+      string,
+      { discordId: string; staffName: string; count: number }
+    >();
+
+    for (const request of withdrawRequests) {
+      if (getTaipeiYearMonth(request.requested_at) !== currentWithdrawMonth) {
+        continue;
+      }
+
+      const current = countByStaff.get(request.discord_id);
+      if (current) {
+        current.count += 1;
+        continue;
+      }
+
+      countByStaff.set(request.discord_id, {
+        discordId: request.discord_id,
+        staffName: getStaffName(
+          staffByDiscordId.get(request.discord_id),
+          request.staff_name
+        ),
+        count: 1,
+      });
+    }
+
+    return [...countByStaff.values()].sort(
+      (left, right) =>
+        right.count - left.count ||
+        left.staffName.localeCompare(right.staffName, "zh-Hant")
+    );
+  }, [currentWithdrawMonth, staffByDiscordId, withdrawRequests]);
+
   const rows = useMemo(() => {
     const staffMap = new Map<string, Staff>();
     const walletEntryKeySet = new Set(
@@ -828,17 +875,37 @@ export default function AdminPayrollPage() {
               <Banknote size={20} className="text-violet-300" />
               薪資錢包提領申請
               <span className="rounded-full bg-amber-400/15 px-2.5 py-1 text-xs text-amber-300">
-                待審核 {withdrawRequests.filter((request) => request.status === "pending").length} 筆
+                待審核 {pendingWithdrawRequests.length} 筆
               </span>
             </h2>
             <p className="mt-1 text-sm text-zinc-400">
               員工按下提領後會出現在這裡；同意後員工端會顯示申請成功，駁回會顯示理由。
             </p>
+            <div className="mt-4 rounded-2xl bg-white/5 px-4 py-3">
+              <p className="text-xs font-bold text-violet-200">
+                {currentWithdrawMonth.replace("-", " 年 ")} 月每人提領筆數
+                （包含申請中、核准與拒絕）
+              </p>
+              {monthlyWithdrawCounts.length === 0 ? (
+                <p className="mt-2 text-sm text-zinc-500">本月尚無提領紀錄</p>
+              ) : (
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {monthlyWithdrawCounts.map((item) => (
+                    <span
+                      key={item.discordId}
+                      className="rounded-full border border-white/10 bg-black/20 px-3 py-1.5 text-xs font-bold text-zinc-200"
+                    >
+                      {item.staffName}：{item.count} 筆
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
-          {withdrawRequests.length === 0 ? (
+          {pendingWithdrawRequests.length === 0 ? (
             <div className="px-5 py-10 text-center text-sm text-zinc-400">
-              目前沒有提領申請
+              目前沒有待審核提領申請
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -856,7 +923,7 @@ export default function AdminPayrollPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {withdrawRequests.map((request) => {
+                  {pendingWithdrawRequests.map((request) => {
                     const requestStaff = staffByDiscordId.get(
                       request.discord_id
                     );
@@ -1042,6 +1109,83 @@ export default function AdminPayrollPage() {
                       </td>
                     </tr>
                   ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+        <section className="overflow-hidden rounded-3xl border border-white/10 bg-white/5">
+          <div className="border-b border-white/10 px-5 py-4">
+            <h2 className="flex items-center gap-2 text-lg font-bold">
+              <Clipboard size={20} className="text-zinc-300" />
+              已結束的提領紀錄
+              <span className="rounded-full bg-white/10 px-2.5 py-1 text-xs text-zinc-300">
+                共 {completedWithdrawRequests.length} 筆
+              </span>
+            </h2>
+            <p className="mt-1 text-sm text-zinc-400">
+              已核准與已拒絕的提領統一顯示於頁面最下方。
+            </p>
+          </div>
+
+          {completedWithdrawRequests.length === 0 ? (
+            <div className="px-5 py-10 text-center text-sm text-zinc-400">
+              目前沒有已結束的提領紀錄
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[1160px] text-left text-sm">
+                <thead className="bg-white/5 text-zinc-300">
+                  <tr>
+                    <th className="px-4 py-3">申請時間</th>
+                    <th className="px-4 py-3">員工 / 銀行資料</th>
+                    <th className="px-4 py-3">申請金額</th>
+                    <th className="px-4 py-3">提領方式</th>
+                    <th className="px-4 py-3">實際入帳</th>
+                    <th className="px-4 py-3">結果</th>
+                    <th className="px-4 py-3">審核時間</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {completedWithdrawRequests.map((request) => {
+                    const requestStaff = staffByDiscordId.get(request.discord_id);
+
+                    return (
+                      <tr key={request.id} className="border-t border-white/10">
+                        <td className="px-4 py-3 text-zinc-300">
+                          {formatDateTime(request.requested_at)}
+                        </td>
+                        <td className="px-4 py-3">
+                          <p className="font-bold text-white">
+                            {request.staff_name || request.discord_id}
+                          </p>
+                          <p className="text-xs text-zinc-500">{request.discord_id}</p>
+                          <div className="mt-2 space-y-0.5 text-xs font-semibold text-zinc-300">
+                            <div>銀行：{requestStaff?.bank_name || "未填寫"}</div>
+                            <div>帳號：{requestStaff?.bank_account || "未填寫"}</div>
+                            <div>戶名：{requestStaff?.real_name || "未填寫"}</div>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 font-bold text-violet-200">
+                          {money(request.amount)}
+                        </td>
+                        <td className="px-4 py-3 text-zinc-300">
+                          {request.destination === "asd" ? "轉入本人 ASD" : "銀行提領"}
+                        </td>
+                        <td className="px-4 py-3 font-bold text-emerald-300">
+                          {money(getWithdrawPayout(request))}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className={`rounded-full px-3 py-1 text-xs font-bold ${getRequestStatusClass(request.status)}`}>
+                            {getRequestStatusText(request.status, request.reject_reason)}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-zinc-300">
+                          {formatDateTime(request.reviewed_at)}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -1246,6 +1390,20 @@ function formatDateTime(value?: string | null) {
   return formatTaipeiDateTime(value, {
     hour12: false,
   });
+}
+
+function getTaipeiYearMonth(value?: string | null) {
+  if (!value) return "";
+
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Taipei",
+    year: "numeric",
+    month: "2-digit",
+  }).formatToParts(new Date(value));
+  const year = parts.find((part) => part.type === "year")?.value;
+  const month = parts.find((part) => part.type === "month")?.value;
+
+  return year && month ? `${year}-${month}` : "";
 }
 
 function getRequestStatusText(status: string, rejectReason?: string | null) {
