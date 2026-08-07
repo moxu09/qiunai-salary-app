@@ -4,6 +4,7 @@ import { useCallback, useEffect, useEffectEvent, useMemo, useState } from "react
 import { CheckCircle2, Clock3, FileImage, FilePenLine, Megaphone, X } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import type { PortalTab } from "@/components/StaffPortalNav";
+import MonthSelect from "@/components/MonthSelect";
 
 type RequestAttachment = { name: string; type: string; size: number; url?: string };
 type RequestRow = { id: string; application_date: string; request_type: string; approval_category: string; status: string; review_result?: string | null; needed_date?: string | null; urgency?: string | null; form_data?: { details?: string; attachments?: RequestAttachment[] } };
@@ -132,7 +133,7 @@ export default function HrPortalPanel({ activeTab, apiPath, department, staffNam
   }
 
   if (category) return <section className="rounded-[28px] border border-violet-100 bg-white shadow-sm shadow-violet-100">
-    <div className="flex flex-col gap-3 border-b border-violet-100 p-5 sm:flex-row sm:items-end sm:justify-between"><div><h2 className="flex items-center gap-2 text-xl font-black"><CheckCircle2 size={21} className="text-violet-500"/>簽核紀錄</h2><p className="mt-1 text-sm text-slate-500">依月份顯示申請日期、申請項目與簽核結果。</p></div><Field label="顯示月份"><input type="month" value={selectedMonth} onChange={(e) => onMonthChange(e.target.value)} /></Field></div>
+    <div className="flex flex-col gap-3 border-b border-violet-100 p-5 sm:flex-row sm:items-end sm:justify-between"><div><h2 className="flex items-center gap-2 text-xl font-black"><CheckCircle2 size={21} className="text-violet-500"/>簽核紀錄</h2><p className="mt-1 text-sm text-slate-500">依月份顯示申請日期、申請項目與簽核結果。</p></div><Field label="顯示月份"><MonthSelect value={selectedMonth} onChange={onMonthChange} /></Field></div>
     {loading ? <p className="p-10 text-center text-sm text-slate-400">讀取中…</p> : visibleRequests.length ? <div className="overflow-x-auto"><table><thead><tr><th>申請日期</th><th>申請項目</th><th>需求日期</th><th>附件</th><th>簽核結果</th></tr></thead><tbody>{visibleRequests.map((item) => <tr key={item.id}><td>{item.application_date}</td><td>{item.request_type}</td><td>{item.needed_date || "-"}</td><td><AttachmentLinks attachments={item.form_data?.attachments}/></td><td><Status status={item.status}/><p className="mt-1 text-xs text-slate-500">{item.review_result || "-"}</p></td></tr>)}</tbody></table></div> : <p className="p-10 text-center text-sm text-slate-400">這個月份沒有申請紀錄</p>}
   </section>;
   return null;
