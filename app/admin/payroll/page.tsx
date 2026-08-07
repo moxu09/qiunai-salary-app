@@ -103,7 +103,6 @@ type WithdrawRequest = {
   staff_name?: string | null;
   amount: number | string;
   service_fee?: number | string | null;
-  welfare_fee?: number | string | null;
   payout_amount?: number | string | null;
   destination?: "bank" | "asd" | null;
   status: string;
@@ -887,9 +886,6 @@ export default function AdminPayrollPage() {
                           </div>
                         ) : (
                           <>
-                            {Number(request.welfare_fee || 0) > 0 ? (
-                              <div>福利金 {money(request.welfare_fee)}</div>
-                            ) : null}
                             <div className="text-xs text-zinc-500">
                               手續費 {money(request.service_fee)}
                             </div>
@@ -1239,8 +1235,7 @@ function getWithdrawPayout(request: WithdrawRequest) {
 
   return (
     Number(request.amount || 0) -
-    Number(request.service_fee || 0) -
-    Number(request.welfare_fee || 0)
+    Number(request.service_fee || 0)
   );
 }
 

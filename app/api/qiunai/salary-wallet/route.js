@@ -106,16 +106,6 @@ export async function POST(request) {
       );
     }
 
-    if (wallet.pendingRequest) {
-      return NextResponse.json(
-        {
-          ok: false,
-          message: "你已經有提領申請在處理中。",
-        },
-        { status: 400 }
-      );
-    }
-
     const available = Math.floor(Number(wallet.totals.available || 0));
     const rawAmount = String(body.amount ?? "").trim();
     const hasRequestedAmount = rawAmount !== "";
@@ -192,7 +182,7 @@ export async function POST(request) {
       });
     }
 
-    const { serviceFee, welfareFee, payoutAmount } = calculateWithdrawFees(
+    const { serviceFee, payoutAmount } = calculateWithdrawFees(
       amount,
       wallet.withdrawPolicy.monthlyWithdrawalCount
     );
@@ -212,7 +202,6 @@ export async function POST(request) {
         staff_name: staffName(staff, discordId),
         amount,
         service_fee: serviceFee,
-        welfare_fee: welfareFee,
         payout_amount: payoutAmount,
         status: "pending",
         destination: "bank",
@@ -221,9 +210,6 @@ export async function POST(request) {
 
     if (error) {
       console.error("[qiunai salary wallet] create withdraw failed", error);
-      if (error.code === "23505") {
-        throw new Error("你已經有提領申請在處理中。");
-      }
       throw new Error("建立提領申請失敗");
     }
 

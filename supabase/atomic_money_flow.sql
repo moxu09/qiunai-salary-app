@@ -22,8 +22,9 @@ alter table public.salary_withdraw_requests
 alter table public.salary_withdraw_requests
   validate constraint salary_withdraw_amount_positive;
 
-create unique index if not exists salary_withdraw_one_pending_per_staff
-  on public.salary_withdraw_requests (app_key, discord_id)
+drop index if exists public.salary_withdraw_one_pending_per_staff;
+create index if not exists salary_withdraw_pending_by_staff
+  on public.salary_withdraw_requests (app_key, discord_id, requested_at desc)
   where status = 'pending';
 
 create or replace function public.pay_play_order_with_wallet(p_order_id uuid)

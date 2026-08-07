@@ -65,10 +65,6 @@ function summarize(requests) {
       (sum, request) => sum + numberValue(request.amount),
       0
     ),
-    welfareFee: approved.reduce(
-      (sum, request) => sum + numberValue(request.welfare_fee),
-      0
-    ),
     serviceFee: approved.reduce(
       (sum, request) => sum + numberValue(request.service_fee),
       0
@@ -96,7 +92,7 @@ export async function GET(request) {
         supabaseAdmin
           .from("salary_withdraw_requests")
           .select(
-            "id, amount, service_fee, welfare_fee, payout_amount, destination, status, reject_reason, request_note, requested_at, reviewed_at"
+            "id, amount, service_fee, payout_amount, destination, status, reject_reason, request_note, requested_at, reviewed_at"
           )
           .eq("app_key", "qiunai")
           .eq("discord_id", discordId)
