@@ -105,15 +105,6 @@ type StaffService = {
   updated_at: string;
 };
 
-type SalaryWalletEntry = {
-  id: string;
-  entry_type: string;
-  amount: number | string;
-  source_label?: string | null;
-  period_key?: string | null;
-  created_at?: string | null;
-};
-
 type SalaryWithdrawRequest = {
   id: string;
   amount: number | string;
@@ -133,11 +124,16 @@ type SalaryWalletData = {
     deposited: number;
     approvedWithdrawn: number;
     pendingWithdrawn: number;
+    pendingRequestCount: number;
     balance: number;
     available: number;
   };
-  entries: SalaryWalletEntry[];
-  requests: SalaryWithdrawRequest[];
+  monthlySummaries: Array<{
+    month: string;
+    deposited: number;
+    withdrawn: number;
+    pendingWithdrawn: number;
+  }>;
   pendingRequest: SalaryWithdrawRequest | null;
   latestRequest: SalaryWithdrawRequest | null;
   withdrawWindow: {
@@ -1340,7 +1336,7 @@ export default function StaffPage() {
                     ).toLocaleString()}`}
                   />
                   <WalletStat
-                    title="待審核提領"
+                    title={`待審核提領（${salaryWallet.totals.pendingRequestCount} 筆）`}
                     value={`$${Number(
                       salaryWallet.totals.pendingWithdrawn || 0
                     ).toLocaleString()}`}
@@ -1376,7 +1372,7 @@ export default function StaffPage() {
                       {salaryWallet.totals.pendingWithdrawn > 0
                         ? `，申請中：$${Number(
                             salaryWallet.totals.pendingWithdrawn || 0
-                          ).toLocaleString()}`
+                          ).toLocaleString()}（${salaryWallet.totals.pendingRequestCount} 筆）`
                         : ""}
                     </p>
                   </div>
@@ -1390,75 +1386,43 @@ export default function StaffPage() {
                   </span>
                 </div>
 
-                <div className="mt-4 grid gap-4 xl:grid-cols-2">
-                  <div className="rounded-[24px] border border-pink-100 bg-white/90 p-4">
-                    <h3 className="font-black text-[#5b3768]">最近入帳紀錄</h3>
-                    <ul className="mt-2">
-                      {salaryWallet.entries.slice(0, 8).map((entry) => (
-                        <li
-                          key={entry.id}
-                          className="flex items-start justify-between gap-4 border-b border-pink-100 py-3 last:border-none"
-                        >
-                          <span className="min-w-0">
-                            <span className="block text-sm font-bold text-[#5b3768]">
-                              {entry.source_label ||
-                                getWalletEntryTypeText(entry.entry_type)}
-                            </span>
-                            <span className="mt-1 block text-xs text-[#8b5a8f]">
-                              {getWalletEntryTypeText(entry.entry_type)}｜{" "}
-                              {formatDateTime(entry.created_at)}
-                            </span>
-                          </span>
-                          <span className="shrink-0 text-sm font-black text-pink-600">
-                            +{statementMoney(entry.amount)}
-                          </span>
-                        </li>
-                      ))}
-                      {salaryWallet.entries.length === 0 ? (
-                        <li className="py-4 text-sm text-[#8b5a8f]">
-                          目前沒有入帳紀錄
-                        </li>
-                      ) : null}
-                    </ul>
-                  </div>
-
-                  <div className="rounded-[24px] border border-pink-100 bg-white/90 p-4">
-                    <h3 className="font-black text-[#5b3768]">最近提領紀錄</h3>
-                    <ul className="mt-2">
-                      {salaryWallet.requests.slice(0, 8).map((request) => (
-                        <li
-                          key={request.id}
-                          className="flex items-start justify-between gap-4 border-b border-pink-100 py-3 last:border-none"
-                        >
-                          <span>
-                            <span className="block text-sm font-bold text-[#5b3768]">
-                              {request.destination === "asd"
-                                ? "已轉入本人 ASD"
-                                : getWalletRequestStatusText(request.status)}
-                            </span>
-                            <span className="mt-1 block text-xs text-[#8b5a8f]">
-                              {formatDateTime(request.requested_at)}
-                            </span>
-                          </span>
-                          <span className="shrink-0 text-right">
-                            <span className="block text-sm font-black text-[#5b3768]">
-                              {statementMoney(request.amount)}
-                            </span>
-                            {request.status === "approved" ? (
-                              <span className="mt-1 block text-xs text-[#8b5a8f]">
-                                {request.destination === "asd" ? "轉入" : "實付"}{" "}
-                                {statementMoney(request.payout_amount)}
-                              </span>
-                            ) : null}
-                          </span>
-                        </li>
-                      ))}
-                      {salaryWallet.requests.length === 0 ? (
-                        <li className="py-4 text-sm text-[#8b5a8f]">
-                          目前沒有提領紀錄
-                        </li>
-                      ) : null}
-                    </ul>
+                <div className="mt-4 rounded-[24px] border border-pink-100 bg-white/90 p-4">
+                  <h3 className="font-black text-[#5b3768]">每月錢包總額</h3>
+                  <p className="mt-1 text-xs text-[#8b5a8f]">
+                    此處僅顯示每月總額，個別薪資明細請至訂單詳情查看。
+                  </p>
+                  <div className="mt-3 overflow-x-auto">
+                    <table className="min-w-full text-sm">
+                      <thead className="text-left text-xs text-[#8b5a8f]">
+                        <tr>
+                          <th className="py-2 pr-4">月份</th>
+                          <th className="py-2 pr-4">入帳總額</th>
+                          <th className="py-2 pr-4">已提領總額</th>
+                          <th className="py-2">待審核</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {salaryWallet.monthlySummaries.map((summary) => (
+                          <tr key={summary.month} className="border-t border-pink-100">
+                            <td className="py-3 pr-4 font-bold text-[#5b3768]">
+                              {summary.month.replace("-", " 年 ")} 月
+                            </td>
+                            <td className="py-3 pr-4 font-black text-emerald-600">
+                              +{statementMoney(summary.deposited)}
+                            </td>
+                            <td className="py-3 pr-4 font-black text-[#5b3768]">
+                              -{statementMoney(summary.withdrawn)}
+                            </td>
+                            <td className="py-3 font-bold text-amber-600">
+                              {statementMoney(summary.pendingWithdrawn)}
+                            </td>
+                          </tr>
+                        ))}
+                        {salaryWallet.monthlySummaries.length === 0 ? (
+                          <tr><td colSpan={4} className="py-4 text-[#8b5a8f]">目前沒有錢包紀錄</td></tr>
+                        ) : null}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
 
@@ -2178,19 +2142,6 @@ function WalletStat({ title, value }: { title: string; value: string }) {
       <p className="mt-2 text-xl font-black text-[#5b3768]">{value}</p>
     </div>
   );
-}
-
-function getWalletEntryTypeText(value?: string | null) {
-  if (value === "order_salary") return "訂單薪資";
-  if (value === "order_bonus") return "訂單獎金";
-  if (value === "staff_bonus") return "員工獎金";
-  return "錢包入帳";
-}
-
-function getWalletRequestStatusText(value?: string | null) {
-  if (value === "approved") return "已通過";
-  if (value === "rejected") return "已駁回";
-  return "待審核";
 }
 
 function ProgressBlock({

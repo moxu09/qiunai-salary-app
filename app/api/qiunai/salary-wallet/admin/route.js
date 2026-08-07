@@ -98,6 +98,8 @@ export async function GET(request) {
     return NextResponse.json({
       ok: true,
       requests: data || [],
+      pendingCount: (data || []).filter((request) => request.status === "pending")
+        .length,
     });
   } catch (error) {
     return NextResponse.json(
