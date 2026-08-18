@@ -42,8 +42,8 @@ begin
   if nullif(trim(p_discord_id), '') is null then
     raise exception '找不到員工 Discord 帳號';
   end if;
-  if p_amount < 1001 then
-    raise exception '轉入 ASD 金額必須高於 1,000 元';
+  if p_amount < 1 then
+    raise exception '轉入 ASD 金額必須至少為 1 元';
   end if;
 
   perform pg_advisory_xact_lock(

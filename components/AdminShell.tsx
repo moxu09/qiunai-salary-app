@@ -9,6 +9,7 @@ import {
   Coins,
   FileSpreadsheet,
   FolderDown,
+  History,
   Settings,
   UsersRound,
   WalletCards,
@@ -46,6 +47,7 @@ const ADMIN_LINKS: AdminLink[] = [
   { href: "/admin/approvals", label: "簽核申請", icon: ClipboardCheck },
   { href: "/admin/files", label: "資料下載", icon: FolderDown },
   { href: "/admin/accounting", label: "會計報表", icon: Coins },
+  { href: "/admin/activity-logs", label: "異動日誌", icon: History },
   { href: "/admin/settings", label: "系統設定", icon: Settings },
 ];
 
@@ -151,6 +153,7 @@ export default function AdminShell({
           "approvals",
           "files",
           "accounting",
+          "activity-logs",
           "settings",
         ].includes(section)
       ) {

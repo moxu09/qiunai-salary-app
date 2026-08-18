@@ -95,6 +95,64 @@ export async function POST(request) {
       discordId
     );
 
+    const available = Math.floor(Number(wallet.totals.available || 0));
+    const rawAmount = String(body.amount ?? "").trim();
+    const hasRequestedAmount = rawAmount !== "";
+    const requestedAmountNumber = Number(rawAmount);
+    const requestedAmount = Math.floor(requestedAmountNumber);
+    const amount = hasRequestedAmount ? requestedAmount : available;
+
+    if (body.destination === "asd") {
+      if (!Number.isFinite(requestedAmountNumber) || amount < 1) {
+        return NextResponse.json(
+          { ok: false, message: "轉入 ASD 金額必須至少為 1 元。" },
+          { status: 400 }
+        );
+      }
+
+      if (amount > available) {
+        return NextResponse.json(
+          {
+            ok: false,
+            message: `轉入金額不能超過可提領薪資 ${available.toLocaleString("zh-TW")}。`,
+          },
+          { status: 400 }
+        );
+      }
+
+      const { data: transfer, error: transferError } = await supabaseAdmin.rpc(
+        "transfer_salary_to_asd_atomic",
+        {
+          p_app_key: walletConfig.appKey,
+          p_discord_id: discordId,
+          p_staff_name: staffName(staff, discordId),
+          p_amount: amount,
+          p_wallet_start_date: SALARY_WALLET_START_DATE,
+          p_wallet_start_iso: SALARY_WALLET_START_ISO,
+        }
+      );
+
+      if (transferError) {
+        console.error(
+          "[qiunai salary wallet] transfer to ASD failed",
+          transferError
+        );
+        throw new Error(transferError.message || "轉入 ASD 失敗");
+      }
+
+      const nextWallet = await getSalaryWalletSummary(
+        supabaseAdmin,
+        walletConfig.appKey,
+        discordId
+      );
+
+      return NextResponse.json({
+        ok: true,
+        wallet: nextWallet,
+        asdBalance: Number(transfer?.balance || 0),
+      });
+    }
+
     if (!wallet.withdrawWindow.isOpen) {
       return NextResponse.json(
         {
@@ -105,13 +163,6 @@ export async function POST(request) {
         { status: 403 }
       );
     }
-
-    const available = Math.floor(Number(wallet.totals.available || 0));
-    const rawAmount = String(body.amount ?? "").trim();
-    const hasRequestedAmount = rawAmount !== "";
-    const requestedAmountNumber = Number(rawAmount);
-    const requestedAmount = Math.floor(requestedAmountNumber);
-    const amount = hasRequestedAmount ? requestedAmount : available;
 
     if (
       hasRequestedAmount &&
@@ -146,40 +197,6 @@ export async function POST(request) {
         },
         { status: 400 }
       );
-    }
-
-    if (body.destination === "asd") {
-      const { data: transfer, error: transferError } = await supabaseAdmin.rpc(
-        "transfer_salary_to_asd_atomic",
-        {
-          p_app_key: walletConfig.appKey,
-          p_discord_id: discordId,
-          p_staff_name: staffName(staff, discordId),
-          p_amount: amount,
-          p_wallet_start_date: SALARY_WALLET_START_DATE,
-          p_wallet_start_iso: SALARY_WALLET_START_ISO,
-        }
-      );
-
-      if (transferError) {
-        console.error(
-          "[qiunai salary wallet] transfer to ASD failed",
-          transferError
-        );
-        throw new Error(transferError.message || "轉入 ASD 失敗");
-      }
-
-      const nextWallet = await getSalaryWalletSummary(
-        supabaseAdmin,
-        walletConfig.appKey,
-        discordId
-      );
-
-      return NextResponse.json({
-        ok: true,
-        wallet: nextWallet,
-        asdBalance: Number(transfer?.balance || 0),
-      });
     }
 
     const { serviceFee, payoutAmount } = calculateWithdrawFees(

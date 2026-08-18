@@ -720,9 +720,9 @@ export default function StaffPage() {
 
     if (
       !Number.isFinite(amountNumber) ||
-      amount < salaryWallet.withdrawPolicy.minimumAmount
+      amount < 1
     ) {
-      alert("轉入 ASD 金額必須高於 1,000 元");
+      alert("轉入 ASD 金額必須至少為 1 元");
       return;
     }
 
@@ -1265,12 +1265,9 @@ export default function StaffPage() {
                       transferringAsd ||
                       walletLoading ||
                       !salaryWallet ||
-                      !salaryWallet.withdrawWindow.isOpen ||
-                      Number(salaryWallet.totals.available || 0) <
-                        salaryWallet.withdrawPolicy.minimumAmount ||
+                      Number(salaryWallet.totals.available || 0) < 1 ||
                       (withdrawAmount.trim() !== "" &&
-                        Number(withdrawAmount) <
-                          salaryWallet.withdrawPolicy.minimumAmount)
+                        Number(withdrawAmount) < 1)
                     }
                     className="qiunai-button w-full px-4 py-3 font-bold disabled:cursor-not-allowed disabled:opacity-50"
                   >
@@ -1298,6 +1295,7 @@ export default function StaffPage() {
                   </button>
                 </div>
                 <div className="space-y-1 text-xs font-semibold text-[#8b5a8f]">
+                  <p>轉入 ASD 不限提領期間，1 元起申請並立即入帳。</p>
                   <p>每月 5 日 09:00 至 25 日 15:30 開放提領。</p>
                   <p>金額須高於 $1,000；本月首次免手續費，第二次起每次 $15。</p>
                   <p>銀行作業需 0 到 3 個工作日。</p>
