@@ -20,7 +20,7 @@ export async function GET(request) {
     let query = supabaseAdmin
       .from("erp_activity_logs")
       .select("id, organization_code, category, table_name, record_id, operation, summary, actor_id, old_data, new_data, changed_at")
-      .in("organization_code", ["qiunai", "shared"])
+      .eq("organization_code", "qiunai")
       .gte("changed_at", start.toISOString())
       .lt("changed_at", end.toISOString())
       .order("changed_at", { ascending: false })
