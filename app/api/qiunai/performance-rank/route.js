@@ -22,7 +22,11 @@ export async function GET(request) {
     const month = validMonth(new URL(request.url).searchParams.get("month"));
     const { startIso, endIso } = monthInputToTaipeiRange(month);
 
-    const [{ data: staff, error: staffError }, { data: orders, error: orderError }] =
+    const [
+      { data: staff, error: staffError },
+      { data: orders, error: orderError },
+      { data: servicePoints, error: servicePointsError },
+    ] =
       await Promise.all([
         supabaseAdmin
           .from("qiunai_staff")
@@ -34,10 +38,18 @@ export async function GET(request) {
           .or("is_deleted.eq.false,is_deleted.is.null")
           .gte("order_finished_at", startIso)
           .lte("order_finished_at", endIso),
+        supabaseAdmin
+          .from("customer_service_order_points")
+          .select("points")
+          .eq("app_key", "qiunai")
+          .eq("discord_id", discordId)
+          .gte("served_at", startIso)
+          .lte("served_at", endIso),
       ]);
 
     if (staffError) throw staffError;
     if (orderError) throw orderError;
+    if (servicePointsError) throw servicePointsError;
 
     const activeIds = new Set((staff || []).map((row) => row.discord_id));
     if (!activeIds.has(discordId)) {
@@ -69,6 +81,10 @@ export async function GET(request) {
         rank: higherAmounts.length + 1,
         participantCount: totals.size,
         performanceAmount,
+        customerServicePoints: (servicePoints || []).reduce(
+          (sum, row) => sum + Number(row.points || 0),
+          0,
+        ),
         gapToPrevious:
           previousAmount === null ? 0 : previousAmount - performanceAmount,
         isFirst: previousAmount === null,

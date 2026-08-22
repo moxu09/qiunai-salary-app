@@ -62,6 +62,7 @@ type RankRow = {
   extraBonus: number;
   totalSalary: number;
   unpaidAmount: number;
+  servicePoints: number;
 };
 
 export default function AdminRankingPage() {
@@ -71,6 +72,7 @@ export default function AdminRankingPage() {
   const [staffList, setStaffList] = useState<Staff[]>([]);
   const [orders, setOrders] = useState<SalaryOrder[]>([]);
   const [bonusList, setBonusList] = useState<BonusItem[]>([]);
+  const [servicePoints, setServicePoints] = useState<Record<string, number>>({});
   const [keyword, setKeyword] = useState("");
   const [sortMode, setSortMode] = useState("salary_desc");
   const [filter, setFilter] = useState({
@@ -140,6 +142,7 @@ export default function AdminRankingPage() {
         extraBonus,
         totalSalary,
         unpaidAmount,
+        servicePoints: servicePoints[staff.discord_id] || 0,
       };
     });
 
@@ -185,8 +188,16 @@ export default function AdminRankingPage() {
       result.sort((a, b) => a.orderCount - b.orderCount);
     }
 
+    if (sortMode === "service_points_desc") {
+      result.sort((a, b) => b.servicePoints - a.servicePoints);
+    }
+
+    if (sortMode === "service_points_asc") {
+      result.sort((a, b) => a.servicePoints - b.servicePoints);
+    }
+
     return result;
-  }, [staffList, orders, bonusList, keyword, sortMode]);
+  }, [staffList, orders, bonusList, servicePoints, keyword, sortMode]);
 
   const totals = useMemo(() => {
     return {
@@ -202,6 +213,11 @@ export default function AdminRankingPage() {
 
     const startIso = toIso(filter.start);
     const endIso = toIso(filter.end);
+    const { data: authData } = await supabase.auth.getSession();
+    const token = authData.session?.access_token;
+    const pointParams = new URLSearchParams();
+    if (startIso) pointParams.set("start", startIso);
+    if (endIso) pointParams.set("end", endIso);
 
     let orderQuery = supabase
       .from("qiunai_salary_orders")
@@ -232,7 +248,7 @@ export default function AdminRankingPage() {
       bonusQuery = bonusQuery.lte("created_at", endIso);
     }
 
-    const [staffRes, orderRes, bonusRes] = await Promise.all([
+    const [staffRes, orderRes, bonusRes, pointRes] = await Promise.all([
       supabase
         .from("qiunai_staff")
         .select(
@@ -242,6 +258,10 @@ export default function AdminRankingPage() {
         .order("created_at", { ascending: false }),
       orderQuery,
       bonusQuery,
+      fetch(`/api/qiunai/customer-service-points?${pointParams}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        cache: "no-store",
+      }),
     ]);
 
     setLoading(false);
@@ -264,9 +284,24 @@ export default function AdminRankingPage() {
       return;
     }
 
+    const pointPayload = await pointRes.json().catch(() => ({}));
+    if (!pointRes.ok || !pointPayload.ok) {
+      console.error("讀取客服服務點數失敗:", pointPayload);
+      alert("讀取客服服務點數失敗");
+      return;
+    }
+
     setStaffList((staffRes.data || []) as Staff[]);
     setOrders((orderRes.data || []) as SalaryOrder[]);
     setBonusList((bonusRes.data || []) as BonusItem[]);
+    setServicePoints(
+      Object.fromEntries(
+        (pointPayload.rows || []).map((row: { discordId: string; points: number }) => [
+          row.discordId,
+          Number(row.points || 0),
+        ]),
+      ),
+    );
   }
 
   if (adminLoading || !isAdmin) {
@@ -344,6 +379,8 @@ export default function AdminRankingPage() {
                 <option value="order_amount_asc">接單金額升冪</option>
                 <option value="order_count_desc">訂單數降冪</option>
                 <option value="order_count_asc">訂單數升冪</option>
+                <option value="service_points_desc">客服點數降冪</option>
+                <option value="service_points_asc">客服點數升冪</option>
               </select>
             </label>
 
@@ -398,6 +435,7 @@ export default function AdminRankingPage() {
                   <th className="px-4 py-3">陪陪</th>
                   <th className="px-4 py-3">檔位</th>
                   <th className="px-4 py-3">訂單數</th>
+                  <th className="px-4 py-3">客服點數</th>
                   <th className="px-4 py-3">接單金額</th>
                   <th className="px-4 py-3">訂單薪資</th>
                   <th className="px-4 py-3">訂單獎金</th>
@@ -444,6 +482,10 @@ export default function AdminRankingPage() {
                     </td>
 
                     <td className="px-4 py-3">{row.orderCount} 筆</td>
+
+                    <td className="px-4 py-3 font-black text-violet-300">
+                      {row.servicePoints} 點
+                    </td>
 
                     <td className="px-4 py-3">
                       ${row.orderAmount.toLocaleString()}

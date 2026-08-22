@@ -156,6 +156,7 @@ type PerformanceRanking = {
   rank: number;
   participantCount: number;
   performanceAmount: number;
+  customerServicePoints: number;
   gapToPrevious: number;
   isFirst: boolean;
 };
@@ -1202,6 +1203,9 @@ export default function StaffPage() {
                   本月接單業績 $
                   {performanceRanking.performanceAmount.toLocaleString()}
                 </p>
+                <p className="mt-1 text-sm font-bold text-violet-600">
+                  本月客服服務點數 {performanceRanking.customerServicePoints || 0} 點
+                </p>
               </div>
               <div className="rounded-2xl bg-white px-5 py-4 text-center shadow-sm">
                 <p className="text-xs font-bold text-[#8b5a8f]">距離上一名</p>
@@ -1276,18 +1280,15 @@ export default function StaffPage() {
                   <button
                     type="button"
                     onClick={transferSalaryToAsd}
-                    disabled={
-                      withdrawing ||
-                      transferringAsd ||
-                      walletLoading ||
-                      !salaryWallet ||
-                      !salaryWallet.withdrawWindow.isOpen ||
-                      Number(salaryWallet.totals.available || 0) <
-                        salaryWallet.withdrawPolicy.minimumAmount ||
-                      (withdrawAmount.trim() !== "" &&
-                        Number(withdrawAmount) <
-                          salaryWallet.withdrawPolicy.minimumAmount)
-                    }
+                  disabled={
+                    withdrawing ||
+                    transferringAsd ||
+                    walletLoading ||
+                    !salaryWallet ||
+                    Number(salaryWallet.totals.available || 0) < 1 ||
+                    (withdrawAmount.trim() !== "" &&
+                      Number(withdrawAmount) < 1)
+                  }
                     className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-violet-500 px-4 py-3 text-sm font-bold text-white shadow-sm shadow-violet-200 hover:bg-violet-600 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     <Coins size={16} />
