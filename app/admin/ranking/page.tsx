@@ -41,6 +41,7 @@ type SalaryOrder = {
   status: string | null;
   order_finished_at: string | null;
   paid_at: string | null;
+  wallet_settled_at: string | null;
   is_deleted: boolean | null;
 };
 
@@ -51,6 +52,7 @@ type BonusItem = {
   title: string;
   amount: number;
   created_at: string;
+  wallet_settled_at: string | null;
 };
 
 type RankRow = {
@@ -142,16 +144,26 @@ export default function AdminRankingPage() {
 
       const totalSalary = orderSalary + orderBonus + extraBonus;
 
+      const pendingBonuses = staffBonuses.filter(
+        (bonus) => !bonus.wallet_settled_at
+      );
+
       const unpaidAmount =
         staffOrders
-          .filter((order) => order.status !== "已發薪")
+          .filter(
+            (order) => !order.wallet_settled_at && order.status !== "已入帳"
+          )
           .reduce(
             (sum, order) =>
               sum +
               Number(order.staff_salary || 0) +
               Number(order.bonus_amount || 0),
             0
-          ) + extraBonus;
+          ) +
+        pendingBonuses.reduce(
+          (sum, bonus) => sum + Number(bonus.amount || 0),
+          0
+        );
 
       return {
         staff,
@@ -251,7 +263,7 @@ export default function AdminRankingPage() {
         let query = supabase
           .from("qiunai_salary_orders")
           .select(
-            "id, discord_id, staff_name, order_amount, staff_salary, bonus_amount, status, order_finished_at, paid_at, is_deleted"
+            "id, discord_id, staff_name, order_amount, staff_salary, bonus_amount, status, order_finished_at, paid_at, wallet_settled_at, is_deleted"
           )
           .or("is_deleted.eq.false,is_deleted.is.null")
           .order("order_finished_at", { ascending: false })
@@ -263,7 +275,7 @@ export default function AdminRankingPage() {
       fetchAllPages<BonusItem>((from, to) => {
         let query = supabase
           .from("qiunai_staff_bonus")
-          .select("id, discord_id, staff_name, title, amount, created_at")
+          .select("id, discord_id, staff_name, title, amount, created_at, wallet_settled_at")
           .order("created_at", { ascending: false })
           .order("id", { ascending: false });
         if (startIso) query = query.gte("created_at", startIso);
@@ -453,7 +465,7 @@ export default function AdminRankingPage() {
                   <th className="px-4 py-3">訂單獎金</th>
                   <th className="px-4 py-3">額外獎金</th>
                   <th className="px-4 py-3">總薪水</th>
-                  <th className="px-4 py-3">未發薪</th>
+                  <th className="px-4 py-3">未入帳</th>
                 </tr>
               </thead>
 

@@ -286,7 +286,7 @@ export default function StaffPage() {
     const totalBonus = orderBonus + extraBonus;
 
     const unpaidSalary = orders
-      .filter((order) => order.status !== "已發薪" && !order.wallet_settled_at)
+      .filter((order) => order.status !== "已入帳" && !order.wallet_settled_at)
       .reduce(
         (sum, order) =>
           sum +
@@ -1180,7 +1180,7 @@ export default function StaffPage() {
             value={`$${totals.totalBonus.toLocaleString()}`}
           />
           <Stat
-            title="未發薪"
+            title="未入帳"
             value={`$${totals.unpaidSalary.toLocaleString()}`}
           />
         </div>
@@ -1972,7 +1972,7 @@ export default function StaffPage() {
                         <th className="px-4 py-3">抽成</th>
                         <th className="px-4 py-3">獎金</th>
                         <th className="px-4 py-3">狀態</th>
-                        <th className="px-4 py-3">發薪時間</th>
+                        <th className="px-4 py-3">入帳時間</th>
                       </tr>
                     </thead>
 
@@ -2017,22 +2017,22 @@ export default function StaffPage() {
                           <td className="px-4 py-3">
                             <span
                               className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                                order.status === "已發薪" ||
+                                order.status === "已入帳" ||
                                 order.wallet_settled_at
                                   ? "bg-emerald-100 text-emerald-600"
                                   : "bg-yellow-100 text-yellow-600"
                               }`}
                             >
                               {order.wallet_settled_at
-                                ? "已入錢包"
-                                : order.status || "未發薪"}
+                                ? "已入帳"
+                                : order.status || "未入帳"}
                             </span>
                           </td>
 
                           <td className="px-4 py-3 text-[#8b5a8f]">
                             {order.wallet_settled_at
                               ? formatDateTime(order.wallet_settled_at)
-                              : order.status === "已發薪" && order.paid_at
+                              : order.status === "已入帳" && order.paid_at
                               ? formatDateTime(order.paid_at)
                               : "-"}
                           </td>

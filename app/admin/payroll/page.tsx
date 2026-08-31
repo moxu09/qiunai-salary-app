@@ -364,7 +364,7 @@ export default function AdminPayrollPage() {
       )
       .or("is_deleted.eq.false,is_deleted.is.null")
       .or(PAYROLL_WALLET_FILTER)
-      .or("status.neq.已發薪,status.is.null")
+      .or("status.neq.已入帳,status.is.null")
       .order("order_finished_at", { ascending: false });
 
     if (startIso) orderQuery = orderQuery.gte("order_finished_at", startIso);
@@ -714,7 +714,7 @@ export default function AdminPayrollPage() {
 
   async function markStaffPaid(row: PayrollRow) {
     const ok = confirm(
-      `確定要將「${row.staffName}」目前查詢範圍內的未發薪訂單標記為已發薪嗎？`
+      `確定要將「${row.staffName}」目前查詢範圍內的未入帳訂單標記為已入帳嗎？`
     );
     if (!ok) return;
 
@@ -731,7 +731,7 @@ export default function AdminPayrollPage() {
         ? supabase
             .from(ORDER_TABLE)
             .update({
-              status: "已發薪",
+              status: "已入帳",
               paid_at: settledAt,
               wallet_settled_at: settledAt,
             })
@@ -752,7 +752,7 @@ export default function AdminPayrollPage() {
       return;
     }
 
-    alert(`已將 ${row.staffName} 的薪資項目標記為已發薪`);
+    alert(`已將 ${row.staffName} 的薪資項目標記為已入帳`);
     await loadPayrollData({ silent: true });
   }
 

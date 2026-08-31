@@ -739,7 +739,7 @@ begin
     if p_salary_table = 'play_orders' then
       update public.play_orders set discord_id=v_staff->>'staff_id',staff_name=nullif(v_staff->>'staff_name',''),order_amount=p_amount,staff_salary=round(p_amount*((v_staff->>'salary_rate')::numeric/100)),bonus_amount=0,salary_rate=(v_staff->>'salary_rate')::integer,salary_level=v_staff->>'salary_level',platform_income=p_amount,platform_expense=round(p_amount*((v_staff->>'salary_rate')::numeric/100)),order_finished_at=v_finished_at,is_deleted=false where id=v_order.id;
     else
-      execute format('insert into public.%I (order_id,discord_id,staff_name,customer_name,service_name,order_amount,staff_salary,bonus_amount,salary_rate,salary_level,platform_income,platform_expense,status,order_finished_at,is_deleted) values ($1,$2,$3,$4,$5,$6,$7,0,$8,$9,$6,$7,''未發薪'',$10,false)',p_salary_table)
+      execute format('insert into public.%I (order_id,discord_id,staff_name,customer_name,service_name,order_amount,staff_salary,bonus_amount,salary_rate,salary_level,platform_income,platform_expense,status,order_finished_at,is_deleted) values ($1,$2,$3,$4,$5,$6,$7,0,$8,$9,$6,$7,''未入帳'',$10,false)',p_salary_table)
       using coalesce(v_order.order_no,v_order.id::text),v_staff->>'staff_id',nullif(v_staff->>'staff_name',''),'<@'||p_user_id||'>','打賞：'||p_item,p_amount,round(p_amount*((v_staff->>'salary_rate')::numeric/100)),(v_staff->>'salary_rate')::integer,v_staff->>'salary_level',v_finished_at;
     end if;
     v_orders := v_orders || jsonb_build_array(jsonb_build_object('id',v_order.id,'order_no',v_order.order_no,'customer_id',v_order.customer_id,'assigned_player',v_order.assigned_player,'final_price',v_order.final_price,'service',v_order.service));

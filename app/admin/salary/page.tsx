@@ -198,11 +198,11 @@ export default function AdminSalaryPage() {
     const totalBonus = orderBonus + extraBonusTotal;
 
     const unpaidCount = orders.filter(
-      (order) => order.status !== "已發薪"
+      (order) => order.status !== "已入帳"
     ).length;
     const unpaidSalary =
       orders
-        .filter((order) => order.status !== "已發薪")
+        .filter((order) => order.status !== "已入帳")
         .reduce(
           (sum, order) =>
             sum +
@@ -255,7 +255,7 @@ export default function AdminSalaryPage() {
       );
 
       const unpaidOrders = staffOrders.filter(
-        (order) => order.status !== "已發薪"
+        (order) => order.status !== "已入帳"
       );
 
       const unpaidSalary =
@@ -473,7 +473,7 @@ export default function AdminSalaryPage() {
           : `訂單抽成 ${salaryRate}%`,
       platform_income: orderAmount,
       platform_expense: staffSalary + bonusAmount,
-      status: "未發薪",
+      status: "未入帳",
       order_finished_at: finishedAt,
       is_deleted: false,
     });
@@ -607,7 +607,7 @@ export default function AdminSalaryPage() {
     const ok = confirm(
       `確定要將「${
         order.staff_name || order.discord_id
-      }」這筆訂單標記為已發薪嗎？`
+      }」這筆訂單標記為已入帳嗎？`
     );
 
     if (!ok) return;
@@ -615,7 +615,7 @@ export default function AdminSalaryPage() {
     const { error } = await supabase
       .from("qiunai_salary_orders")
       .update({
-        status: "已發薪",
+        status: "已入帳",
         paid_at: paidAt,
       })
       .eq("id", order.id);
@@ -626,7 +626,7 @@ export default function AdminSalaryPage() {
       return;
     }
 
-    alert("已標記為已發薪");
+    alert("已標記為已入帳");
     await loadAll();
   }
 
@@ -636,7 +636,7 @@ export default function AdminSalaryPage() {
     const paidAt = toIso(payForm.paid_at) || new Date().toISOString();
 
     if (!startIso || !endIso) {
-      alert("請選擇發薪時間段");
+      alert("請選擇入帳時間段");
       return;
     }
 
@@ -646,10 +646,10 @@ export default function AdminSalaryPage() {
         : getStaffNameByDiscordId(payForm.discord_id);
 
     const ok = confirm(
-      `確定要將「${targetText}」在此時間段內的訂單標記為已發薪嗎？\n\n` +
+      `確定要將「${targetText}」在此時間段內的訂單標記為已入帳嗎？\n\n` +
         `訂單開始：${payForm.start}\n` +
         `訂單結束：${payForm.end}\n` +
-        `發薪時間：${payForm.paid_at}`
+        `入帳時間：${payForm.paid_at}`
     );
 
     if (!ok) return;
@@ -657,13 +657,13 @@ export default function AdminSalaryPage() {
     let query = supabase
       .from("qiunai_salary_orders")
       .update({
-        status: "已發薪",
+        status: "已入帳",
         paid_at: paidAt,
       })
       .or("is_deleted.eq.false,is_deleted.is.null")
       .gte("order_finished_at", startIso)
       .lte("order_finished_at", endIso)
-      .neq("status", "已發薪");
+      .neq("status", "已入帳");
 
     if (payForm.discord_id !== "all") {
       query = query.eq("discord_id", payForm.discord_id);
@@ -862,7 +862,7 @@ export default function AdminSalaryPage() {
           : `工時申報 ${salaryRate}%`,
         platform_income: report.order_amount,
         platform_expense: staffSalary,
-        status: "未發薪",
+        status: "未入帳",
         order_finished_at: report.ended_at,
         admin_note: `申報時長 ${report.duration_minutes} 分鐘`,
         is_deleted: false,
@@ -950,7 +950,7 @@ export default function AdminSalaryPage() {
               value={`$${totals.totalBonus.toLocaleString()}`}
             />
             <Stat
-              title="未發薪"
+              title="未入帳"
               value={`$${totals.unpaidSalary.toLocaleString()}`}
             />
           </div>
@@ -1015,7 +1015,7 @@ export default function AdminSalaryPage() {
             </div>
 
             <p className="mt-2 text-sm text-[#80647d]">
-              選擇單一陪陪後，可以查看此時間範圍內的訂單、薪資、獎金與未發薪。
+              選擇單一陪陪後，可以查看此時間範圍內的訂單、薪資、獎金與未入帳。
             </p>
 
             <div className="mt-5 grid gap-4 md:grid-cols-[1.1fr_2fr]">
@@ -1070,7 +1070,7 @@ export default function AdminSalaryPage() {
                         value={`$${selectedDetailSummary.totalSalary.toLocaleString()}`}
                       />
                       <MiniStat
-                        title="未發薪"
+                        title="未入帳"
                         value={`$${selectedDetailSummary.unpaidSalary.toLocaleString()}`}
                       />
                     </div>
@@ -1150,12 +1150,12 @@ export default function AdminSalaryPage() {
                             <td className="px-4 py-3">
                               <span
                                 className={`rounded-full px-3 py-1 text-xs ${
-                                  order.status === "已發薪"
+                                  order.status === "已入帳"
                                     ? "bg-emerald-500/20 text-emerald-300"
                                     : "bg-yellow-500/20 text-yellow-300"
                                 }`}
                               >
-                                {order.status || "未發薪"}
+                                {order.status || "未入帳"}
                               </span>
                             </td>
                           </tr>
@@ -1612,7 +1612,7 @@ export default function AdminSalaryPage() {
               />
 
               <Input
-                label="發薪時間"
+                label="入帳時間"
                 type="datetime-local"
                 value={payForm.paid_at}
                 onChange={(value) =>
@@ -1625,7 +1625,7 @@ export default function AdminSalaryPage() {
                 className="flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 py-3 font-semibold hover:bg-emerald-400 md:col-span-2"
               >
                 <CheckCircle2 size={18} />
-                批次標記已發薪
+                批次標記已入帳
               </button>
             </div>
           </div>
@@ -1730,26 +1730,26 @@ export default function AdminSalaryPage() {
                       <td className="px-4 py-3">
                         <span
                           className={`rounded-full px-3 py-1 text-xs ${
-                            order.status === "已發薪"
+                            order.status === "已入帳"
                               ? "bg-emerald-500/20 text-emerald-300"
                               : "bg-yellow-500/20 text-yellow-300"
                           }`}
                         >
-                          {order.status || "未發薪"}
+                          {order.status || "未入帳"}
                         </span>
                       </td>
 
                       <td className="px-4 py-3 text-[#6f526d]">
                         {order.wallet_settled_at
                           ? formatDateTime(order.wallet_settled_at)
-                          : order.status === "已發薪" && order.paid_at
+                          : order.status === "已入帳" && order.paid_at
                             ? formatDateTime(order.paid_at)
                             : "-"}
                       </td>
 
                       <td className="px-4 py-3">
                         <div className="flex flex-col gap-2">
-                          {order.status === "已發薪" ? (
+                          {order.status === "已入帳" ? (
                             <span className="text-xs text-[#92778f]">
                               已完成
                             </span>
@@ -1759,7 +1759,7 @@ export default function AdminSalaryPage() {
                               className="flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 py-2 font-semibold hover:bg-emerald-400"
                             >
                               <CheckCircle2 size={16} />
-                              已發薪
+                              已入帳
                             </button>
                           )}
 

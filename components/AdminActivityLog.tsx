@@ -26,7 +26,7 @@ const FIELD_LABELS: Record<string, string> = {
   bonus_amount: "訂單獎金", coins: "ASD 餘額", balance: "餘額",
   service_fee: "手續費", payout_amount: "實際入帳金額", welfare_fee: "福利金",
   discount_amount: "折扣金額", paid: "是否付款", paid_at: "付款時間",
-  salary_paid: "是否發薪", salary_paid_at: "發薪時間", destination: "提領目的地",
+  salary_paid: "是否入帳", salary_paid_at: "入帳時間", destination: "提領目的地",
   entry_type: "錢包項目", entry_label: "錢包說明", points: "客服點數",
   app_key: "所屬 ERP", reviewed_by: "審核人", reviewed_at: "審核時間",
   review_note: "審核備註", rejection_reason: "拒絕原因", note: "備註",
