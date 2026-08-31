@@ -2032,7 +2032,7 @@ export default function StaffPage() {
                           <td className="px-4 py-3 text-[#8b5a8f]">
                             {order.wallet_settled_at
                               ? formatDateTime(order.wallet_settled_at)
-                              : order.paid_at
+                              : order.status === "已發薪" && order.paid_at
                               ? formatDateTime(order.paid_at)
                               : "-"}
                           </td>

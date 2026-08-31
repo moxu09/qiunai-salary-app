@@ -9,6 +9,29 @@ import {
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+const PAGE_SIZE = 1000;
+
+async function getAllMonthlyOrders(startIso, endIso) {
+  const rows = [];
+
+  for (let from = 0; ; from += PAGE_SIZE) {
+    const { data, error } = await supabaseAdmin
+      .from("qiunai_salary_orders")
+      .select("discord_id, order_amount")
+      .or("is_deleted.eq.false,is_deleted.is.null")
+      .gte("order_finished_at", startIso)
+      .lte("order_finished_at", endIso)
+      .order("order_finished_at", { ascending: false })
+      .order("id", { ascending: false })
+      .range(from, from + PAGE_SIZE - 1);
+    if (error) throw error;
+
+    const page = data || [];
+    rows.push(...page);
+    if (page.length < PAGE_SIZE) return rows;
+  }
+}
+
 function validMonth(value) {
   const text = String(value || "");
   return /^\d{4}-(0[1-9]|1[0-2])$/.test(text)
@@ -24,7 +47,7 @@ export async function GET(request) {
 
     const [
       { data: staff, error: staffError },
-      { data: orders, error: orderError },
+      orders,
       { data: servicePoints, error: servicePointsError },
     ] =
       await Promise.all([
@@ -32,12 +55,7 @@ export async function GET(request) {
           .from("qiunai_staff")
           .select("discord_id")
           .eq("is_active", true),
-        supabaseAdmin
-          .from("qiunai_salary_orders")
-          .select("discord_id, order_amount")
-          .or("is_deleted.eq.false,is_deleted.is.null")
-          .gte("order_finished_at", startIso)
-          .lte("order_finished_at", endIso),
+        getAllMonthlyOrders(startIso, endIso),
         supabaseAdmin
           .from("customer_service_order_points")
           .select("points")
@@ -48,7 +66,6 @@ export async function GET(request) {
       ]);
 
     if (staffError) throw staffError;
-    if (orderError) throw orderError;
     if (servicePointsError) throw servicePointsError;
 
     const activeIds = new Set((staff || []).map((row) => row.discord_id));

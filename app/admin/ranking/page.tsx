@@ -65,6 +65,26 @@ type RankRow = {
   servicePoints: number;
 };
 
+const PAGE_SIZE = 1000;
+
+async function fetchAllPages<T>(
+  buildQuery: (from: number, to: number) => PromiseLike<{
+    data: T[] | null;
+    error: { message: string } | null;
+  }>
+) {
+  const rows: T[] = [];
+
+  for (let from = 0; ; from += PAGE_SIZE) {
+    const { data, error } = await buildQuery(from, from + PAGE_SIZE - 1);
+    if (error) return { data: rows, error };
+
+    const page = data || [];
+    rows.push(...page);
+    if (page.length < PAGE_SIZE) return { data: rows, error: null };
+  }
+}
+
 export default function AdminRankingPage() {
   const { adminLoading, isAdmin } = useQiunaiAdminGuard();
 
@@ -219,35 +239,6 @@ export default function AdminRankingPage() {
     if (startIso) pointParams.set("start", startIso);
     if (endIso) pointParams.set("end", endIso);
 
-    let orderQuery = supabase
-      .from("qiunai_salary_orders")
-      .select(
-        "id, discord_id, staff_name, order_amount, staff_salary, bonus_amount, status, order_finished_at, paid_at, is_deleted"
-      )
-      .or("is_deleted.eq.false,is_deleted.is.null")
-      .order("order_finished_at", { ascending: false });
-
-    if (startIso) {
-      orderQuery = orderQuery.gte("order_finished_at", startIso);
-    }
-
-    if (endIso) {
-      orderQuery = orderQuery.lte("order_finished_at", endIso);
-    }
-
-    let bonusQuery = supabase
-      .from("qiunai_staff_bonus")
-      .select("id, discord_id, staff_name, title, amount, created_at")
-      .order("created_at", { ascending: false });
-
-    if (startIso) {
-      bonusQuery = bonusQuery.gte("created_at", startIso);
-    }
-
-    if (endIso) {
-      bonusQuery = bonusQuery.lte("created_at", endIso);
-    }
-
     const [staffRes, orderRes, bonusRes, pointRes] = await Promise.all([
       supabase
         .from("qiunai_staff")
@@ -256,8 +247,29 @@ export default function AdminRankingPage() {
         )
         .eq("is_active", true)
         .order("created_at", { ascending: false }),
-      orderQuery,
-      bonusQuery,
+      fetchAllPages<SalaryOrder>((from, to) => {
+        let query = supabase
+          .from("qiunai_salary_orders")
+          .select(
+            "id, discord_id, staff_name, order_amount, staff_salary, bonus_amount, status, order_finished_at, paid_at, is_deleted"
+          )
+          .or("is_deleted.eq.false,is_deleted.is.null")
+          .order("order_finished_at", { ascending: false })
+          .order("id", { ascending: false });
+        if (startIso) query = query.gte("order_finished_at", startIso);
+        if (endIso) query = query.lte("order_finished_at", endIso);
+        return query.range(from, to);
+      }),
+      fetchAllPages<BonusItem>((from, to) => {
+        let query = supabase
+          .from("qiunai_staff_bonus")
+          .select("id, discord_id, staff_name, title, amount, created_at")
+          .order("created_at", { ascending: false })
+          .order("id", { ascending: false });
+        if (startIso) query = query.gte("created_at", startIso);
+        if (endIso) query = query.lte("created_at", endIso);
+        return query.range(from, to);
+      }),
       fetch(`/api/qiunai/customer-service-points?${pointParams}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
         cache: "no-store",

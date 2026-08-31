@@ -58,6 +58,7 @@ type SalaryOrder = {
   platform_expense: number | null;
   status: string | null;
   paid_at: string | null;
+  wallet_settled_at: string | null;
   order_finished_at: string | null;
   admin_note: string | null;
   is_deleted: boolean | null;
@@ -74,6 +75,35 @@ type BonusItem = {
   created_at: string;
   wallet_settled_at?: string | null;
 };
+
+const PAGE_SIZE = 1000;
+
+async function fetchAllSalaryOrders(
+  startIso: string | null,
+  endIso: string | null,
+  staffId: string
+) {
+  const rows: SalaryOrder[] = [];
+
+  for (let from = 0; ; from += PAGE_SIZE) {
+    let query = supabase
+      .from("qiunai_salary_orders")
+      .select("*")
+      .or("is_deleted.eq.false,is_deleted.is.null")
+      .order("order_finished_at", { ascending: false })
+      .order("id", { ascending: false });
+    if (startIso) query = query.gte("order_finished_at", startIso);
+    if (endIso) query = query.lte("order_finished_at", endIso);
+    if (staffId !== "all") query = query.eq("discord_id", staffId);
+
+    const { data, error } = await query.range(from, from + PAGE_SIZE - 1);
+    if (error) return { data: rows, error };
+
+    const page = (data || []) as SalaryOrder[];
+    rows.push(...page);
+    if (page.length < PAGE_SIZE) return { data: rows, error: null };
+  }
+}
 
 export default function AdminSalaryPage() {
   const { adminLoading, isAdmin, access } = useQiunaiAdminGuard();
@@ -288,25 +318,8 @@ export default function AdminSalaryPage() {
     const startIso = toIso(filter.start);
     const endIso = toIso(filter.end);
 
-    let orderQuery = supabase
-      .from("qiunai_salary_orders")
-      .select("*")
-      .or("is_deleted.eq.false,is_deleted.is.null")
-      .order("order_finished_at", { ascending: false });
-
-    if (startIso) {
-      orderQuery = orderQuery.gte("order_finished_at", startIso);
-    }
-
-    if (endIso) {
-      orderQuery = orderQuery.lte("order_finished_at", endIso);
-    }
-
-    if (staffId !== "all") {
-      orderQuery = orderQuery.eq("discord_id", staffId);
-    }
-
-    const { data: orderData, error: orderError } = await orderQuery;
+    const { data: orderData, error: orderError } =
+      await fetchAllSalaryOrders(startIso, endIso, staffId);
 
     if (orderError) {
       console.error("讀取薪資訂單失敗:", orderError);
@@ -1727,7 +1740,11 @@ export default function AdminSalaryPage() {
                       </td>
 
                       <td className="px-4 py-3 text-[#6f526d]">
-                        {order.paid_at ? formatDateTime(order.paid_at) : "-"}
+                        {order.wallet_settled_at
+                          ? formatDateTime(order.wallet_settled_at)
+                          : order.status === "已發薪" && order.paid_at
+                            ? formatDateTime(order.paid_at)
+                            : "-"}
                       </td>
 
                       <td className="px-4 py-3">
