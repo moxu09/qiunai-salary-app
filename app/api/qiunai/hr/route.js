@@ -108,7 +108,7 @@ export async function GET(request) {
     if (!adminMode) query.eq("discord_id", discordId);
     const [{ data: requests, error }, { data: announcements }, salary] = await Promise.all([
       query,
-      supabaseAdmin.from("salary_announcements").select("*").in("organization_code", [ORG, "all"]).eq("is_active", true).order("created_at", { ascending: false }),
+      supabaseAdmin.from("salary_announcements").select("*").eq("organization_code", ORG).eq("is_active", true).order("created_at", { ascending: false }),
       adminMode ? Promise.resolve(null) : priorMonthSalary(discordId, selectedMonth),
     ]);
     if (error) throw error;

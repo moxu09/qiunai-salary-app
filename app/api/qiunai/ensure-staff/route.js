@@ -5,6 +5,10 @@ import {
   getDiscordIdFromUser,
   getDiscordProfileFromUser,
 } from "@/lib/erpAuthLinks";
+import {
+  activateSignedProfile,
+  getPendingSignedProfile,
+} from "@/lib/employmentSigning";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -65,7 +69,7 @@ export async function POST(request) {
 
     if (memberRes.status === 404) {
       return json(
-        { ok: false, message: "你目前不在秋奈電競伺服器內，無法使用 ERP。" },
+        { ok: false, message: "你目前不在秋奈電競伺服器內，無法使用 EIP。" },
         403
       );
     }
@@ -91,7 +95,7 @@ export async function POST(request) {
 
     if (!hasAllowedRole) {
       return json(
-        { ok: false, message: "你尚未擁有秋奈員工身分組，無法使用 ERP。" },
+        { ok: false, message: "你尚未擁有秋奈員工身分組，無法使用 EIP。" },
         403
       );
     }
@@ -142,8 +146,23 @@ export async function POST(request) {
         return json({ ok: false, message: "更新員工資料失敗" }, 500);
       }
 
+      const signedProfile = await getPendingSignedProfile("qiunai", discordId);
+      if (signedProfile?.id) await activateSignedProfile(signedProfile.id);
+
       return json({ ok: true, staff: updated });
     }
+
+    const signedProfile = await getPendingSignedProfile("qiunai", discordId);
+    if (!signedProfile) {
+      return json(
+        {
+          ok: false,
+          message: "尚未完成入職契約簽署，請先使用面試通過私訊中的連結完成簽署。",
+        },
+        403
+      );
+    }
+    const onboarding = signedProfile.form_data || {};
 
     const { data: created, error: createError } = await supabaseAdmin
       .from("qiunai_staff")
@@ -152,6 +171,11 @@ export async function POST(request) {
         discord_name: discordName,
         avatar_url: avatarUrl,
         display_name: displayName,
+        real_name: onboarding.real_name || null,
+        gender: onboarding.gender || null,
+        birthday: onboarding.birthday || null,
+        bank_name: onboarding.bank_name || null,
+        bank_account: onboarding.bank_account || null,
         role_checked: true,
         is_active: true,
         is_online: false,
@@ -164,6 +188,8 @@ export async function POST(request) {
       console.error("[ensure staff create error]", createError);
       return json({ ok: false, message: "自動建立秋奈員工資料失敗" }, 500);
     }
+
+    await activateSignedProfile(signedProfile.id);
 
     return json({ ok: true, staff: created });
   } catch (error) {

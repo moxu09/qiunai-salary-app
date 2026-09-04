@@ -28,7 +28,7 @@ const FIELD_LABELS: Record<string, string> = {
   discount_amount: "折扣金額", paid: "是否付款", paid_at: "付款時間",
   salary_paid: "是否入帳", salary_paid_at: "入帳時間", destination: "提領目的地",
   entry_type: "錢包項目", entry_label: "錢包說明", points: "客服點數",
-  app_key: "所屬 ERP", reviewed_by: "審核人", reviewed_at: "審核時間",
+  app_key: "所屬 EIP", reviewed_by: "審核人", reviewed_at: "審核時間",
   review_note: "審核備註", rejection_reason: "拒絕原因", note: "備註",
   order_finished_at: "訂單完成時間", requested_at: "申請時間",
 };
@@ -37,7 +37,7 @@ const TABLE_LABELS: Record<string, string> = {
   salary_wallet_entries: "薪資錢包", salary_withdraw_requests: "薪資提領",
   players_bonus: "深夜獎金／扣薪", qiunai_staff_bonus: "秋奈獎金／扣薪",
   customer_service_order_points: "客服服務點數", salary_activity_commission_settings: "活動抽成設定",
-  players: "深夜員工", qiunai_staff: "秋奈員工", erp_role_assignments: "ERP 權限",
+  players: "深夜員工", qiunai_staff: "秋奈員工", erp_role_assignments: "EIP 權限",
 };
 const HIDDEN_FIELDS = new Set(["id", "created_at", "updated_at", "edited_at", "deleted_at", "avatar_url", "bank_account", "bank_account_name", "bank_name"]);
 const today = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Taipei" }).format(new Date());

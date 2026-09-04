@@ -252,7 +252,7 @@ export default function ErpAuthLinkManager({
         </div>
         <div>
           <h2 className="text-lg font-black">
-            {mode === "onboarding" ? "連結其他登入方式" : "ERP 登入方式"}
+            {mode === "onboarding" ? "連結其他登入方式" : "EIP 登入方式"}
           </h2>
           <p className="mt-1 text-sm leading-6 opacity-70">
             Discord 是你的主要員工身分。Google 與電子郵件只會連結到同一個帳號，不會另外建立薪資或錢包。
@@ -462,8 +462,8 @@ export default function ErpAuthLinkManager({
                 <CheckCircle2 size={18} />
               )}
               {status.googleReady || status.emailEnabled
-                ? "完成設定並進入 ERP"
-                : "暫時不要連結，進入 ERP"}
+                ? "完成設定並進入 EIP"
+                : "暫時不要連結，進入 EIP"}
             </button>
           ) : null}
         </div>

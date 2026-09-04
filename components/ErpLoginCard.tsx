@@ -27,17 +27,17 @@ type AuthLinkStatus = {
 
 const CONTENT = {
   deepnight: {
-    badge: "DeepNight ERP",
-    title: "深夜不關燈 ERP",
+    badge: "DeepNight EIP",
+    title: "深夜不關燈 EIP",
     description:
-      "登入後會依你的 ERP 權限顯示薪資、訂單、簽核與管理功能。",
+      "登入後會依你的 EIP 權限顯示薪資、訂單、簽核與管理功能。",
     copyright: "© 深夜不關燈 We Are Still Here",
   },
   qiunai: {
-    badge: "Qiunai Esports ERP",
-    title: "秋奈電競 ERP",
+    badge: "Qiunai Esports EIP",
+    title: "秋奈電競 EIP",
     description:
-      "登入後會依你的 ERP 權限顯示薪資、訂單、簽核與管理功能。",
+      "登入後會依你的 EIP 權限顯示薪資、訂單、簽核與管理功能。",
     copyright: "© 秋奈電競 Qiunai Esports",
   },
 } as const;

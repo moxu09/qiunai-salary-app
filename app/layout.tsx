@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata = {
-  title: "秋奈電競 ERP",
-  description: "秋奈電競企業資源規劃系統",
+  title: "秋奈電競 EIP",
+  description: "秋奈電競企業資訊入口系統",
   icons: {
     icon: "/favicon.ico",
   },

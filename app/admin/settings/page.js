@@ -110,7 +110,7 @@ export default function AdminSettingsPage() {
       <header className="admin-page-header border border-pink-100 bg-white">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-5">
           <div>
-            <p className="text-sm text-violet-300">Qiunai ERP</p>
+            <p className="text-sm text-violet-300">Qiunai EIP</p>
             <h1 className="text-2xl font-bold">秋奈電競｜系統設定</h1>
           </div>
 

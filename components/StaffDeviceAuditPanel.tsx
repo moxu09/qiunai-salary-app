@@ -82,7 +82,7 @@ const SECURITY_LABELS: Record<string, string> = {
 async function accessToken() {
   const { data } = await supabase.auth.getSession();
   const token = data.session?.access_token;
-  if (!token) throw new Error("ERP 登入已過期，請重新登入");
+  if (!token) throw new Error("EIP 登入已過期，請重新登入");
   return token;
 }
 

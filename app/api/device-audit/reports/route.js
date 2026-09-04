@@ -18,13 +18,13 @@ export async function GET(request) {
     });
     const payload = await response.json().catch(() => ({
       ok: false,
-      message: "共同 ERP 回傳格式錯誤",
+      message: "共同 EIP 回傳格式錯誤",
     }));
     return NextResponse.json(payload, { status: response.status });
   } catch (error) {
     console.error("proxy device audit reports failed", error);
     return NextResponse.json(
-      { ok: false, message: "目前無法連線至共同 ERP" },
+      { ok: false, message: "目前無法連線至共同 EIP" },
       { status: 502 },
     );
   }

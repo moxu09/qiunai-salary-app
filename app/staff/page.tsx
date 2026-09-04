@@ -135,6 +135,7 @@ type SalaryWalletData = {
     withdrawn: number;
     pendingWithdrawn: number;
   }>;
+  requests: SalaryWithdrawRequest[];
   pendingRequest: SalaryWithdrawRequest | null;
   latestRequest: SalaryWithdrawRequest | null;
   withdrawWindow: {
@@ -207,6 +208,13 @@ export default function StaffPage() {
   const [withdrawAmount, setWithdrawAmount] = useState("");
   const [salaryWallet, setSalaryWallet] = useState<SalaryWalletData | null>(
     null
+  );
+  const recentAsdTransfers = useMemo(
+    () =>
+      (salaryWallet?.requests || [])
+        .filter((request) => request.destination === "asd")
+        .slice(0, 20),
+    [salaryWallet]
   );
   const [performanceRanking, setPerformanceRanking] =
     useState<PerformanceRanking | null>(null);
@@ -1072,7 +1080,7 @@ export default function StaffPage() {
       <main className="qiunai-page flex items-center justify-center px-4">
         <div className="qiunai-card w-full max-w-lg rounded-[32px] p-6">
           <h1 className="text-xl font-black text-rose-600">
-            無法進入員工 ERP
+            無法進入員工 EIP
           </h1>
 
           <p className="mt-4 whitespace-pre-wrap text-sm leading-7 text-rose-500">
@@ -1204,7 +1212,7 @@ export default function StaffPage() {
                   {performanceRanking.performanceAmount.toLocaleString()}
                 </p>
                 <p className="mt-1 text-sm font-bold text-violet-600">
-                  本月客服服務點數 {performanceRanking.customerServicePoints || 0} 點
+                  本月客服接待單數 {performanceRanking.customerServicePoints || 0} 件
                 </p>
               </div>
               <div className="rounded-2xl bg-white px-5 py-4 text-center shadow-sm">
@@ -1232,9 +1240,14 @@ export default function StaffPage() {
                 <h2 className="mt-1 text-2xl font-black text-[#5b3768]">
                   可累積提領的薪資餘額
                 </h2>
-                <p className="mt-2 text-sm leading-6 text-[#8b5a8f]">
-                  每月 5 日 00:00 入帳上月 16 日至月底薪資；每月 20 日 00:00 入帳當月 1 日至 15 日薪資。
-                </p>
+                <div className="mt-2 space-y-1 text-sm leading-6 text-[#8b5a8f]">
+                  <p>每月 2 日 00:00 入帳上月 16 日至月底薪資；每月 17 日 00:00 入帳當月 1 日至 15 日薪資。</p>
+                  <p>轉入 ASD 不限提領期間，1 元起申請並立即入帳。</p>
+                  <p>每月 5 日 09:00 至 25 日 15:30 開放提領。</p>
+                  <p>金額須高於 $1,000；本月首次免手續費，第二次起每次 $15。</p>
+                  <p>銀行作業需 0 到 3 個工作日。</p>
+                  <p>若個人銀行、帳戶、戶名其中一項填寫不完整，則會導致薪資發放失敗，而繼續累積。</p>
+                </div>
               </div>
 
               <div className="flex w-full flex-col items-stretch gap-2 sm:max-w-xs sm:items-end">
@@ -1296,10 +1309,6 @@ export default function StaffPage() {
                   </button>
                 </div>
                 <div className="space-y-1 text-xs font-semibold text-[#8b5a8f]">
-                  <p>轉入 ASD 不限提領期間，1 元起申請並立即入帳。</p>
-                  <p>每月 5 日 09:00 至 25 日 15:30 開放提領。</p>
-                  <p>金額須高於 $1,000；本月首次免手續費，第二次起每次 $15。</p>
-                  <p>銀行作業需 0 到 3 個工作日。</p>
                   {salaryWallet ? (
                     <p className="font-black text-pink-600">
                       本月下一次提領手續費：$
@@ -1384,6 +1393,65 @@ export default function StaffPage() {
                   >
                     {getRequestStatusText(salaryWallet.latestRequest)}
                   </span>
+                </div>
+
+                <div className="mt-4 rounded-[24px] border border-violet-100 bg-white/90 p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <h3 className="flex items-center gap-2 font-black text-[#5b3768]">
+                        <Coins size={18} className="text-violet-500" />
+                        ASD 轉入明細
+                      </h3>
+                      <p className="mt-1 text-xs text-[#8b5a8f]">
+                        顯示最近 20 筆薪資轉入本人 ASD 的紀錄。
+                      </p>
+                    </div>
+                    <span className="rounded-full bg-violet-50 px-3 py-1 text-xs font-black text-violet-600">
+                      {recentAsdTransfers.length} 筆
+                    </span>
+                  </div>
+                  <div className="mt-3 overflow-x-auto">
+                    <table className="min-w-full text-sm">
+                      <thead className="text-left text-xs text-[#8b5a8f]">
+                        <tr>
+                          <th className="py-2 pr-4">轉入時間</th>
+                          <th className="py-2 pr-4">薪資扣除</th>
+                          <th className="py-2 pr-4">ASD 入帳</th>
+                          <th className="py-2">狀態</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {recentAsdTransfers.map((request) => {
+                          const payout = Number(
+                            request.payout_amount || request.amount || 0
+                          );
+                          return (
+                            <tr key={request.id} className="border-t border-violet-50">
+                              <td className="py-3 pr-4">
+                                {formatDateTime(request.requested_at)}
+                              </td>
+                              <td className="py-3 pr-4 font-bold text-[#5b3768]">
+                                -{statementMoney(request.amount)}
+                              </td>
+                              <td className="py-3 pr-4 font-black text-violet-600">
+                                +{payout.toLocaleString("zh-TW")} ASD
+                              </td>
+                              <td className="py-3 font-bold text-emerald-600">
+                                已立即入帳
+                              </td>
+                            </tr>
+                          );
+                        })}
+                        {recentAsdTransfers.length === 0 ? (
+                          <tr>
+                            <td colSpan={4} className="py-5 text-center text-[#8b5a8f]">
+                              目前沒有薪資轉入 ASD 的紀錄
+                            </td>
+                          </tr>
+                        ) : null}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
 
                 <div className="mt-4 rounded-[24px] border border-pink-100 bg-white/90 p-4">

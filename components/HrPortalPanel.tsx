@@ -8,7 +8,7 @@ import MonthSelect from "@/components/MonthSelect";
 
 type RequestAttachment = { name: string; type: string; size: number; url?: string };
 type RequestRow = { id: string; application_date: string; request_type: string; approval_category: string; status: string; review_result?: string | null; needed_date?: string | null; urgency?: string | null; form_data?: { details?: string; attachments?: RequestAttachment[] } };
-type Announcement = { id: string; title: string; content: string };
+type Announcement = { id: string; title: string; content: string; is_active?: boolean };
 const ADMIN_TYPES = ["查掛津貼", "代支報銷", "離職申請書", "留職停薪申請書", "逾期補登單申請書", "證照津貼申請書", "過失報告書", "懲處決議書"];
 const WELFARE_TYPES = ["生日禮金", "開工紅包", "肉粽補助", "月餅補助", "聖誕補助"];
 const approvalMap: Partial<Record<PortalTab, string>> = { "approval-administrative": "administrative", "approval-reimbursement": "reimbursement", "approval-welfare": "welfare", "approval-leave": "leave", "approval-suspension": "suspension" };
@@ -34,12 +34,24 @@ export default function HrPortalPanel({ activeTab, apiPath, department, staffNam
     setLoading(true);
     const response = await fetch(`${apiPath}?month=${selectedMonth}`, { headers: { Authorization: `Bearer ${data.session?.access_token || ""}` }, cache: "no-store" });
     const payload = await response.json().catch(() => ({}));
-    if (response.ok) { setRequests(payload.requests || []); setAnnouncements(payload.announcements || []); setPriorSalary(Number(payload.priorMonthSalary || 0)); setEligible(Boolean(payload.welfareEligible)); }
+    if (response.ok) { setRequests(payload.requests || []); setAnnouncements((payload.announcements || []).filter((item: Announcement) => item.is_active !== false)); setPriorSalary(Number(payload.priorMonthSalary || 0)); setEligible(Boolean(payload.welfareEligible)); }
     setLoading(false);
   }, [apiPath, selectedMonth]);
 
   const loadEvent = useEffectEvent(load);
-  useEffect(() => { void Promise.resolve().then(loadEvent); }, [selectedMonth]);
+  useEffect(() => { void Promise.resolve().then(loadEvent); }, [selectedMonth, activeTab]);
+  useEffect(() => {
+    if (activeTab !== "profile") return;
+    const refresh = () => {
+      if (document.visibilityState === "visible") void Promise.resolve().then(loadEvent);
+    };
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", refresh);
+    };
+  }, [activeTab]);
 
   const category = approvalMap[activeTab];
   const visibleRequests = useMemo(() => category ? requests.filter((item) => item.approval_category === category) : requests, [category, requests]);

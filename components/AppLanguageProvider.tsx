@@ -16,11 +16,11 @@ const options: Array<{ value: Locale; label: string; short: string }> = [
 ];
 
 const groups: Array<[string[], Translation]> = [
-  [["秋奈電競陪玩 ERP", "秋奈電競 ERP"], { en: "Qiunai Esports ERP", ja: "秋奈eスポーツ ERP", ko: "치우나이 e스포츠 ERP" }],
-  [["深夜不關燈 ERP"], { en: "We Are Still Here ERP", ja: "深夜不關燈 ERP", ko: "심야불관등 ERP" }],
+  [["秋奈電競陪玩 EIP", "秋奈電競 EIP"], { en: "Qiunai Esports EIP", ja: "秋奈eスポーツ EIP", ko: "치우나이 e스포츠 EIP" }],
+  [["深夜不關燈 EIP"], { en: "We Are Still Here EIP", ja: "深夜不關燈 EIP", ko: "심야불관등 EIP" }],
   [["歡迎使用"], { en: "Welcome to", ja: "ようこそ", ko: "환영합니다" }],
   [["員工入口"], { en: "Employee Portal", ja: "従業員ポータル", ko: "직원 포털" }],
-  [["登入後會依你的 ERP 權限顯示薪資、訂單、簽核與管理功能。"], { en: "After signing in, payroll, orders, approvals and management tools are shown according to your ERP access.", ja: "ログイン後、ERP権限に応じて給与、注文、承認、管理機能が表示されます。", ko: "로그인 후 ERP 권한에 따라 급여, 주문, 결재 및 관리 기능이 표시됩니다." }],
+  [["登入後會依你的 EIP 權限顯示薪資、訂單、簽核與管理功能。"], { en: "After signing in, payroll, orders, approvals and management tools are shown according to your EIP access.", ja: "ログイン後、EIP権限に応じて給与、注文、承認、管理機能が表示されます。", ko: "로그인 후 EIP 권한에 따라 급여, 주문, 결재 및 관리 기능이 표시됩니다." }],
   [["第一次登入一定要使用 Discord。完成第一次登入並主動連結後，才可使用 Google（Gmail）或電子郵件密碼登入。"], { en: "Your first sign-in must use Discord. After linking an account, you may use Google (Gmail) or email and password.", ja: "初回ログインはDiscordをご利用ください。連携後はGoogle（Gmail）またはメールアドレスとパスワードでログインできます。", ko: "첫 로그인은 Discord를 사용해야 합니다. 계정 연결 후 Google(Gmail) 또는 이메일과 비밀번호로 로그인할 수 있습니다." }],
   [["使用 Discord"], { en: "Continue with Discord", ja: "Discordで続ける", ko: "Discord로 계속" }],
   [["使用 Google / Gmail"], { en: "Continue with Google / Gmail", ja: "Google / Gmailで続ける", ko: "Google / Gmail로 계속" }],

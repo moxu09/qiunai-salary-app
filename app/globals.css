@@ -1519,7 +1519,7 @@ tbody tr:hover {
   }
 }
 
-/* ERP 登入欄位需固定保留圖示空間，避免全站 input 規則覆寫左側內距。 */
+/* EIP 登入欄位需固定保留圖示空間，避免全站 input 規則覆寫左側內距。 */
 .erp-login-field-icon {
   z-index: 1;
   pointer-events: none;
@@ -1536,7 +1536,7 @@ input.erp-login-icon-input[type][class] {
     padding-right: 1rem !important;
   }
 }
-/* Global ERP language selector */
+/* Global EIP language selector */
 .erp-language {
   position: fixed;
   right: max(18px, env(safe-area-inset-right));

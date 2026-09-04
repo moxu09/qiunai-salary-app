@@ -216,7 +216,7 @@ export default function AdminShell({
     return (
       <main className="flex min-h-screen items-center justify-center bg-[#fff7fb]">
         <p className="rounded-2xl bg-white px-6 py-4 text-sm font-bold text-[#80647d] shadow-sm">
-          {embedded ? "正在連接共同 ERP 後台…" : "正在驗證 ERP 權限…"}
+          {embedded ? "正在連接共同 EIP 後台…" : "正在驗證 EIP 權限…"}
         </p>
       </main>
     );
@@ -230,7 +230,7 @@ export default function AdminShell({
     <div className="qiunai-admin-shell admin-workspace-shell">
       <aside className="admin-portal-nav">
         <Link href="/admin" className="admin-portal-brand">
-          <p className="admin-portal-eyebrow">ERP</p>
+          <p className="admin-portal-eyebrow">EIP</p>
           <p className="admin-portal-company">{company}</p>
           <p className="mt-2 text-xs font-bold text-pink-200">
             {ERP_ROLE_LABELS[access.role as keyof typeof ERP_ROLE_LABELS]}

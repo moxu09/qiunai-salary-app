@@ -310,8 +310,8 @@ export default function AdminRankingPage() {
 
     const pointPayload = await pointRes.json().catch(() => ({}));
     if (!pointRes.ok || !pointPayload.ok) {
-      console.error("讀取客服服務點數失敗:", pointPayload);
-      alert("讀取客服服務點數失敗");
+      console.error("讀取客服接待單數失敗:", pointPayload);
+      alert("讀取客服接待單數失敗");
       return;
     }
 
@@ -346,10 +346,10 @@ export default function AdminRankingPage() {
               className="mb-3 inline-flex items-center gap-2 text-sm text-violet-300 hover:text-violet-200"
             >
               <ArrowLeft size={16} />
-              回 ERP 首頁
+              回 EIP 首頁
             </Link>
 
-            <p className="text-sm text-violet-300">Qiunai ERP</p>
+            <p className="text-sm text-violet-300">Qiunai EIP</p>
             <h1 className="text-2xl font-bold">秋奈電競｜排行榜</h1>
           </div>
 
@@ -403,8 +403,8 @@ export default function AdminRankingPage() {
                 <option value="order_amount_asc">接單金額升冪</option>
                 <option value="order_count_desc">訂單數降冪</option>
                 <option value="order_count_asc">訂單數升冪</option>
-                <option value="service_points_desc">客服點數降冪</option>
-                <option value="service_points_asc">客服點數升冪</option>
+                <option value="service_points_desc">客服接待單數降冪</option>
+                <option value="service_points_asc">客服接待單數升冪</option>
               </select>
             </label>
 
@@ -459,7 +459,7 @@ export default function AdminRankingPage() {
                   <th className="px-4 py-3">陪陪</th>
                   <th className="px-4 py-3">檔位</th>
                   <th className="px-4 py-3">訂單數</th>
-                  <th className="px-4 py-3">客服點數</th>
+                  <th className="px-4 py-3">客服接待單數</th>
                   <th className="px-4 py-3">接單金額</th>
                   <th className="px-4 py-3">訂單薪資</th>
                   <th className="px-4 py-3">訂單獎金</th>
@@ -508,7 +508,7 @@ export default function AdminRankingPage() {
                     <td className="px-4 py-3">{row.orderCount} 筆</td>
 
                     <td className="px-4 py-3 font-black text-violet-300">
-                      {row.servicePoints} 點
+                      {row.servicePoints} 件
                     </td>
 
                     <td className="px-4 py-3">

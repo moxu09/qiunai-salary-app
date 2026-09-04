@@ -56,8 +56,14 @@ function CallbackInner() {
           return;
         }
 
-        const destination =
-          searchParams.get("next") === "/admin" ? "/admin" : "/staff";
+        const requestedNext = searchParams.get("next") || "";
+        const signingDestination =
+          /^\/employment-sign\/[A-Za-z0-9_-]{40,100}$/.test(requestedNext);
+        const destination = signingDestination
+          ? requestedNext
+          : requestedNext === "/admin"
+            ? "/admin"
+            : "/staff";
         const mode = searchParams.get("mode") || "";
         const method = searchParams.get("method") || "discord";
         const token = data.session.access_token;
@@ -69,7 +75,7 @@ function CallbackInner() {
           });
           const result = await response.json().catch(() => ({}));
           if (!response.ok || !result.status) {
-            throw new Error(result.message || "驗證 ERP 登入方式失敗");
+            throw new Error(result.message || "驗證 EIP 登入方式失敗");
           }
           return result.status;
         }
@@ -85,9 +91,19 @@ function CallbackInner() {
           });
           const result = await response.json().catch(() => ({}));
           if (!response.ok || !result.status) {
-            throw new Error(result.message || "更新 ERP 登入方式失敗");
+            throw new Error(result.message || "更新 EIP 登入方式失敗");
           }
           return result.status;
+        }
+
+        if (signingDestination) {
+          if (method !== "discord") {
+            await supabase.auth.signOut();
+            setErrorText("入職契約必須使用受邀的 Discord 帳號驗證。");
+            return;
+          }
+          router.replace(destination);
+          return;
         }
 
         if (mode === "link-google") {

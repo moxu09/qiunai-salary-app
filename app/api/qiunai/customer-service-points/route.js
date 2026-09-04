@@ -21,6 +21,7 @@ export async function GET(request) {
       .from("customer_service_order_points")
       .select("discord_id, points")
       .eq("app_key", "qiunai")
+      .like("order_id", "manual:%")
       .gte("served_at", startIso)
       .lte("served_at", endIso);
     if (error) throw error;
@@ -35,6 +36,6 @@ export async function GET(request) {
       rows: [...totals].map(([discordId, points]) => ({ discordId, points })),
     });
   } catch (error) {
-    return erpErrorResponse(error, "讀取客服服務點數失敗");
+    return erpErrorResponse(error, "讀取客服接待單數失敗");
   }
 }

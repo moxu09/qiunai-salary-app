@@ -126,7 +126,7 @@ export default function WorkReportReviewPanel({
 
   async function reviewWithApi(report: WorkReport, action: "approve" | "reject", reason = "") {
     const { data } = await supabase.auth.getSession();
-    if (!data.session) throw new Error("請重新登入 ERP");
+    if (!data.session) throw new Error("請重新登入 EIP");
     const response = await fetch(reviewApiPath || `/api/${appKey}/work-reports/review`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${data.session.access_token}` }, body: JSON.stringify({ id: report.id, action, reason }) });
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(payload.message || "審核失敗");

@@ -774,7 +774,7 @@ export default function AdminPayrollPage() {
               className="mb-3 inline-flex items-center gap-2 text-sm text-violet-300 hover:text-violet-200"
             >
               <ArrowLeft size={16} />
-              回 ERP 首頁
+              回 EIP 首頁
             </Link>
 
             <p className="text-sm text-violet-300">Qiunai Payroll</p>

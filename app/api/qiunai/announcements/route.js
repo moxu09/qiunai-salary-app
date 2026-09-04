@@ -35,7 +35,7 @@ export async function GET(request) {
     if (adminMode) await requireAdmin(request);
     else await authenticate(request);
 
-    let query = supabaseAdmin.from("salary_announcements").select("*").in("organization_code", [ORG, "all"]).order("created_at", { ascending: false });
+    let query = supabaseAdmin.from("salary_announcements").select("*").eq("organization_code", ORG).order("created_at", { ascending: false });
     if (!adminMode) query = query.eq("is_active", true);
     const { data, error } = await query;
     if (error) throw error;
@@ -96,8 +96,9 @@ export async function DELETE(request) {
     const body = await request.json().catch(() => ({}));
     const id = String(body.id || "").trim();
     if (!id) throw new Error("缺少公告 ID");
-    const { error } = await supabaseAdmin.from("salary_announcements").delete().eq("id", id).eq("organization_code", ORG);
+    const { data, error } = await supabaseAdmin.from("salary_announcements").delete().eq("id", id).eq("organization_code", ORG).select("id").maybeSingle();
     if (error) throw error;
+    if (!data) throw new Error("找不到可刪除的公告，請重新整理後再試");
     return NextResponse.json({ ok: true });
   } catch (error) {
     return jsonError(error, "刪除公告失敗");

@@ -1,5 +1,5 @@
 -- Atomically move available salary into the employee's own ASD wallet.
--- Both ERP sites share this Supabase project, so apply this migration once.
+-- Both EIP sites share this Supabase project, so apply this migration once.
 
 alter table public.salary_withdraw_requests
   add column if not exists destination text not null default 'bank';
@@ -37,7 +37,7 @@ declare
   v_request_id uuid;
 begin
   if p_app_key not in ('deepnight', 'qiunai') then
-    raise exception 'ERP 來源不正確';
+    raise exception 'EIP 來源不正確';
   end if;
   if nullif(trim(p_discord_id), '') is null then
     raise exception '找不到員工 Discord 帳號';
@@ -125,8 +125,8 @@ begin
     p_amount,
     v_balance,
     case p_app_key
-      when 'qiunai' then '秋奈 ERP 薪資轉入 ASD'
-      else '深夜不關燈 ERP 薪資轉入 ASD'
+      when 'qiunai' then '秋奈 EIP 薪資轉入 ASD'
+      else '深夜不關燈 EIP 薪資轉入 ASD'
     end
   );
 

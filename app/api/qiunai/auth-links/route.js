@@ -9,7 +9,7 @@ import {
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-function errorResponse(error, fallback = "處理 ERP 登入綁定失敗") {
+function errorResponse(error, fallback = "處理 EIP 登入綁定失敗") {
   return NextResponse.json(
     { ok: false, message: error?.message || fallback },
     { status: Number(error?.status || 400) }
@@ -24,7 +24,7 @@ export async function GET(request) {
       status: getErpAuthLinkStatus(user),
     });
   } catch (error) {
-    return errorResponse(error, "讀取 ERP 登入綁定失敗");
+    return errorResponse(error, "讀取 EIP 登入綁定失敗");
   }
 }
 

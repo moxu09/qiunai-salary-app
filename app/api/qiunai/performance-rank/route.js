@@ -61,6 +61,7 @@ export async function GET(request) {
           .select("points")
           .eq("app_key", "qiunai")
           .eq("discord_id", discordId)
+          .like("order_id", "manual:%")
           .gte("served_at", startIso)
           .lte("served_at", endIso),
       ]);
