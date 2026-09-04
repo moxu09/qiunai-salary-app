@@ -2,7 +2,7 @@ name: Salary wallet settlement
 
 on:
   schedule:
-    - cron: "0 16 4,19 * *"
+    - cron: "0 16 1,16 * *"
   workflow_dispatch:
 
 jobs:
