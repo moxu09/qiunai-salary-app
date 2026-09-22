@@ -15,6 +15,7 @@ import {
   ReceiptText,
   UserRound,
   WalletCards,
+  CalendarHeart,
   type LucideIcon,
 } from "lucide-react";
 
@@ -31,7 +32,8 @@ export type PortalTab =
   | "approval-reimbursement"
   | "approval-welfare"
   | "approval-leave"
-  | "approval-suspension";
+  | "approval-suspension"
+  | "activities";
 
 type PortalGroup = {
   title: string;
@@ -69,6 +71,11 @@ const groups: ReadonlyArray<PortalGroup> = [
       ["approval-leave", "請假單簽核", FileText],
       ["approval-suspension", "留職停薪簽核", ClipboardCheck],
     ],
+  },
+  {
+    title: "活動",
+    icon: CalendarHeart,
+    items: [["activities", "活動報名", CalendarHeart]],
   },
 ];
 

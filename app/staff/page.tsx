@@ -26,6 +26,7 @@ import StaffPortalNav, { type PortalTab } from "@/components/StaffPortalNav";
 import HrPortalPanel from "@/components/HrPortalPanel";
 import ErpAuthLinkManager from "@/components/ErpAuthLinkManager";
 import StaffDeviceAuditPanel from "@/components/StaffDeviceAuditPanel";
+import ActivityPortal from "@/components/ActivityPortal";
 import MonthSelect from "@/components/MonthSelect";
 import {
   formatTaipeiDateTime,
@@ -43,6 +44,7 @@ type Staff = {
   avatar_url: string | null;
   display_name: string | null;
   real_name: string | null;
+  phone: string | null;
   gender: string | null;
   birthday: string | null;
   bank_name: string | null;
@@ -54,6 +56,8 @@ type Staff = {
   is_active: boolean;
   commission_tier: string | null;
   commission_note: string | null;
+  public_intro: string | null;
+  public_note: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -230,8 +234,10 @@ export default function StaffPage() {
     display_name: "",
     avatar_url: "",
     intro: "",
+    note: "",
     invite_url: "",
     real_name: "",
+    phone: "",
     gender: "",
     birthday: "",
     bank_name: "",
@@ -484,9 +490,11 @@ export default function StaffPage() {
     setProfileForm({
       display_name: staffData.display_name || "",
       avatar_url: staffData.avatar_url || "",
-      intro: "",
+      intro: staffData.public_intro || "",
+      note: staffData.public_note || "",
       invite_url: "",
       real_name: staffData.real_name || "",
+      phone: staffData.phone || "",
       gender: staffData.gender || "",
       birthday: staffData.birthday || "",
       bank_name: staffData.bank_name || "",
@@ -503,6 +511,7 @@ export default function StaffPage() {
         ...current,
         avatar_url: publicProfileData.profile.avatar_url || current.avatar_url,
         intro: publicProfileData.profile.intro || "",
+        note: publicProfileData.profile.note || "",
         invite_url: publicProfileData.profile.invite_url || "",
       }));
     }
@@ -878,50 +887,73 @@ export default function StaffPage() {
     }));
   }
 
+  async function patchOwnStaff(
+    action: "update-profile" | "set-online" | "set-services",
+    payload: Record<string, unknown>,
+  ) {
+    const { data } = await supabase.auth.getSession();
+    const token = data.session?.access_token;
+    if (!token) throw new Error("登入已過期，請重新登入");
+    const response = await fetch("/api/qiunai/staff", {
+      method: "PATCH",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ action, ...payload }),
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok || !result.ok || !result.staff) {
+      throw new Error(result.message || "更新員工資料失敗");
+    }
+    return result.staff as Staff;
+  }
+
   async function saveProfile() {
     if (!staff) return;
 
     setSavingProfile(true);
 
-    const { data, error } = await supabase
-      .from("qiunai_staff")
-      .update({
-        display_name: profileForm.display_name || null,
-        avatar_url: profileForm.avatar_url || null,
-        real_name: profileForm.real_name || null,
-        gender: profileForm.gender || null,
-        birthday: profileForm.birthday || null,
-        bank_name: profileForm.bank_name || null,
-        bank_account: profileForm.bank_account || null,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("discord_id", staff.discord_id)
-      .select("*")
-      .single();
-
-    setSavingProfile(false);
-
-    if (error) {
+    let updatedStaff: Staff;
+    try {
+      updatedStaff = await patchOwnStaff("update-profile", {
+        profile: {
+          displayName: profileForm.display_name,
+          avatarUrl: profileForm.avatar_url,
+          realName: profileForm.real_name,
+          phone: profileForm.phone,
+          gender: profileForm.gender,
+          birthday: profileForm.birthday,
+          bankName: profileForm.bank_name,
+          bankAccount: profileForm.bank_account,
+          intro: profileForm.intro,
+          note: profileForm.note,
+        },
+      });
+    } catch (error) {
       console.error("save profile error:", error);
-      alert("儲存個人資料失敗");
+      alert(error instanceof Error ? error.message : "儲存個人資料失敗");
+      setSavingProfile(false);
       return;
     }
+    setSavingProfile(false);
 
     try {
       await syncPublicProfile({
         displayName: profileForm.display_name,
         avatarUrl: profileForm.avatar_url,
         intro: profileForm.intro,
+        note: profileForm.note,
         inviteUrl: profileForm.invite_url,
       });
     } catch (syncError) {
       console.error("sync public profile error:", syncError);
-      setStaff(data as Staff);
+      setStaff(updatedStaff);
       alert("薪資資料已儲存，但官網介紹同步失敗，請稍後再試");
       return;
     }
 
-    setStaff(data as Staff);
+    setStaff(updatedStaff);
     alert("個人資料已儲存");
   }
 
@@ -951,25 +983,20 @@ export default function StaffPage() {
 
     const nextOnline = !staff.is_online;
 
-    const { data, error } = await supabase
-      .from("qiunai_staff")
-      .update({
-        is_online: nextOnline,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("discord_id", staff.discord_id)
-      .select("*")
-      .single();
-
-    setSavingOnline(false);
-
-    if (error) {
+    let updatedStaff: Staff;
+    try {
+      updatedStaff = await patchOwnStaff("set-online", {
+        isOnline: nextOnline,
+      });
+    } catch (error) {
       console.error("toggle online error:", error);
-      alert("切換上線狀態失敗");
+      alert(error instanceof Error ? error.message : "切換上線狀態失敗");
+      setSavingOnline(false);
       return;
     }
+    setSavingOnline(false);
 
-    setStaff(data as Staff);
+    setStaff(updatedStaff);
     await syncPublicProfile({ isOnline: nextOnline }).catch((syncError) => {
       console.error("sync online status error:", syncError);
     });
@@ -991,16 +1018,12 @@ export default function StaffPage() {
     const allowedServices = selectedServices.map((key) =>
       getAllowedServiceNameByKey(key)
     );
-    const { error: updateStaffError } = await supabase
-      .from("qiunai_staff")
-      .update({
-        allowed_services: allowedServices,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("discord_id", staff.discord_id);
-    if (updateStaffError) {
-      console.error("update allowed_services error:", updateStaffError);
-      alert("更新可接服務失敗");
+    let updatedStaff: Staff;
+    try {
+      updatedStaff = await patchOwnStaff("set-services", { allowedServices });
+    } catch (error) {
+      console.error("update allowed_services error:", error);
+      alert(error instanceof Error ? error.message : "更新可接服務失敗");
       setSavingServices(false);
       return;
     }
@@ -1034,6 +1057,7 @@ export default function StaffPage() {
         return;
       }
     }
+    setStaff(updatedStaff);
     setSavingServices(false);
     await syncPublicProfile({
       games: Array.from(
@@ -1174,6 +1198,7 @@ export default function StaffPage() {
 
           <div className="staff-main-column min-w-0">
         <HrPortalPanel activeTab={activeTab} apiPath="/api/qiunai/hr" department="秋奈電競陪玩" staffName={staff.display_name || staff.discord_name || staff.discord_id} selectedMonth={hrSelectedMonth} onMonthChange={setHrSelectedMonth} />
+        {activeTab === "activities" ? <ActivityPortal /> : null}
         {activeTab === "device-audit" && canViewDeviceAudit ? (
           <StaffDeviceAuditPanel />
         ) : null}
@@ -1800,6 +1825,21 @@ export default function StaffPage() {
                   />
                 </label>
 
+                <label className="block">
+                  <span className="text-sm font-semibold text-[#7b4f85]">
+                    官網備註
+                  </span>
+                  <textarea
+                    rows={3}
+                    value={profileForm.note}
+                    onChange={(event) =>
+                      updateProfileField("note", event.target.value)
+                    }
+                    placeholder="這段備註會接在官網個人介紹下方"
+                    className="qiunai-input mt-2"
+                  />
+                </label>
+
                 <Input
                   label="專屬邀請連結"
                   type="url"
@@ -1811,6 +1851,13 @@ export default function StaffPage() {
                   label="真實姓名"
                   value={profileForm.real_name}
                   onChange={(value) => updateProfileField("real_name", value)}
+                />
+
+                <Input
+                  label="員工電話"
+                  type="tel"
+                  value={profileForm.phone}
+                  onChange={(value) => updateProfileField("phone", value)}
                 />
 
                 <label className="block">

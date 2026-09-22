@@ -24,7 +24,7 @@ async function auth(request) {
 async function getStaff(discordId) {
   const { data, error } = await supabaseAdmin
     .from(STAFF_TABLE)
-    .select("discord_id,discord_name,display_name,avatar_url,is_online,can_take_order,is_active")
+    .select("discord_id,discord_name,display_name,avatar_url,public_intro,public_note,is_online,can_take_order,is_active")
     .eq("discord_id", discordId)
     .maybeSingle();
   if (error) throw error;
@@ -40,6 +40,8 @@ async function seedProfile(staff) {
       discord_id: staff.discord_id,
       display_name: staff.display_name || staff.discord_name || "秋奈陪陪",
       avatar_url: staff.avatar_url || null,
+      intro: staff.public_intro || null,
+      note: staff.public_note || null,
       is_online: Boolean(staff.is_online),
       can_take_order: staff.can_take_order !== false,
       is_active: staff.is_active !== false,
@@ -90,7 +92,7 @@ export async function POST(request) {
     if (body.action === "set-featured") {
       const { data: staffRows, error: staffError } = await supabaseAdmin
         .from(STAFF_TABLE)
-        .select("discord_id,discord_name,display_name,avatar_url,is_online,can_take_order,is_active");
+        .select("discord_id,discord_name,display_name,avatar_url,public_intro,public_note,is_online,can_take_order,is_active");
       if (staffError) throw staffError;
       if (staffRows?.length) {
         const { error: seedError } = await supabaseAdmin
@@ -100,6 +102,8 @@ export async function POST(request) {
             discord_id: staff.discord_id,
             display_name: staff.display_name || staff.discord_name || "秋奈陪陪",
             avatar_url: staff.avatar_url || null,
+            intro: staff.public_intro || null,
+            note: staff.public_note || null,
             is_online: Boolean(staff.is_online),
             can_take_order: staff.can_take_order !== false,
             is_active: staff.is_active !== false,
@@ -131,6 +135,7 @@ export async function POST(request) {
     if ("displayName" in body) patch.display_name = cleanText(body.displayName, 80);
     if ("avatarUrl" in body) patch.avatar_url = cleanText(body.avatarUrl, 1000);
     if ("intro" in body) patch.intro = cleanText(body.intro, 600);
+    if ("note" in body) patch.note = cleanText(body.note, 600);
     if ("inviteUrl" in body) patch.invite_url = cleanText(body.inviteUrl, 1000);
     if ("games" in body) patch.games = cleanGames(body.games);
     if ("isOnline" in body) patch.is_online = Boolean(body.isOnline);
