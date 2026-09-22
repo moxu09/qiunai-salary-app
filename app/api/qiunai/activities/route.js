@@ -109,7 +109,9 @@ export async function POST(request) {
     const body = await request.json().catch(() => ({}));
     const title = clean(body.title, 120);
     const startsAt = new Date(body.startsAt);
-    const responseDeadline = new Date(body.responseDeadline || startsAt.getTime() - 86400000);
+    const latestDeadline = new Date(startsAt.getTime() - 86400000);
+    const requestedDeadline = new Date(body.responseDeadline || latestDeadline);
+    const responseDeadline = requestedDeadline > latestDeadline ? latestDeadline : requestedDeadline;
     if (!title || Number.isNaN(startsAt.getTime())) throw new Error("請填寫活動名稱與開始時間");
     if (Number.isNaN(responseDeadline.getTime()) || responseDeadline > startsAt) throw new Error("報名截止時間必須早於活動開始時間");
     const options = parseOptions(body.options);
