@@ -29,10 +29,20 @@ export async function GET(request) {
       .createSignedUrl(installer.path, 60, { download: installer.fileName });
     if (error || !data?.signedUrl) throw error || new Error("建立下載連結失敗");
 
-    return Response.json(
-      { ok: true, url: data.signedUrl, name: installer.fileName },
-      { headers: { "Cache-Control": "private, no-store" } }
-    );
+    const upstream = await fetch(data.signedUrl, { cache: "no-store" });
+    if (!upstream.ok || !upstream.body) {
+      throw new Error(`讀取安裝包失敗：${upstream.status}`);
+    }
+
+    const headers = new Headers({
+      "Content-Type": "application/zip",
+      "Content-Disposition": `attachment; filename="qiunai-eip-${platform}.zip"; filename*=UTF-8''${encodeURIComponent(installer.fileName)}`,
+      "Cache-Control": "private, no-store",
+      "X-Content-Type-Options": "nosniff",
+    });
+    const contentLength = upstream.headers.get("content-length");
+    if (contentLength) headers.set("Content-Length", contentLength);
+    return new Response(upstream.body, { status: 200, headers });
   } catch (error) {
     console.error("qiunai installer download failed", error);
     return Response.json(

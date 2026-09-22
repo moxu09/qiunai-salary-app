@@ -26,14 +26,18 @@ export default function StaffInstallerDownloads() {
         headers: { Authorization: `Bearer ${token}` },
         cache: "no-store",
       });
-      const result = await response.json();
-      if (!response.ok || !result.url) throw new Error(result.message || "建立下載連結失敗");
+      if (!response.ok) {
+        const result = await response.json().catch(() => ({}));
+        throw new Error(result.message || "下載失敗，請稍後再試");
+      }
+      const objectUrl = URL.createObjectURL(await response.blob());
       const link = document.createElement("a");
-      link.href = result.url;
-      link.download = result.name;
+      link.href = objectUrl;
+      link.download = installerFileName(platform);
       document.body.appendChild(link);
       link.click();
       link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "下載失敗，請稍後再試");
     } finally {
@@ -72,4 +76,13 @@ export default function StaffInstallerDownloads() {
       {error ? <p role="alert" className="mt-4 text-sm font-bold text-rose-600">{error}</p> : null}
     </section>
   );
+}
+
+function installerFileName(platform: string) {
+  switch (platform) {
+    case "macos-arm64": return "秋奈-EIP-macOS-Apple-Silicon.zip";
+    case "macos-x64": return "秋奈-EIP-macOS-Intel.zip";
+    case "windows-x64": return "秋奈-EIP-Windows-x64.zip";
+    default: return "秋奈-EIP-Android-安裝包.zip";
+  }
 }
