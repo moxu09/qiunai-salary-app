@@ -136,14 +136,23 @@ export default function AdminStaffPage() {
   }, [keyword, salarySort, showArchived, staffList]);
 
   useEffect(() => {
-    if (isAdmin) {
-      loadStaff();
-      loadFeatured();
-    }
+    if (!isAdmin) return;
+    void loadStaff();
+    void loadFeatured();
+
+    const refreshStaff = () => {
+      if (document.visibilityState === "visible") void loadStaff(false);
+    };
+    window.addEventListener("focus", refreshStaff);
+    document.addEventListener("visibilitychange", refreshStaff);
+    return () => {
+      window.removeEventListener("focus", refreshStaff);
+      document.removeEventListener("visibilitychange", refreshStaff);
+    };
   }, [isAdmin]);
 
-  async function loadStaff() {
-    setLoading(true);
+  async function loadStaff(showLoading = true) {
+    if (showLoading) setLoading(true);
 
     const { data: staffData, error: staffError } = await supabase
       .from("qiunai_staff")
@@ -470,7 +479,7 @@ export default function AdminStaffPage() {
           </div>
 
           <button
-            onClick={loadStaff}
+            onClick={() => void loadStaff()}
             className="qiunai-soft-button flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold"
           >
             <RefreshCw size={16} />
