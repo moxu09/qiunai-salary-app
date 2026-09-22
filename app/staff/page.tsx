@@ -27,6 +27,7 @@ import HrPortalPanel from "@/components/HrPortalPanel";
 import ErpAuthLinkManager from "@/components/ErpAuthLinkManager";
 import StaffDeviceAuditPanel from "@/components/StaffDeviceAuditPanel";
 import ActivityPortal from "@/components/ActivityPortal";
+import StaffInstallerDownloads from "@/components/StaffInstallerDownloads";
 import MonthSelect from "@/components/MonthSelect";
 import {
   formatTaipeiDateTime,
@@ -1199,6 +1200,7 @@ export default function StaffPage() {
           <div className="staff-main-column min-w-0">
         <HrPortalPanel activeTab={activeTab} apiPath="/api/qiunai/hr" department="秋奈電競陪玩" staffName={staff.display_name || staff.discord_name || staff.discord_id} selectedMonth={hrSelectedMonth} onMonthChange={setHrSelectedMonth} />
         {activeTab === "activities" ? <ActivityPortal /> : null}
+        {activeTab === "downloads" ? <StaffInstallerDownloads /> : null}
         {activeTab === "device-audit" && canViewDeviceAudit ? (
           <StaffDeviceAuditPanel />
         ) : null}

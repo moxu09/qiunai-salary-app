@@ -8,6 +8,7 @@ import {
   ClipboardCheck,
   Coins,
   Cpu,
+  FolderDown,
   FileText,
   Gift,
   HandCoins,
@@ -33,7 +34,8 @@ export type PortalTab =
   | "approval-welfare"
   | "approval-leave"
   | "approval-suspension"
-  | "activities";
+  | "activities"
+  | "downloads";
 
 type PortalGroup = {
   title: string;
@@ -76,6 +78,11 @@ const groups: ReadonlyArray<PortalGroup> = [
     title: "活動",
     icon: CalendarHeart,
     items: [["activities", "活動報名", CalendarHeart]],
+  },
+  {
+    title: "資源",
+    icon: FolderDown,
+    items: [["downloads", "App 下載", FolderDown]],
   },
 ];
 
