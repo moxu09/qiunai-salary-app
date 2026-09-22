@@ -33,20 +33,21 @@ async function getStaff(discordId) {
 }
 
 async function seedProfile(staff) {
+  const profilePayload = {
+    app_key: APP_KEY,
+    discord_id: staff.discord_id,
+    display_name: staff.display_name || staff.discord_name || "秋奈陪陪",
+    avatar_url: staff.avatar_url || null,
+    is_online: Boolean(staff.is_online),
+    can_take_order: staff.can_take_order !== false,
+    is_active: staff.is_active !== false,
+    updated_at: new Date().toISOString(),
+  };
+  if (staff.public_intro !== null && staff.public_intro !== undefined) profilePayload.intro = staff.public_intro;
+  if (staff.public_note !== null && staff.public_note !== undefined) profilePayload.note = staff.public_note;
   const { data, error } = await supabaseAdmin
     .from("salary_public_profiles")
-    .upsert({
-      app_key: APP_KEY,
-      discord_id: staff.discord_id,
-      display_name: staff.display_name || staff.discord_name || "秋奈陪陪",
-      avatar_url: staff.avatar_url || null,
-      intro: staff.public_intro || null,
-      note: staff.public_note || null,
-      is_online: Boolean(staff.is_online),
-      can_take_order: staff.can_take_order !== false,
-      is_active: staff.is_active !== false,
-      updated_at: new Date().toISOString(),
-    }, { onConflict: "app_key,discord_id", ignoreDuplicates: false })
+    .upsert(profilePayload, { onConflict: "app_key,discord_id", ignoreDuplicates: false })
     .select("*")
     .single();
   if (error) throw error;
@@ -97,18 +98,21 @@ export async function POST(request) {
       if (staffRows?.length) {
         const { error: seedError } = await supabaseAdmin
           .from("salary_public_profiles")
-          .upsert(staffRows.map((staff) => ({
-            app_key: APP_KEY,
-            discord_id: staff.discord_id,
-            display_name: staff.display_name || staff.discord_name || "秋奈陪陪",
-            avatar_url: staff.avatar_url || null,
-            intro: staff.public_intro || null,
-            note: staff.public_note || null,
-            is_online: Boolean(staff.is_online),
-            can_take_order: staff.can_take_order !== false,
-            is_active: staff.is_active !== false,
-            updated_at: new Date().toISOString(),
-          })), { onConflict: "app_key,discord_id" });
+          .upsert(staffRows.map((staff) => {
+            const row = {
+              app_key: APP_KEY,
+              discord_id: staff.discord_id,
+              display_name: staff.display_name || staff.discord_name || "秋奈陪陪",
+              avatar_url: staff.avatar_url || null,
+              is_online: Boolean(staff.is_online),
+              can_take_order: staff.can_take_order !== false,
+              is_active: staff.is_active !== false,
+              updated_at: new Date().toISOString(),
+            };
+            if (staff.public_intro !== null && staff.public_intro !== undefined) row.intro = staff.public_intro;
+            if (staff.public_note !== null && staff.public_note !== undefined) row.note = staff.public_note;
+            return row;
+          }), { onConflict: "app_key,discord_id" });
         if (seedError) throw seedError;
       }
 

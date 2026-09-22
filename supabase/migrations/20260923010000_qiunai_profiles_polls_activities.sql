@@ -6,6 +6,14 @@ alter table public.qiunai_staff
 alter table public.salary_public_profiles
   add column if not exists note text;
 
+update public.qiunai_staff staff
+set public_intro = coalesce(staff.public_intro, profile.intro),
+    public_note = coalesce(staff.public_note, profile.note)
+from public.salary_public_profiles profile
+where profile.app_key = 'qiunai'
+  and profile.discord_id = staff.discord_id
+  and (staff.public_intro is null or staff.public_note is null);
+
 alter table public.salary_announcements
   add column if not exists is_poll boolean not null default false,
   add column if not exists poll_allow_multiple boolean not null default false;
