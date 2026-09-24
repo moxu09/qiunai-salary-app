@@ -135,6 +135,8 @@ export async function POST(request) {
       min_employment_days: Math.max(0, Math.floor(Number(body.minEmploymentDays) || 0)),
       eligibility_note: clean(body.eligibilityNote, 1000) || null,
       participant_note: clean(body.participantNote, 2000) || null,
+      allow_not_attending: body.allowNotAttending !== false,
+      allow_distance: body.allowDistance !== false,
       is_published: body.isPublished !== false, created_by: access.discordId,
     }).select("*").single();
     if (error) throw error;
@@ -159,6 +161,8 @@ export async function PATCH(request) {
       const { data: activity, error } = await supabaseAdmin.from("qiunai_activities").select("*").eq("id", activityId).eq("is_published", true).maybeSingle();
       if (error) throw error;
       if (!activity) throw new Error("找不到活動");
+      if (status === "not_attending" && !activity.allow_not_attending) throw new Error("此活動已關閉「不參與」選項");
+      if (status === "distance" && !activity.allow_distance) throw new Error("此活動已關閉「因地區無法參與」選項");
       if (Date.now() >= new Date(activity.response_deadline).getTime()) throw new Error("活動報名已截止，開始前 24 小時不能再修改");
       const { data: staff, error: staffError } = await supabaseAdmin.from("qiunai_staff").select("discord_id,display_name,discord_name,real_name,phone,created_at,is_active").eq("discord_id", discordId).maybeSingle();
       if (staffError) throw staffError;
@@ -243,6 +247,8 @@ export async function PATCH(request) {
         min_employment_days: Math.max(0, Math.floor(Number(body.minEmploymentDays) || 0)),
         eligibility_note: clean(body.eligibilityNote, 1000) || null,
         participant_note: clean(body.participantNote, 2000) || null,
+        allow_not_attending: body.allowNotAttending !== false,
+        allow_distance: body.allowDistance !== false,
         is_published: body.isPublished !== false,
         updated_at: new Date().toISOString(),
       }).eq("id", id);

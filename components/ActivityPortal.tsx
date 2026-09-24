@@ -15,6 +15,8 @@ type Activity = {
   response_deadline: string;
   eligibility_note?: string | null;
   participant_note?: string | null;
+  allow_not_attending?: boolean;
+  allow_distance?: boolean;
   locked: boolean;
   eligibility: {
     eligible: boolean;
@@ -91,10 +93,15 @@ function ActivityForm({ activity, onSaved }: { activity: Activity; onSaved: () =
     (existing?.guests || []).map((guest) => ({ name: guest.guest_name, phone: guest.guest_phone })),
   );
   const [busy, setBusy] = useState(false);
+  const statuses = [
+    ["attending", "參與"],
+    ...(activity.allow_not_attending !== false ? [["not_attending", "不參與"]] : []),
+    ...(activity.allow_distance !== false ? [["distance", "因地區無法參與"]] : []),
+  ];
   const canSubmit =
     activity.eligibility.eligible &&
     !activity.locked &&
-    status &&
+    statuses.some(([value]) => value === status) &&
     (status !== "attending" || !activity.options.length || optionId);
 
   function updateGuest(index: number, field: keyof Guest, value: string) {
@@ -186,11 +193,7 @@ function ActivityForm({ activity, onSaved }: { activity: Activity; onSaved: () =
         className="mt-5 grid gap-3 sm:grid-cols-3"
       >
         <legend className="sr-only">參與狀態</legend>
-        {[
-          ["attending", "參與"],
-          ["not_attending", "不參與"],
-          ["distance", "因距離無法參與"],
-        ].map(([value, label]) => (
+        {statuses.map(([value, label]) => (
           <label
             key={value}
             className={`cursor-pointer rounded-2xl border p-4 text-center text-sm font-black ${status === value ? "border-violet-500 bg-violet-50 text-violet-700" : "border-slate-200 text-slate-600"}`}
@@ -207,6 +210,9 @@ function ActivityForm({ activity, onSaved }: { activity: Activity; onSaved: () =
           </label>
         ))}
       </fieldset>
+      {status && !statuses.some(([value]) => value === status) ? (
+        <p className="mt-3 text-sm font-bold text-amber-700">原本選擇的回覆已關閉，請重新選擇。</p>
+      ) : null}
       {status === "attending" ? (
         <div className="mt-5 space-y-4">
           {activity.options.length ? (

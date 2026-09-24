@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useEffectEvent, useState } from "react";
 import { CalendarHeart, Download, Loader2, Pencil, Plus, Printer, RefreshCw, Trash2 } from "lucide-react";
+import { groupActivityResponses } from "@/lib/qiunaiActivityGroups";
 import { supabase } from "@/lib/supabase";
 
 type Guest = { slot: number; guest_name: string; guest_phone: string };
@@ -24,6 +25,8 @@ type Activity = {
   is_published: boolean;
   min_completed_orders: number;
   min_employment_days: number;
+  allow_not_attending: boolean;
+  allow_distance: boolean;
   eligibility_note?: string | null;
   participant_note?: string | null;
   options: Array<{ id: string; label: string; note?: string | null }>;
@@ -49,6 +52,8 @@ const blank = () => ({
   minEmploymentDays: 0,
   eligibilityNote: "",
   participantNote: "",
+  allowNotAttending: true,
+  allowDistance: true,
   isPublished: true,
   options: [{ label: "", note: "" }] as FormOption[],
 });
@@ -117,6 +122,8 @@ export default function AdminActivityManager() {
       minEmploymentDays: activity.min_employment_days,
       eligibilityNote: activity.eligibility_note || "",
       participantNote: activity.participant_note || "",
+      allowNotAttending: activity.allow_not_attending !== false,
+      allowDistance: activity.allow_distance !== false,
       isPublished: activity.is_published,
       options: activity.options.length
         ? activity.options.map((option) => ({ id: option.id, label: option.label, note: option.note || "" }))
@@ -192,7 +199,7 @@ export default function AdminActivityManager() {
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement("a");
     anchor.href = url;
-    anchor.download = `${activity.title}-參與名單.xlsx`;
+    anchor.download = `${activity.title}-活動回覆名單.xlsx`;
     anchor.click();
     URL.revokeObjectURL(url);
   }
@@ -279,7 +286,7 @@ export default function AdminActivityManager() {
         </Field>
         <div className="mt-5 rounded-2xl bg-pink-50 p-4">
           <div className="flex items-center justify-between">
-            <p className="text-sm font-black text-slate-700">參與後顯示的自訂選項</p>
+            <p className="text-sm font-black text-slate-700">參與分類（例如北部、中部、南部）</p>
             <button
               type="button"
               disabled={form.options.length >= 20}
@@ -319,6 +326,20 @@ export default function AdminActivityManager() {
               </div>
             ))}
           </div>
+        </div>
+        <div className="mt-4 rounded-2xl border border-pink-100 p-4">
+          <p className="text-sm font-black text-slate-700">其他回覆選項（預設開啟）</p>
+          <div className="mt-3 flex flex-wrap gap-5 text-sm font-bold text-slate-700">
+            <label className="flex items-center gap-2">
+              <input type="checkbox" checked={form.allowNotAttending} onChange={(e) => setField("allowNotAttending", e.target.checked)} />
+              不參與
+            </label>
+            <label className="flex items-center gap-2">
+              <input type="checkbox" checked={form.allowDistance} onChange={(e) => setField("allowDistance", e.target.checked)} />
+              因地區無法參與
+            </label>
+          </div>
+          <p className="mt-2 text-xs text-slate-500">關閉後員工不能再選該回覆，既有回覆仍保留在名單中。</p>
         </div>
         <label className="mt-4 flex items-center gap-2 text-sm font-bold text-slate-700">
           <input
@@ -424,7 +445,7 @@ export default function AdminActivityManager() {
                     .map((item) => item.staff_nickname || "未命名")}
                 />
                 <Stat
-                  label="因距離無法參與"
+                  label="因地區無法參與"
                   count={activity.stats.distance}
                   names={activity.responses
                     .filter((item) => item.response_status === "distance")
@@ -434,41 +455,32 @@ export default function AdminActivityManager() {
               <div
                 className={`activity-print-area mt-5 overflow-x-auto ${printActivityId === activity.id ? "is-printing" : ""}`}
               >
-                <h4 className="hidden text-center text-lg font-black print:block">
-                  {activity.title}－參與名單
-                </h4>
-                <table className="min-w-[920px] text-left text-sm">
-                  <thead>
-                    <tr>
-                      <th>員工暱稱</th>
-                      <th>員工名字</th>
-                      <th>員工電話</th>
-                      <th>員工親友1</th>
-                      <th>親友電話</th>
-                      <th>員工親友2</th>
-                      <th>親友電話</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {activity.responses
-                      .filter((item) => item.response_status === "attending")
-                      .map((item) => {
-                        const first = item.guests.find((guest) => guest.slot === 1);
-                        const second = item.guests.find((guest) => guest.slot === 2);
-                        return (
-                          <tr key={item.id}>
-                            <td>{item.staff_nickname || "-"}</td>
-                            <td>{item.staff_real_name || "-"}</td>
-                            <td>{item.staff_phone || "-"}</td>
-                            <td>{first?.guest_name || "-"}</td>
-                            <td>{first?.guest_phone || "-"}</td>
-                            <td>{second?.guest_name || "-"}</td>
+                <h4 className="hidden text-center text-lg font-black print:block">{activity.title}－活動回覆名單</h4>
+                {groupActivityResponses(activity).map((group) => (
+                  <section key={group.key} className="mb-5 break-inside-avoid">
+                    <h5 className="mb-2 rounded-lg bg-pink-50 px-3 py-2 font-black text-slate-800">
+                      {group.label}：{group.responses.length} 人
+                    </h5>
+                    <table className="min-w-[920px] text-left text-sm">
+                      <thead><tr>
+                        <th>員工暱稱</th><th>員工名字</th><th>員工電話</th>
+                        <th>員工親友1</th><th>親友電話</th><th>員工親友2</th><th>親友電話</th>
+                      </tr></thead>
+                      <tbody>
+                        {group.responses.length ? group.responses.map((item) => {
+                          const first = item.guests.find((guest) => guest.slot === 1);
+                          const second = item.guests.find((guest) => guest.slot === 2);
+                          return <tr key={item.id}>
+                            <td>{item.staff_nickname || "-"}</td><td>{item.staff_real_name || "-"}</td>
+                            <td>{item.staff_phone || "-"}</td><td>{first?.guest_name || "-"}</td>
+                            <td>{first?.guest_phone || "-"}</td><td>{second?.guest_name || "-"}</td>
                             <td>{second?.guest_phone || "-"}</td>
-                          </tr>
-                        );
-                      })}
-                  </tbody>
-                </table>
+                          </tr>;
+                        }) : <tr><td colSpan={7} className="text-slate-400">尚無回覆</td></tr>}
+                      </tbody>
+                    </table>
+                  </section>
+                ))}
               </div>
             </article>
           ))}
