@@ -20,6 +20,19 @@ function parseOptions(value) {
   })).filter((item) => item.label).slice(0, MAX_OPTIONS);
 }
 
+function parseEditedOptions(value) {
+  if (!Array.isArray(value) || value.length > MAX_OPTIONS) throw new Error(`活動選項最多 ${MAX_OPTIONS} 個`);
+  const options = value.map((item, index) => ({
+    id: item?.id ? clean(item.id, 100) : null,
+    label: clean(item?.label, 200),
+    note: clean(item?.note, 1000) || null,
+    sort_order: index,
+  })).filter((item) => item.label);
+  if (new Set(options.map((item) => item.label)).size !== options.length) throw new Error("活動選項名稱不可重複");
+  if (new Set(options.filter((item) => item.id).map((item) => item.id)).size !== options.filter((item) => item.id).length) throw new Error("活動選項 ID 重複");
+  return options;
+}
+
 async function optionsFor(ids) {
   if (!ids.length) return [];
   const { data, error } = await supabaseAdmin.from("qiunai_activity_options").select("*").in("activity_id", ids).order("sort_order");
@@ -179,6 +192,61 @@ export async function PATCH(request) {
     if (body.action === "publish") {
       const { error } = await supabaseAdmin.from("qiunai_activities").update({ is_published: Boolean(body.isPublished), updated_at: new Date().toISOString() }).eq("id", id);
       if (error) throw error;
+      return NextResponse.json({ ok: true });
+    }
+    if (body.action === "edit") {
+      const { data: activity, error: activityError } = await supabaseAdmin.from("qiunai_activities").select("id").eq("id", id).maybeSingle();
+      if (activityError) throw activityError;
+      if (!activity) throw new Error("找不到活動");
+      const title = clean(body.title, 120);
+      const startsAt = new Date(body.startsAt);
+      if (!title || Number.isNaN(startsAt.getTime())) throw new Error("請填寫活動名稱與開始時間");
+      const latestDeadline = new Date(startsAt.getTime() - 86400000);
+      const requestedDeadline = new Date(body.responseDeadline || latestDeadline);
+      const responseDeadline = requestedDeadline > latestDeadline ? latestDeadline : requestedDeadline;
+      if (Number.isNaN(responseDeadline.getTime())) throw new Error("回覆截止時間不正確");
+      const options = parseEditedOptions(body.options);
+      const { data: existingOptions, error: optionsError } = await supabaseAdmin.from("qiunai_activity_options").select("id,label,note,sort_order").eq("activity_id", id);
+      if (optionsError) throw optionsError;
+      const existingIds = new Set((existingOptions || []).map((item) => item.id));
+      if (options.some((item) => item.id && !existingIds.has(item.id))) throw new Error("活動選項不屬於此活動");
+      const retainedIds = new Set(options.map((item) => item.id).filter(Boolean));
+      const removedIds = (existingOptions || []).filter((item) => !retainedIds.has(item.id)).map((item) => item.id);
+      if (removedIds.length) {
+        const { count, error: responseError } = await supabaseAdmin.from("qiunai_activity_responses")
+          .select("id", { count: "exact", head: true }).eq("activity_id", id).in("selected_option_id", removedIds);
+        if (responseError) throw responseError;
+        if (count) throw new Error("已有員工選擇的活動選項不能刪除，請保留該選項");
+      }
+      if (removedIds.length) {
+        const { error } = await supabaseAdmin.from("qiunai_activity_options").delete().eq("activity_id", id).in("id", removedIds);
+        if (error) throw error;
+      }
+      for (const option of options.filter((item) => item.id)) {
+        const original = existingOptions.find((item) => item.id === option.id);
+        if (original.label === option.label && original.note === option.note && original.sort_order === option.sort_order) continue;
+        const { error } = await supabaseAdmin.from("qiunai_activity_options").update({ label: option.label, note: option.note, sort_order: option.sort_order }).eq("activity_id", id).eq("id", option.id);
+        if (error) throw error;
+      }
+      const additions = options.filter((item) => !item.id).map(({ label, note, sort_order }) => ({ activity_id: id, label, note, sort_order }));
+      if (additions.length) {
+        const { error } = await supabaseAdmin.from("qiunai_activity_options").insert(additions);
+        if (error) throw error;
+      }
+      const { error: updateError } = await supabaseAdmin.from("qiunai_activities").update({
+        title,
+        description: clean(body.description),
+        location: clean(body.location, 300) || null,
+        starts_at: startsAt.toISOString(),
+        response_deadline: responseDeadline.toISOString(),
+        min_completed_orders: Math.max(0, Math.floor(Number(body.minCompletedOrders) || 0)),
+        min_employment_days: Math.max(0, Math.floor(Number(body.minEmploymentDays) || 0)),
+        eligibility_note: clean(body.eligibilityNote, 1000) || null,
+        participant_note: clean(body.participantNote, 2000) || null,
+        is_published: body.isPublished !== false,
+        updated_at: new Date().toISOString(),
+      }).eq("id", id);
+      if (updateError) throw updateError;
       return NextResponse.json({ ok: true });
     }
     throw new Error("活動操作不正確");
