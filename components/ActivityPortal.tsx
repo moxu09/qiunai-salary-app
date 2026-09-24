@@ -249,11 +249,11 @@ function ActivityForm({ activity, onSaved }: { activity: Activity; onSaved: () =
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-sm font-black text-slate-800">自費攜帶親友</p>
-                <p className="mt-1 text-xs text-slate-500">每位員工最多新增兩位親友。</p>
+                <p className="mt-1 text-xs text-slate-500">每位員工最多新增一位親友。</p>
               </div>
               <button
                 type="button"
-                disabled={guests.length >= 2 || activity.locked}
+                disabled={guests.length >= 1 || activity.locked}
                 onClick={() => setGuests((current) => [...current, { name: "", phone: "" }])}
                 className="inline-flex items-center gap-1 rounded-xl bg-violet-50 px-3 py-2 text-xs font-black text-violet-700 disabled:opacity-40"
               >

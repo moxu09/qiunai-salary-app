@@ -464,19 +464,17 @@ export default function AdminActivityManager() {
                     <table className="min-w-[920px] text-left text-sm">
                       <thead><tr>
                         <th>員工暱稱</th><th>員工名字</th><th>員工電話</th>
-                        <th>員工親友1</th><th>親友電話</th><th>員工親友2</th><th>親友電話</th>
+                        <th>員工親友</th><th>親友電話</th>
                       </tr></thead>
                       <tbody>
                         {group.responses.length ? group.responses.map((item) => {
                           const first = item.guests.find((guest) => guest.slot === 1);
-                          const second = item.guests.find((guest) => guest.slot === 2);
                           return <tr key={item.id}>
                             <td>{item.staff_nickname || "-"}</td><td>{item.staff_real_name || "-"}</td>
                             <td>{item.staff_phone || "-"}</td><td>{first?.guest_name || "-"}</td>
-                            <td>{first?.guest_phone || "-"}</td><td>{second?.guest_name || "-"}</td>
-                            <td>{second?.guest_phone || "-"}</td>
+                            <td>{first?.guest_phone || "-"}</td>
                           </tr>;
-                        }) : <tr><td colSpan={7} className="text-slate-400">尚無回覆</td></tr>}
+                        }) : <tr><td colSpan={5} className="text-slate-400">尚無回覆</td></tr>}
                       </tbody>
                     </table>
                   </section>

@@ -169,8 +169,8 @@ export async function PATCH(request) {
       if (!staff?.is_active) throw new Error("找不到有效員工資料");
       const eligibility = await employeeEligibility(activity, staff);
       if (!eligibility.eligible) throw new Error(`你目前不符合參與門檻：${eligibility.reasons.join("、")}`);
-      const guests = status === "attending" ? (Array.isArray(body.guests) ? body.guests : []).slice(0, 2).map((guest, index) => ({ slot: index + 1, guest_name: clean(guest.name, 100), guest_phone: clean(guest.phone, 30) })).filter((guest) => guest.guest_name && guest.guest_phone) : [];
-      if ((Array.isArray(body.guests) ? body.guests : []).length > 2) throw new Error("每位員工最多攜帶兩位親友");
+      const guests = status === "attending" ? (Array.isArray(body.guests) ? body.guests : []).slice(0, 1).map((guest, index) => ({ slot: index + 1, guest_name: clean(guest.name, 100), guest_phone: clean(guest.phone, 30) })).filter((guest) => guest.guest_name && guest.guest_phone) : [];
+      if ((Array.isArray(body.guests) ? body.guests : []).length > 1) throw new Error("每位員工最多攜帶一位親友");
       const optionId = status === "attending" && body.optionId ? clean(body.optionId, 100) : null;
       if (optionId) {
         const { data: option } = await supabaseAdmin.from("qiunai_activity_options").select("id").eq("id", optionId).eq("activity_id", activityId).maybeSingle();

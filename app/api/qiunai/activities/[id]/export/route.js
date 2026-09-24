@@ -28,7 +28,7 @@ export async function GET(request, { params }) {
     workbook.created = new Date();
     const sheet = workbook.addWorksheet("活動回覆名單", { pageSetup: { paperSize: 9, orientation: "landscape", fitToPage: true, fitToWidth: 1, fitToHeight: 0, margins: { left: 0.35, right: 0.35, top: 0.5, bottom: 0.5, header: 0.2, footer: 0.2 } } });
     sheet.views = [{ state: "frozen", ySplit: 3 }];
-    sheet.mergeCells("A1:G1");
+    sheet.mergeCells("A1:E1");
     sheet.getCell("A1").value = `${activity.title}－活動回覆名單`;
     sheet.getCell("A1").font = { name: "Arial", size: 16, bold: true, color: { argb: "FF5B3768" } };
     sheet.getCell("A1").alignment = { horizontal: "left", vertical: "middle" };
@@ -38,11 +38,11 @@ export async function GET(request, { params }) {
     sheet.getCell("B2").numFmt = "yyyy-mm-dd hh:mm";
     sheet.getCell("A3").value = `回覆總數：${(responses || []).length} 人`;
     sheet.getCell("A3").font = { name: "Arial", size: 11, bold: true, color: { argb: "FF5B3768" } };
-    const headers = ["員工暱稱", "員工名字", "員工電話", "員工親友1", "親友電話", "員工親友2", "親友電話"];
+    const headers = ["員工暱稱", "員工名字", "員工電話", "員工親友", "親友電話"];
     for (const group of groups) {
       sheet.addRow([]);
       const groupRow = sheet.addRow([`${group.label}（${group.responses.length} 人）`]);
-      sheet.mergeCells(groupRow.number, 1, groupRow.number, 7);
+      sheet.mergeCells(groupRow.number, 1, groupRow.number, 5);
       groupRow.height = 25;
       groupRow.getCell(1).font = { name: "Arial", size: 12, bold: true, color: { argb: "FF5B3768" } };
       groupRow.getCell(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF8EDF8" } };
@@ -54,8 +54,7 @@ export async function GET(request, { params }) {
       for (const response of group.responses) {
         const ownGuests = (guests || []).filter((guest) => guest.response_id === response.id);
         const first = ownGuests.find((guest) => guest.slot === 1);
-        const second = ownGuests.find((guest) => guest.slot === 2);
-        const row = sheet.addRow([response.staff_nickname || "", response.staff_real_name || "", response.staff_phone || "", first?.guest_name || "", first?.guest_phone || "", second?.guest_name || "", second?.guest_phone || ""]);
+        const row = sheet.addRow([response.staff_nickname || "", response.staff_real_name || "", response.staff_phone || "", first?.guest_name || "", first?.guest_phone || ""]);
         row.font = { name: "Arial", size: 12 };
       }
       if (!group.responses.length) {
@@ -64,7 +63,7 @@ export async function GET(request, { params }) {
       }
     }
     const usedRows = sheet.rowCount;
-    sheet.columns = [{ width: 18 }, { width: 18 }, { width: 18 }, { width: 18 }, { width: 18 }, { width: 18 }, { width: 18 }];
+    sheet.columns = [{ width: 18 }, { width: 18 }, { width: 18 }, { width: 18 }, { width: 18 }];
     sheet.eachRow((row) => { row.alignment = { ...row.alignment, vertical: "middle" }; row.height = Math.max(row.height || 0, 22); });
     for (let rowNumber = 4; rowNumber <= usedRows; rowNumber += 1) {
       const row = sheet.getRow(rowNumber);
@@ -72,7 +71,7 @@ export async function GET(request, { params }) {
       row.eachCell((cell) => { cell.border = { bottom: { style: "thin", color: { argb: "FFE5D8E8" } } }; });
     }
     sheet.headerFooter.oddFooter = "&L秋奈電競陪玩&C第 &P 頁，共 &N 頁&R&12";
-    sheet.printArea = `A1:G${usedRows}`;
+    sheet.printArea = `A1:E${usedRows}`;
     const buffer = await workbook.xlsx.writeBuffer();
     const safeName = activity.title.replace(/[\\/:*?"<>|]/g, "-").slice(0, 80);
     return new NextResponse(buffer, { headers: { "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "Content-Disposition": `attachment; filename*=UTF-8''${encodeURIComponent(`${safeName}-活動回覆名單.xlsx`)}`, "Cache-Control": "no-store" } });
