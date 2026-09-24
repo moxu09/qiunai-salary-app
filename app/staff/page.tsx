@@ -223,7 +223,7 @@ export default function StaffPage() {
   );
   const [performanceRanking, setPerformanceRanking] =
     useState<PerformanceRanking | null>(null);
-  const [selectedMonth, setSelectedMonth] = useState(getPreviousMonthInput());
+  const [selectedMonth, setSelectedMonth] = useState(getCurrentMonthInput());
   const [hrSelectedMonth, setHrSelectedMonth] = useState(
     getCurrentMonthInput()
   );
@@ -2425,14 +2425,6 @@ function getMonthText(date: Date) {
 
 function getCurrentMonthInput() {
   return getTaipeiMonthInput();
-}
-
-function getPreviousMonthInput() {
-  const [year, month] = getCurrentMonthInput().split("-").map(Number);
-  const previous = new Date(Date.UTC(year, month - 2, 1));
-  return `${previous.getUTCFullYear()}-${String(
-    previous.getUTCMonth() + 1
-  ).padStart(2, "0")}`;
 }
 
 function getDefaultStatementRange() {

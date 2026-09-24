@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { getAuthUserFromRequest } from "@/lib/salaryWallet";
 import { getErpAccessByDiscordId } from "@/lib/erpAccess";
+import { getTaipeiMonthInput } from "@/lib/taipeiTime";
 import {
   removeRequestImages,
   signRequestAttachments,
@@ -100,7 +101,7 @@ export async function GET(request) {
   try {
     const { discordId } = await getAuthUserFromRequest(supabaseAdmin, request);
     const url = new URL(request.url);
-    const selectedMonth = url.searchParams.get("month") || new Date().toISOString().slice(0, 7);
+    const selectedMonth = url.searchParams.get("month") || getTaipeiMonthInput();
     const range = monthRange(selectedMonth);
     const adminMode = url.searchParams.get("mode") === "admin";
     if (adminMode) await requireAdmin(discordId);
@@ -149,7 +150,7 @@ export async function POST(request) {
       throw new Error(requestType === "查掛津貼" ? "查掛津貼必須上傳付款證明" : "代支報銷必須上傳發票或付款證明");
     }
     if (group === "welfare") {
-      const salary = await priorMonthSalary(discordId, new Date().toISOString().slice(0, 7));
+      const salary = await priorMonthSalary(discordId, getTaipeiMonthInput());
       if (salary <= 5000) throw new Error("前一個月薪資需超過 5,000 元才可申請福利");
     }
     const name = staff.display_name || staff.real_name || staff.discord_name || discordId;
