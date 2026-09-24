@@ -96,7 +96,7 @@ export default function AdminRankingPage() {
   const [bonusList, setBonusList] = useState<BonusItem[]>([]);
   const [servicePoints, setServicePoints] = useState<Record<string, number>>({});
   const [keyword, setKeyword] = useState("");
-  const [sortMode, setSortMode] = useState("salary_desc");
+  const [sortMode, setSortMode] = useState("order_amount_desc");
   const [filter, setFilter] = useState({
     start: getMonthStartInput(),
     end: getNowInput(),
@@ -397,10 +397,10 @@ export default function AdminRankingPage() {
                 onChange={(e) => setSortMode(e.target.value)}
                 className="mt-2 w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-white outline-none"
               >
-                <option value="salary_desc">薪水降冪：高到低</option>
-                <option value="salary_asc">薪水升冪：低到高</option>
                 <option value="order_amount_desc">接單金額降冪</option>
                 <option value="order_amount_asc">接單金額升冪</option>
+                <option value="salary_desc">薪水降冪：高到低</option>
+                <option value="salary_asc">薪水升冪：低到高</option>
                 <option value="order_count_desc">訂單數降冪</option>
                 <option value="order_count_asc">訂單數升冪</option>
                 <option value="service_points_desc">客服接待單數降冪</option>

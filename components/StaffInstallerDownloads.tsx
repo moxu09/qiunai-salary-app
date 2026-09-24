@@ -8,7 +8,7 @@ const installers = [
   { platform: "macos-arm64", label: "macOS・Apple Silicon", detail: "M 系列晶片 Mac", size: "44.3 MB", mobile: false },
   { platform: "macos-x64", label: "macOS・Intel", detail: "Intel 處理器 Mac", size: "46.8 MB", mobile: false },
   { platform: "windows-x64", label: "Windows・64 位元", detail: "Windows x64 電腦", size: "44.3 MB", mobile: false },
-  { platform: "android", label: "Android", detail: "解壓 ZIP 後安裝 APK", size: "44.5 MB", mobile: true },
+  { platform: "android", label: "Android", detail: "解壓 ZIP 後安裝 APK；新版可用 Discord 登入", size: "44.2 MB", mobile: true },
 ] as const;
 
 export default function StaffInstallerDownloads() {
