@@ -38,11 +38,13 @@ begin
   if not found then raise exception 'Discord 驗證已過期，請重新驗證'; end if;
   select count(*) into v_remaining from public.qiunai_ichiban_tickets where draw_id is null;
   select count(*) into v_pending from public.qiunai_ichiban_web_orders
-    where status in ('pending','processing') and created_at > now() - interval '45 minutes';
+    where (status = 'pending' and created_at > now() - interval '45 minutes')
+       or (status = 'processing' and updated_at > now() - interval '24 hours');
   if v_remaining <= v_pending then raise exception '目前沒有可付款的剩餘抽紙'; end if;
   if (select count(*) from public.qiunai_ichiban_web_orders
-      where challenge_id = p_challenge_id and status in ('pending','processing')
-        and created_at > now() - interval '45 minutes') >= 2 then
+      where challenge_id = p_challenge_id and
+       ((status = 'pending' and created_at > now() - interval '45 minutes')
+        or (status = 'processing' and updated_at > now() - interval '24 hours'))) >= 2 then
     raise exception '請先完成或等候既有付款單';
   end if;
   insert into public.qiunai_ichiban_web_orders
@@ -125,3 +127,61 @@ revoke all on function public.qiunai_ichiban_begin_web_payment(uuid,text,text,te
 grant execute on function public.qiunai_ichiban_begin_web_payment(uuid,text,text,text,text),
   public.qiunai_ichiban_set_web_order_status(text,text,text),
   public.qiunai_ichiban_fulfill_web_payment(text,text,text,integer) to service_role;
+
+-- 機器人 ASD 抽獎也必須尊重網頁版正在付款的保留名額。
+create or replace function public.qiunai_ichiban_draw_asd(
+  p_discord_user_id text, p_request_id text
+) returns jsonb language plpgsql security definer set search_path = public as $$
+declare existing public.qiunai_ichiban_draws%rowtype;
+  ticket public.qiunai_ichiban_tickets%rowtype;
+  v_draw_id uuid; balance_after integer; prize_credit integer := 0;
+  last_one boolean; v_remaining integer; v_pending integer;
+begin
+  if p_discord_user_id !~ '^[0-9]{15,25}$' or
+     p_request_id !~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' then
+    raise exception '一番賞請求資料格式錯誤';
+  end if;
+  perform 1 from public.qiunai_ichiban_pool_mutex where id = 1 for update;
+  select * into existing from public.qiunai_ichiban_draws
+    where payment_provider = 'asd' and payment_reference = p_request_id;
+  if found then
+    if existing.discord_user_id <> p_discord_user_id then raise exception '一番賞請求編號已被其他使用者使用'; end if;
+    return jsonb_build_object('already_processed',true,'draw_id',existing.id,
+      'prize_id',existing.prize_id,'ticket_no',existing.ticket_no,'is_last_one',existing.is_last_one);
+  end if;
+  select count(*) into v_remaining from public.qiunai_ichiban_tickets where draw_id is null;
+  select count(*) into v_pending from public.qiunai_ichiban_web_orders
+    where (status='pending' and created_at > now() - interval '45 minutes')
+       or (status='processing' and updated_at > now() - interval '24 hours');
+  if v_remaining <= v_pending then raise exception '一番賞抽紙已售完或正在付款中'; end if;
+  select * into ticket from public.qiunai_ichiban_tickets
+    where draw_id is null order by random() limit 1;
+  if not found then raise exception '一番賞已全數抽完'; end if;
+  select count(*)=1 into last_one from public.qiunai_ichiban_tickets where draw_id is null;
+  insert into public.users(user_id, coins) values (p_discord_user_id,0)
+    on conflict(user_id) do nothing;
+  update public.users set coins=coalesce(coins,0)-300
+    where user_id=p_discord_user_id and coalesce(coins,0)>=300
+    returning coins into balance_after;
+  if not found then raise exception 'ASD 餘額不足'; end if;
+  insert into public.wallet_logs(user_id,type,amount,balance,note)
+    values(p_discord_user_id,'扣款',-300,balance_after,'秋奈一番賞｜'||p_request_id);
+  insert into public.qiunai_ichiban_draws
+    (discord_user_id,payment_provider,payment_reference,paid_amount,prize_id,ticket_no,is_last_one)
+    values(p_discord_user_id,'asd',p_request_id,300,ticket.prize_id,ticket.ticket_no,last_one)
+    returning id into v_draw_id;
+  update public.qiunai_ichiban_tickets set draw_id=v_draw_id,drawn_at=now()
+    where ticket_no=ticket.ticket_no;
+  if ticket.prize_id ~ '^[a-f]-asd-[0-9]+$' then
+    prize_credit:=substring(ticket.prize_id from 'asd-([0-9]+)$')::integer;
+    update public.users set coins=coins+prize_credit
+      where user_id=p_discord_user_id returning coins into balance_after;
+    insert into public.wallet_logs(user_id,type,amount,balance,note)
+      values(p_discord_user_id,'抽獎獎品',prize_credit,balance_after,'秋奈一番賞 ASD 獎品｜'||v_draw_id);
+  end if;
+  return jsonb_build_object('already_processed',false,'draw_id',v_draw_id,
+    'prize_id',ticket.prize_id,'ticket_no',ticket.ticket_no,
+    'is_last_one',last_one,'balance',balance_after);
+end; $$;
+revoke all on function public.qiunai_ichiban_draw_asd(text,text) from public, anon, authenticated;
+grant execute on function public.qiunai_ichiban_draw_asd(text,text) to service_role;
