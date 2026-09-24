@@ -295,7 +295,7 @@ function ActivityForm({ activity, onSaved }: { activity: Activity; onSaved: () =
           </div>
           <div className="rounded-2xl bg-amber-50 p-4 text-xs font-bold leading-6 text-amber-900">
             <p>
-              若填完要取消需於一個月前取消，否則會扣除取消人數的訂金，訂金視不同活動廠商會有所變動。
+              若填完要取消需於投票截止日前取消，否則會扣除取消人數的訂金，訂金視不同活動廠商會有所變動。
             </p>
             <p className="mt-2">
               員工家屬僅提供同行之便利，不提供保管財物、個人物品、去程及回程安全等其他服務。
