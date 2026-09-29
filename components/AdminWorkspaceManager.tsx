@@ -4,11 +4,12 @@ import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { ArrowRight, BookOpenText, CalendarDays, ClipboardCheck, FileText, LayoutDashboard, Plus, Save } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import WorkspaceDocumentFiles from "@/components/WorkspaceDocumentFiles";
+import AdminApprovals from "@/components/AdminApprovals";
 
 type Field = { key: string; label: string; type: "text" | "textarea" | "date" | "choice"; required: boolean; options: string[] };
 type Item = Record<string, unknown> & { id: string };
 type Data = { events: Item[]; documents: Item[]; templates: Item[]; requests: Item[] };
-type Kind = "overview" | "event" | "document" | "template" | "decision";
+type Kind = "overview" | "event" | "document" | "template" | "decision" | "hr-approvals";
 type RequestStatus = "pending" | "approved" | "rejected" | "all";
 type AuditEntry = { old_status: string; new_status: string; actor_discord_id: string; note: string | null; created_at: string };
 type RequestHistory = { item: Item; audit: AuditEntry[] };
@@ -37,6 +38,7 @@ export default function AdminWorkspaceManager({ organization }: { organization: 
   const [requestStatus, setRequestStatus] = useState<RequestStatus>("pending");
   const [requestPage, setRequestPage] = useState(1);
   const [requestSummary, setRequestSummary] = useState({ pending: 0, approved: 0, rejected: 0 });
+  const [hrPending, setHrPending] = useState<number | null>(null);
   const [workspaceSummary, setWorkspaceSummary] = useState({ upcomingEvents: 0, publishedDocuments: 0, activeTemplates: 0 });
   const [requestPagination, setRequestPagination] = useState({ page: 1, pageSize: 25, total: 0 });
   const [decisionTarget, setDecisionTarget] = useState<{ id: string; status: "approved" | "rejected" } | null>(null);
@@ -68,6 +70,13 @@ export default function AdminWorkspaceManager({ organization }: { organization: 
       setRequestSummary(result.requestSummary || { pending: 0, approved: 0, rejected: 0 });
       setWorkspaceSummary(result.workspaceSummary || { upcomingEvents: 0, publishedDocuments: 0, activeTemplates: 0 });
       setRequestPagination(result.requestPagination || { page: 1, pageSize: 25, total: 0 });
+      const notificationResponse = await fetch(`/api/${organization}/admin-notifications`, {
+        cache: "no-store", headers: { Authorization: `Bearer ${auth.session.access_token}` },
+      });
+      if (notificationResponse.ok) {
+        const notifications = await notificationResponse.json();
+        setHrPending(Number(notifications.approvals || 0));
+      } else setHrPending(null);
       setError("");
     } catch (caught) { setError(caught instanceof Error ? caught.message : "讀取失敗"); }
     finally { setLoading(false); }
@@ -76,7 +85,7 @@ export default function AdminWorkspaceManager({ organization }: { organization: 
   function choose(next: Kind) {
     setSection(next); setEditing(null); setRevisions([]);
     if (next === "overview") { setRequestStatus("pending"); setRequestPage(1); }
-    setForm(next === "decision" || next === "overview" ? {} : { ...initial[next] });
+    setForm(next === "decision" || next === "overview" || next === "hr-approvals" ? {} : { ...initial[next] });
     setError(""); setNotice("");
   }
   function edit(kind: Kind, item: Item) {
@@ -140,6 +149,7 @@ export default function AdminWorkspaceManager({ organization }: { organization: 
   function changeStatus(status: RequestStatus) {
     setRequestStatus(status); setRequestPage(1); setDecisionTarget(null); setHistory(null);
   }
+  const onHrPendingChange = useCallback((count: number) => setHrPending(count), []);
   async function showRevisions(item: Item) {
     try {
       const result = await call("GET", undefined, `&revisions=${item.id}`);
@@ -154,13 +164,14 @@ export default function AdminWorkspaceManager({ organization }: { organization: 
     {error ? <p className="eip-collab-alert" role="alert">{error}</p> : null}
     {notice ? <p className="eip-collab-notice" role="status">{notice}</p> : null}
     <div className="eip-admin-workspace-tabs">
-      {([["overview", "總覽", LayoutDashboard], ["decision", "簽核待辦", ClipboardCheck], ["event", "團隊日程", CalendarDays], ["document", "文件／知識庫", BookOpenText], ["template", "流程設定", FileText]] as const).map(([kind, label, Icon]) =>
+      {([["overview", "總覽", LayoutDashboard], ["decision", "流程簽核", ClipboardCheck], ["hr-approvals", "行政／人事簽核", ClipboardCheck], ["event", "團隊日程", CalendarDays], ["document", "文件／知識庫", BookOpenText], ["template", "流程設定", FileText]] as const).map(([kind, label, Icon]) =>
         <button key={kind} onClick={() => choose(kind)} className={section === kind ? "is-active" : ""}><Icon size={17} /> {label}</button>)}
     </div>
     {loading ? <p className="eip-collab-empty">正在讀取管理資料…</p> : null}
     {!loading && section === "overview" ? <>
       <div className="eip-admin-overview-stats">
-        <button onClick={() => choose("decision")}><ClipboardCheck size={21} /><strong>{requestSummary.pending}</strong><span>待處理簽核</span><ArrowRight size={16} /></button>
+        <button onClick={() => choose("decision")}><ClipboardCheck size={21} /><strong>{requestSummary.pending}</strong><span>待處理流程申請</span><ArrowRight size={16} /></button>
+        <button onClick={() => choose("hr-approvals")}><ClipboardCheck size={21} /><strong>{hrPending ?? "—"}</strong><span>待處理行政／人事簽核</span><ArrowRight size={16} /></button>
         <button onClick={() => choose("event")}><CalendarDays size={21} /><strong>{workspaceSummary.upcomingEvents}</strong><span>已發布近期日程</span><ArrowRight size={16} /></button>
         <button onClick={() => choose("document")}><BookOpenText size={21} /><strong>{workspaceSummary.publishedDocuments}</strong><span>已發布文件與知識</span><ArrowRight size={16} /></button>
         <button onClick={() => choose("template")}><FileText size={21} /><strong>{workspaceSummary.activeTemplates}</strong><span>開放中的流程</span><ArrowRight size={16} /></button>
@@ -177,7 +188,7 @@ export default function AdminWorkspaceManager({ organization }: { organization: 
         </section>
       </div>
     </> : null}
-    {!loading && section !== "decision" && section !== "overview" ? <div className="eip-collab-columns">
+    {!loading && section !== "decision" && section !== "overview" && section !== "hr-approvals" ? <div className="eip-collab-columns">
       <form className="eip-collab-panel eip-collab-form" onSubmit={(event) => void submit(event)}>
         <h2>{editing ? "編輯" : "新增"}{section === "event" ? "日程" : section === "document" ? "文章" : "流程"}</h2>
         {section === "event" ? <>
@@ -219,7 +230,8 @@ export default function AdminWorkspaceManager({ organization }: { organization: 
         {section === "document" ? editing ? <WorkspaceDocumentFiles key={editing.id} organization={organization} documentId={editing.id} admin /> : <p className="eip-collab-helper">先儲存文章，即可為這篇知識或文件上傳附件。</p> : null}
       </div>
     </div> : null}
-    {!loading && section === "decision" ? <div className="eip-collab-panel"><div className="eip-collab-panel-head"><h2>簽核佇列</h2><span>不得簽核自己的申請 · 共 {requestPagination.total} 筆</span></div>
+    {section === "hr-approvals" ? <AdminApprovals apiPath={`/api/${organization}/hr`} embedded onPendingChange={onHrPendingChange} /> : null}
+    {!loading && section === "decision" ? <div className="eip-collab-panel"><div className="eip-collab-panel-head"><h2>流程簽核佇列</h2><span>不得簽核自己的申請 · 共 {requestPagination.total} 筆</span></div>
       <div className="eip-admin-request-filters">{([["pending", "待處理", requestSummary.pending], ["approved", "已核准", requestSummary.approved], ["rejected", "已退回", requestSummary.rejected], ["all", "全部", requestSummary.pending + requestSummary.approved + requestSummary.rejected]] as const).map(([status, label, count]) =>
         <button type="button" key={status} className={requestStatus === status ? "is-active" : ""} onClick={() => changeStatus(status)}>{label} <span>{count}</span></button>)}</div>
       {data.requests.map((item) => {

@@ -105,6 +105,43 @@ export async function GET(request) {
     const range = monthRange(selectedMonth);
     const adminMode = url.searchParams.get("mode") === "admin";
     if (adminMode) await requireAdmin(discordId);
+    if (adminMode && url.searchParams.get("view") === "inbox") {
+      const status = url.searchParams.get("status") || "pending";
+      if (!["pending", "approved", "rejected", "all"].includes(status)) throw new Error("簽核狀態不正確");
+      const category = url.searchParams.get("category") || "";
+      if (category && !["administrative", "reimbursement", "welfare", "leave", "suspension"].includes(category)) throw new Error("簽核類別不正確");
+      const page = Math.max(1, Math.min(10000, Number.parseInt(url.searchParams.get("page") || "1", 10) || 1));
+      const pageSize = 25;
+      const base = () => {
+        const query = supabaseAdmin.from("salary_requests");
+        return query;
+      };
+      const counts = await Promise.all(["pending", "approved", "rejected"].map((value) => {
+        let query = base().select("id", { count: "exact", head: true }).eq("organization_code", ORG).eq("status", value);
+        if (category) query = query.eq("approval_category", category);
+        return query;
+      }));
+      const failed = counts.find((item) => item.error);
+      if (failed?.error) throw failed.error;
+      let query = base().select("*", { count: "exact" }).eq("organization_code", ORG);
+      if (status !== "all") query = query.eq("status", status);
+      if (category) query = query.eq("approval_category", category);
+      const { data: requests, count, error } = await query.order("created_at", { ascending: false }).range((page - 1) * pageSize, page * pageSize - 1);
+      if (error) throw error;
+      const reviewerIds = [...new Set((requests || []).map((item) => item.reviewed_by).filter(Boolean))];
+      const { data: reviewers, error: reviewerError } = reviewerIds.length
+        ? await supabaseAdmin.from("qiunai_admins").select("*").in("discord_id", reviewerIds)
+        : { data: [], error: null };
+      if (reviewerError) throw reviewerError;
+      const reviewerMap = new Map((reviewers || []).map((admin) => [String(admin.discord_id), reviewerName(admin)]));
+      const enriched = (requests || []).map((item) => ({ ...item,
+        reviewer_discord_id: item.reviewed_by || item.form_data?.reviewer_discord_id || null,
+        reviewer_name: item.form_data?.reviewer_name || reviewerMap.get(String(item.reviewed_by || "")) || null,
+      }));
+      return NextResponse.json({ ok: true, requests: await signRequestAttachments(enriched),
+        summary: { pending: counts[0].count || 0, approved: counts[1].count || 0, rejected: counts[2].count || 0 },
+        pagination: { page, pageSize, total: count || 0 } });
+    }
     const query = supabaseAdmin.from("salary_requests").select("*").eq("organization_code", ORG).gte("application_date", range.start.slice(0, 10)).lt("application_date", range.end.slice(0, 10)).order("created_at", { ascending: false });
     if (!adminMode) query.eq("discord_id", discordId);
     const [{ data: requests, error }, { data: announcements }, salary] = await Promise.all([
@@ -183,23 +220,35 @@ export async function PATCH(request) {
     if (!body.id || !["approved", "rejected"].includes(body.status)) throw new Error("簽核資料不正確");
     const { data: existing, error: existingError } = await supabaseAdmin
       .from("salary_requests")
-      .select("id, form_data")
+      .select("id, discord_id, status, form_data")
       .eq("id", body.id)
       .eq("organization_code", ORG)
       .single();
     if (existingError || !existing) throw new Error("找不到申請資料");
+    if (existing.status !== "pending") throw new Error("此申請已處理，請重新整理");
+    if (String(existing.discord_id) === String(discordId)) throw new Error("不能簽核自己的申請");
+    if (body.status === "rejected" && !String(body.reviewResult || "").trim()) throw new Error("駁回時請填寫原因");
     const formData = existing.form_data || {};
     const attachments = Array.isArray(formData.attachments)
       ? formData.attachments
       : [];
-    await removeRequestImages(
-      attachments.map((item) => item?.path).filter(Boolean),
-      { strict: true }
-    );
     const reviewedAt = new Date().toISOString();
-    const { data, error } = await supabaseAdmin.from("salary_requests").update({ status: body.status, review_result: String(body.reviewResult || "").trim() || (body.status === "approved" ? "核准" : "駁回"), reviewed_by: discordId, reviewed_at: reviewedAt, updated_at: reviewedAt, form_data: { ...formData, attachments: [], attachments_expired_at: reviewedAt, reviewer_name: reviewerName(admin), reviewer_discord_id: discordId } }).eq("id", body.id).eq("organization_code", ORG).select("*").single();
+    const reviewedForm = { ...formData, reviewer_name: reviewerName(admin), reviewer_discord_id: discordId };
+    const { data, error } = await supabaseAdmin.from("salary_requests").update({ status: body.status, review_result: String(body.reviewResult || "").trim() || "核准", reviewed_by: discordId, reviewed_at: reviewedAt, updated_at: reviewedAt, form_data: reviewedForm }).eq("id", body.id).eq("organization_code", ORG).eq("status", "pending").select("*").maybeSingle();
     if (error) throw error;
-    return NextResponse.json({ ok: true, request: data });
+    if (!data) throw new Error("此申請已由其他管理員處理，請重新整理");
+    let warning = null;
+    let approvedRequest = data;
+    try {
+      await removeRequestImages(attachments.map((item) => item?.path).filter(Boolean), { strict: true });
+      const cleared = await supabaseAdmin.from("salary_requests").update({ form_data: { ...reviewedForm, attachments: [], attachments_expired_at: reviewedAt } }).eq("id", body.id).eq("organization_code", ORG).eq("reviewed_at", reviewedAt).select("*").maybeSingle();
+      if (cleared.error || !cleared.data) throw cleared.error || new Error("附件狀態更新失敗");
+      approvedRequest = cleared.data;
+    } catch (cleanupError) {
+      console.error("簽核附件清理失敗", cleanupError);
+      warning = "簽核已完成，但附件清理失敗，請聯繫管理員檢查";
+    }
+    return NextResponse.json({ ok: true, request: approvedRequest, warning });
   } catch (error) {
     return NextResponse.json({ ok: false, message: friendlyError(error, "更新簽核失敗") }, { status: 400 });
   }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useEffectEvent, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { ExternalLink } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
@@ -37,72 +37,91 @@ const categories = [
   ["suspension", "留職停薪簽核"],
 ];
 
-export default function AdminApprovals({ apiPath }: { apiPath: string }) {
-  const [month, setMonth] = useState(new Date().toISOString().slice(0, 7));
+type Status = "pending" | "approved" | "rejected" | "all";
+type Summary = { pending: number; approved: number; rejected: number };
+
+export default function AdminApprovals({ apiPath, embedded = false, onPendingChange }: { apiPath: string; embedded?: boolean; onPendingChange?: (count: number) => void }) {
   const [category, setCategory] = useState("");
+  const [status, setStatus] = useState<Status>("pending");
+  const [page, setPage] = useState(1);
+  const [summary, setSummary] = useState<Summary>({ pending: 0, approved: 0, rejected: 0 });
+  const [pagination, setPagination] = useState({ page: 1, pageSize: 25, total: 0 });
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
   const [result, setResult] = useState<Record<string, string>>({});
 
   const load = useCallback(async () => {
-    const { data } = await supabase.auth.getSession();
     setLoading(true);
     try {
-      const response = await fetch(`${apiPath}?mode=admin&month=${month}`, {
-        headers: { Authorization: `Bearer ${data.session?.access_token || ""}` },
+      const { data } = await supabase.auth.getSession();
+      if (!data.session) throw new Error("登入已過期，請重新登入");
+      const query = new URLSearchParams({ mode: "admin", view: "inbox", status, category, page: String(page) });
+      const response = await fetch(`${apiPath}?${query}`, {
+        headers: { Authorization: `Bearer ${data.session.access_token}` },
         cache: "no-store",
       });
       const payload = await response.json().catch(() => ({}));
-      if (!response.ok) alert(payload.message || "讀取簽核失敗");
-      else setRows(payload.requests || []);
+      if (!response.ok) throw new Error(payload.message || "讀取簽核失敗");
+      setRows(payload.requests || []);
+      setSummary(payload.summary || { pending: 0, approved: 0, rejected: 0 });
+      setPagination(payload.pagination || { page, pageSize: 25, total: 0 });
+      onPendingChange?.(payload.summary?.pending || 0);
+      setError("");
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "讀取簽核失敗");
     } finally {
       setLoading(false);
     }
-  }, [apiPath, month]);
+  }, [apiPath, status, category, page, onPendingChange]);
 
-  const loadEvent = useEffectEvent(load);
   useEffect(() => {
-    void Promise.resolve().then(loadEvent);
-  }, [month]);
+    void Promise.resolve().then(load);
+  }, [load]);
 
   async function review(id: string, status: "approved" | "rejected") {
-    const { data } = await supabase.auth.getSession();
-    const response = await fetch(apiPath, {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${data.session?.access_token || ""}`,
-      },
-      body: JSON.stringify({ id, status, reviewResult: result[id] }),
-    });
-    const payload = await response.json().catch(() => ({}));
-    if (!response.ok) alert(payload.message || "簽核失敗");
-    else {
-      await load();
+    if (status === "rejected" && !result[id]?.trim()) { setError("駁回時請填寫原因"); return; }
+    try {
+      setBusy(id); setError(""); setNotice("");
+      const { data } = await supabase.auth.getSession();
+      if (!data.session) throw new Error("登入已過期，請重新登入");
+      const response = await fetch(apiPath, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${data.session.access_token}` },
+        body: JSON.stringify({ id, status, reviewResult: result[id] }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.message || "簽核失敗");
+      setNotice(payload.warning || (status === "approved" ? "申請已核准" : "申請已駁回"));
+      if (rows.length === 1 && page > 1) setPage((current) => current - 1);
+      else await load();
+      setResult((current) => { const next = { ...current }; delete next[id]; return next; });
       window.dispatchEvent(new Event("erp-notifications-changed"));
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "簽核失敗");
+    } finally {
+      setBusy(null);
     }
   }
 
-  const visible = category
-    ? rows.filter((row) => row.approval_category === category)
-    : rows;
-
   return (
-    <main className="min-h-screen p-4 sm:p-7">
+    <main className={embedded ? "py-4" : "min-h-screen p-4 sm:p-7"}>
       <div className="mx-auto max-w-[1400px]">
         <div className="rounded-3xl bg-white p-6 shadow-sm">
-          <h1 className="text-2xl font-black text-slate-900">簽核申請</h1>
+          <h1 className="text-2xl font-black text-slate-900">行政與人事簽核</h1>
           <p className="mt-2 text-sm text-slate-500">
-            依月份與類別檢視行政、報銷、福利、請假及留職停薪申請。
+            跨月份處理行政、報銷、福利、請假及留職停薪申請；此處與原簽核頁使用同一筆資料。
           </p>
+          <div className="mt-5 flex flex-wrap gap-2" aria-label="簽核狀態">
+            {([ ["pending", "待處理", summary.pending], ["approved", "已核准", summary.approved], ["rejected", "已駁回", summary.rejected], ["all", "全部", summary.pending + summary.approved + summary.rejected] ] as const).map(([value, label, count]) =>
+              <button key={value} type="button" onClick={() => { setStatus(value); setPage(1); }} className={`rounded-xl px-4 py-2 text-sm font-bold ${status === value ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-600"}`}>{label} {count}</button>)}
+          </div>
           <div className="mt-5 grid gap-3 sm:grid-cols-2">
             <label className="text-sm font-bold text-slate-600">
-              月份
-              <input className="mt-2 w-full" type="month" value={month} onChange={(event) => setMonth(event.target.value)} />
-            </label>
-            <label className="text-sm font-bold text-slate-600">
               簽核類別
-              <select className="mt-2 w-full" value={category} onChange={(event) => setCategory(event.target.value)}>
+              <select className="mt-2 w-full" value={category} onChange={(event) => { setCategory(event.target.value); setPage(1); }}>
                 {categories.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
               </select>
             </label>
@@ -110,10 +129,12 @@ export default function AdminApprovals({ apiPath }: { apiPath: string }) {
         </div>
 
         <div className="mt-5 space-y-4">
+          {error ? <p role="alert" className="rounded-xl bg-rose-50 p-3 text-rose-700">{error}</p> : null}
+          {notice ? <p role="status" className="rounded-xl bg-emerald-50 p-3 text-emerald-700">{notice}</p> : null}
           {loading ? (
             <p className="rounded-3xl bg-white p-10 text-center text-slate-400">讀取中…</p>
-          ) : visible.length ? (
-            visible.map((row) => (
+          ) : rows.length ? (
+            rows.map((row) => (
               <article key={row.id} className="rounded-3xl bg-white p-5 shadow-sm">
                 <div className="flex flex-col gap-3 md:flex-row md:justify-between">
                   <div className="min-w-0 flex-1">
@@ -135,9 +156,9 @@ export default function AdminApprovals({ apiPath }: { apiPath: string }) {
                 </div>
                 {row.status === "pending" ? (
                   <div className="mt-4 grid gap-3 md:grid-cols-[1fr_auto_auto]">
-                    <input value={result[row.id] || ""} onChange={(event) => setResult((current) => ({ ...current, [row.id]: event.target.value }))} placeholder="簽核說明（選填）" />
-                    <button onClick={() => review(row.id, "approved")} className="rounded-xl bg-emerald-500 px-5 py-2 font-black text-white">核准</button>
-                    <button onClick={() => review(row.id, "rejected")} className="rounded-xl bg-rose-500 px-5 py-2 font-black text-white">駁回</button>
+                    <input value={result[row.id] || ""} onChange={(event) => setResult((current) => ({ ...current, [row.id]: event.target.value }))} placeholder="簽核說明；駁回時必填原因" />
+                    <button disabled={busy !== null} onClick={() => void review(row.id, "approved")} className="rounded-xl bg-emerald-500 px-5 py-2 font-black text-white disabled:opacity-50">核准</button>
+                    <button disabled={busy !== null} onClick={() => void review(row.id, "rejected")} className="rounded-xl bg-rose-500 px-5 py-2 font-black text-white disabled:opacity-50">駁回</button>
                   </div>
                 ) : (
                   <div className="mt-4 rounded-xl bg-slate-50 p-3 text-sm text-slate-600">
@@ -148,8 +169,9 @@ export default function AdminApprovals({ apiPath }: { apiPath: string }) {
               </article>
             ))
           ) : (
-            <p className="rounded-3xl bg-white p-10 text-center text-slate-400">這個月份沒有申請資料</p>
+            <p className="rounded-3xl bg-white p-10 text-center text-slate-400">此篩選條件目前沒有申請資料</p>
           )}
+          <div className="flex items-center justify-end gap-3 text-sm text-slate-600"><span>共 {pagination.total} 筆 · 第 {pagination.page} / {Math.max(1, Math.ceil(pagination.total / pagination.pageSize))} 頁</span><button type="button" disabled={page <= 1} onClick={() => setPage((current) => current - 1)}>上一頁</button><button type="button" disabled={page * pagination.pageSize >= pagination.total} onClick={() => setPage((current) => current + 1)}>下一頁</button></div>
         </div>
       </div>
     </main>
