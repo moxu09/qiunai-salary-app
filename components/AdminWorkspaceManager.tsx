@@ -36,8 +36,10 @@ export default function AdminWorkspaceManager({ organization }: { organization: 
   const [notice, setNotice] = useState("");
   const [revisions, setRevisions] = useState<Item[]>([]);
   const [requestStatus, setRequestStatus] = useState<RequestStatus>("pending");
+  const [overdueOnly, setOverdueOnly] = useState(false);
   const [requestPage, setRequestPage] = useState(1);
-  const [requestSummary, setRequestSummary] = useState({ pending: 0, approved: 0, rejected: 0 });
+  const [requestSummary, setRequestSummary] = useState({ pending: 0, approved: 0, rejected: 0, overdue: 0 });
+  const [workflowTargetHours, setWorkflowTargetHours] = useState(48);
   const [hrPending, setHrPending] = useState<number | null>(null);
   const [workspaceSummary, setWorkspaceSummary] = useState({ upcomingEvents: 0, publishedDocuments: 0, activeTemplates: 0 });
   const [requestPagination, setRequestPagination] = useState({ page: 1, pageSize: 25, total: 0 });
@@ -61,13 +63,14 @@ export default function AdminWorkspaceManager({ organization }: { organization: 
       setLoading(true);
       const { data: auth } = await supabase.auth.getSession();
       if (!auth.session) throw new Error("登入已過期，請重新登入");
-      const response = await fetch(`/api/${organization}/workspace?admin=1&status=${requestStatus}&page=${requestPage}`, {
+      const response = await fetch(`/api/${organization}/workspace?admin=1&status=${requestStatus}&page=${requestPage}${overdueOnly ? "&overdue=1" : ""}`, {
         cache: "no-store", headers: { Authorization: `Bearer ${auth.session.access_token}` },
       });
       const result = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(result.message || "讀取失敗");
       setData({ events: result.events || [], documents: result.documents || [], templates: result.templates || [], requests: result.requests || [] });
-      setRequestSummary(result.requestSummary || { pending: 0, approved: 0, rejected: 0 });
+      setRequestSummary(result.requestSummary || { pending: 0, approved: 0, rejected: 0, overdue: 0 });
+      setWorkflowTargetHours(Number(result.workflowTargetHours || 48));
       setWorkspaceSummary(result.workspaceSummary || { upcomingEvents: 0, publishedDocuments: 0, activeTemplates: 0 });
       setRequestPagination(result.requestPagination || { page: 1, pageSize: 25, total: 0 });
       const notificationResponse = await fetch(`/api/${organization}/admin-notifications`, {
@@ -80,11 +83,11 @@ export default function AdminWorkspaceManager({ organization }: { organization: 
       setError("");
     } catch (caught) { setError(caught instanceof Error ? caught.message : "讀取失敗"); }
     finally { setLoading(false); }
-  }, [organization, requestStatus, requestPage]);
+  }, [organization, requestStatus, requestPage, overdueOnly]);
   useEffect(() => { void Promise.resolve().then(refresh); }, [refresh]);
   function choose(next: Kind) {
     setSection(next); setEditing(null); setRevisions([]);
-    if (next === "overview") { setRequestStatus("pending"); setRequestPage(1); }
+    if (next === "overview") { setRequestStatus("pending"); setRequestPage(1); setOverdueOnly(false); }
     setForm(next === "decision" || next === "overview" || next === "hr-approvals" ? {} : { ...initial[next] });
     setError(""); setNotice("");
   }
@@ -147,7 +150,10 @@ export default function AdminWorkspaceManager({ organization }: { organization: 
     } catch (caught) { setError(caught instanceof Error ? caught.message : "讀取簽核歷程失敗"); }
   }
   function changeStatus(status: RequestStatus) {
-    setRequestStatus(status); setRequestPage(1); setDecisionTarget(null); setHistory(null);
+    setRequestStatus(status); setOverdueOnly(false); setRequestPage(1); setDecisionTarget(null); setHistory(null);
+  }
+  function showOverdue() {
+    setSection("decision"); setRequestStatus("pending"); setOverdueOnly(true); setRequestPage(1); setDecisionTarget(null); setHistory(null);
   }
   const onHrPendingChange = useCallback((count: number) => setHrPending(count), []);
   async function showRevisions(item: Item) {
@@ -171,6 +177,7 @@ export default function AdminWorkspaceManager({ organization }: { organization: 
     {!loading && section === "overview" ? <>
       <div className="eip-admin-overview-stats">
         <button onClick={() => choose("decision")}><ClipboardCheck size={21} /><strong>{requestSummary.pending}</strong><span>待處理流程申請</span><ArrowRight size={16} /></button>
+        <button onClick={showOverdue}><ClipboardCheck size={21} /><strong>{requestSummary.overdue}</strong><span>超過 {workflowTargetHours} 小時未處理</span><ArrowRight size={16} /></button>
         <button onClick={() => choose("hr-approvals")}><ClipboardCheck size={21} /><strong>{hrPending ?? "—"}</strong><span>待處理行政／人事簽核</span><ArrowRight size={16} /></button>
         <button onClick={() => choose("event")}><CalendarDays size={21} /><strong>{workspaceSummary.upcomingEvents}</strong><span>已發布近期日程</span><ArrowRight size={16} /></button>
         <button onClick={() => choose("document")}><BookOpenText size={21} /><strong>{workspaceSummary.publishedDocuments}</strong><span>已發布文件與知識</span><ArrowRight size={16} /></button>
@@ -233,12 +240,12 @@ export default function AdminWorkspaceManager({ organization }: { organization: 
     {section === "hr-approvals" ? <AdminApprovals apiPath={`/api/${organization}/hr`} embedded onPendingChange={onHrPendingChange} /> : null}
     {!loading && section === "decision" ? <div className="eip-collab-panel"><div className="eip-collab-panel-head"><h2>流程簽核佇列</h2><span>不得簽核自己的申請 · 共 {requestPagination.total} 筆</span></div>
       <div className="eip-admin-request-filters">{([["pending", "待處理", requestSummary.pending], ["approved", "已核准", requestSummary.approved], ["rejected", "已退回", requestSummary.rejected], ["all", "全部", requestSummary.pending + requestSummary.approved + requestSummary.rejected]] as const).map(([status, label, count]) =>
-        <button type="button" key={status} className={requestStatus === status ? "is-active" : ""} onClick={() => changeStatus(status)}>{label} <span>{count}</span></button>)}</div>
+        <button type="button" key={status} className={!overdueOnly && requestStatus === status ? "is-active" : ""} onClick={() => changeStatus(status)}>{label} <span>{count}</span></button>)}<button type="button" className={overdueOnly ? "is-active" : ""} onClick={showOverdue}>超時待辦 <span>{requestSummary.overdue}</span></button></div>
       {data.requests.map((item) => {
         const template = data.templates.find((entry) => entry.id === item.template_id);
         const values = item.form_data && typeof item.form_data === "object" ? Object.entries(item.form_data as Record<string, unknown>) : [];
         return <article className="eip-collab-admin-item" key={item.id}>
-          <span>{String(item.created_at || "").slice(0, 16).replace("T", " ")} · {String(item.status === "pending" ? "待簽核" : item.status === "approved" ? "已核准" : "已退回")}</span>
+          <span>{String(item.created_at || "").slice(0, 16).replace("T", " ")} · {String(item.status === "pending" ? (Date.now() - new Date(String(item.created_at)).getTime() >= workflowTargetHours * 3600000 ? `超過 ${workflowTargetHours} 小時未處理` : "待簽核") : item.status === "approved" ? "已核准" : "已退回")}</span>
           <strong>{String(template?.name || "流程申請")} · {String(item.applicant_name || "")}</strong>
           <div className="eip-collab-answers">{values.map(([key, value]) => <p key={key}><b>{String((template?.fields as Field[] || []).find((field) => field.key === key)?.label || key)}：</b>{String(value)}</p>)}</div>
           {item.decision_note ? <p>簽核備註：{String(item.decision_note)}</p> : null}

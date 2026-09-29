@@ -5,6 +5,7 @@ import { runInNewContext } from "node:vm";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { WorkspaceInputError, validateFields, validateAnswers } from "../lib/eipWorkspaceValidation.mjs";
+import { WORKFLOW_TARGET_HOURS, workflowOverdueBefore } from "../lib/eipWorkflowSla.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const employee = "1206138511535898654";
@@ -55,6 +56,7 @@ function setup() {
         select(_columns, options) { selectedOptions = options || {}; return this; },
         eq(key, value) { filters.push([key, value]); return this; },
         gte(key, value) { filters.push([key, { gte: value }]); return this; },
+        lt(key, value) { filters.push([key, { lt: value }]); return this; },
         order() { return this; },
         limit(value) { rowLimit = value; return this; },
         range(from, to) { range = [from, to]; return this; },
@@ -62,7 +64,8 @@ function setup() {
         update(value) { updated = value; calls.push({ table, updated: value, filters }); return this; },
         then(resolve, reject) {
           const rows = (records[table] || []).filter((item) => filters.every(([key, value]) =>
-            value && typeof value === "object" && "gte" in value ? item[key] >= value.gte : item[key] === value));
+            value && typeof value === "object" && "gte" in value ? item[key] >= value.gte :
+              value && typeof value === "object" && "lt" in value ? item[key] < value.lt : item[key] === value));
           calls.push({ table, filters: [...filters], range, selectedOptions });
           const visible = range ? rows.slice(range[0], range[1] + 1) : rowLimit ? rows.slice(0, rowLimit) : rows;
           return Promise.resolve({ data: selectedOptions.head ? null : visible, count: selectedOptions.count === "exact" ? rows.length : null, error: null }).then(resolve, reject);
@@ -87,6 +90,8 @@ function setup() {
     InputError: WorkspaceInputError,
     fields: validateFields,
     answers: validateAnswers,
+    WORKFLOW_TARGET_HOURS,
+    workflowOverdueBefore,
     getAuthUserFromRequest: async (_db, request) => {
       if (!request.discordId) throw new Error("missing");
       return { discordId: request.discordId };
@@ -185,6 +190,30 @@ test("admin inbox is status-filtered, paginated, and counted across all records"
   assert.deepEqual(query.range, [25, 49]);
   assert.ok(query.filters.some(([key, value]) => key === "organization_code" && value === "qiunai"));
   assert.equal((await route.GET({ discordId: manager, url: "https://local.test/api/qiunai/workspace?admin=1&status=invalid" })).status, 400);
+});
+
+test("overdue workflow inbox counts only old pending requests in the same organization", async () => {
+  const { route, records, calls } = setup();
+  records.eip_workflow_requests[0].created_at = new Date(Date.now() - 72 * 3600000).toISOString();
+  records.eip_workflow_requests.push({
+    id: "e013ca3e-4e1f-4a6c-815b-f32ce63ddda1", organization_code: "qiunai",
+    template_id: templateId, applicant_discord_id: employee, status: "pending",
+    created_at: new Date(Date.now() - 3600000).toISOString(),
+  });
+  records.eip_workflow_requests.push({
+    id: "e013ca3e-4e1f-4a6c-815b-f32ce63ddda2", organization_code: "deepnight",
+    template_id: templateId, applicant_discord_id: employee, status: "pending",
+    created_at: new Date(Date.now() - 72 * 3600000).toISOString(),
+  });
+  const result = await route.GET({ discordId: manager, url: "https://local.test/api/qiunai/workspace?admin=1&status=pending&overdue=1" });
+  assert.equal(result.status, 200);
+  assert.equal(result.body.workflowTargetHours, 48);
+  assert.equal(result.body.requestSummary.pending, 2);
+  assert.equal(result.body.requestSummary.overdue, 1);
+  assert.equal(result.body.requestPagination.total, 1);
+  assert.equal(result.body.requests[0].id, requestId);
+  assert.ok(calls.some((item) => item.table === "eip_workflow_requests" && item.filters.some(([key, value]) => key === "created_at" && value.lt)));
+  assert.equal((await route.GET({ discordId: manager, url: "https://local.test/api/qiunai/workspace?admin=1&status=approved&overdue=1" })).status, 400);
 });
 
 test("audit history is visible only to its applicant or a scoped manager", async () => {

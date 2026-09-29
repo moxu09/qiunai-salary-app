@@ -34,11 +34,13 @@ type AdminLink = {
 type NotificationCounts = {
   payroll: number;
   approvals: number;
+  workflowOverdue: number;
 };
 
 const EMPTY_NOTIFICATION_COUNTS: NotificationCounts = {
   payroll: 0,
   approvals: 0,
+  workflowOverdue: 0,
 };
 
 const ADMIN_LINKS: AdminLink[] = [
@@ -104,6 +106,7 @@ export default function AdminShell({
     setNotificationCounts({
       payroll: Number(payload.payroll || 0),
       approvals: Number(payload.approvals || 0),
+      workflowOverdue: Number(payload.workflowOverdue || 0),
     });
   }, [access?.isAdmin, embedded, loading, supportOnly]);
 
@@ -249,6 +252,8 @@ export default function AdminShell({
               ? notificationCounts.payroll
               : href === "/admin/approvals"
                 ? notificationCounts.approvals
+                : href === "/admin/workspace"
+                  ? notificationCounts.workflowOverdue
                 : 0;
             return (
               <Link
@@ -260,7 +265,7 @@ export default function AdminShell({
                 <span className="min-w-0 flex-1">{label}</span>
                 {notificationCount > 0 ? (
                   <span
-                    aria-label={`${label}有 ${notificationCount} 筆待處理`}
+                    aria-label={href === "/admin/workspace" ? `${label}有 ${notificationCount} 筆超時流程` : `${label}有 ${notificationCount} 筆待處理`}
                     className="ml-auto inline-flex min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 py-0.5 text-[11px] font-black leading-none text-white shadow-sm shadow-red-950/30"
                   >
                     {notificationCount > 99 ? "99+" : notificationCount}

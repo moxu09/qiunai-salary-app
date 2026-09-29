@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { authorizeErpRequest, erpErrorResponse } from "@/lib/erpAccess";
+import { workflowOverdueBefore } from "@/lib/eipWorkflowSla.mjs";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -14,7 +15,8 @@ export async function GET(request) {
       "canViewAllAdmin",
     );
 
-    const [payroll, approvals] = await Promise.all([
+    const overdueBefore = workflowOverdueBefore();
+    const [payroll, approvals, workflowOverdue] = await Promise.all([
       supabaseAdmin
         .from("salary_withdraw_requests")
         .select("id", { count: "exact", head: true })
@@ -25,15 +27,22 @@ export async function GET(request) {
         .select("id", { count: "exact", head: true })
         .eq("organization_code", "qiunai")
         .eq("status", "pending"),
+      supabaseAdmin
+        .from("eip_workflow_requests")
+        .select("id", { count: "exact", head: true })
+        .eq("organization_code", "qiunai")
+        .eq("status", "pending")
+        .lt("created_at", overdueBefore),
     ]);
 
-    const failed = [payroll, approvals].find((result) => result.error);
+    const failed = [payroll, approvals, workflowOverdue].find((result) => result.error);
     if (failed?.error) throw failed.error;
 
     return NextResponse.json({
       ok: true,
       payroll: payroll.count || 0,
       approvals: approvals.count || 0,
+      workflowOverdue: workflowOverdue.count || 0,
     });
   } catch (error) {
     return erpErrorResponse(error, "讀取待處理通知失敗");

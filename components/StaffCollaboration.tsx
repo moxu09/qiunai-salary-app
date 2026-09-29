@@ -31,6 +31,7 @@ export default function StaffCollaboration({ organization, section, employeeName
   const [sending, setSending] = useState(false);
   const [notice, setNotice] = useState("");
   const [referenceTime, setReferenceTime] = useState(0);
+  const [workflowTargetHours, setWorkflowTargetHours] = useState(48);
   const [existingAnnouncements, setExistingAnnouncements] = useState<ExistingAnnouncement[]>([]);
   const [existingRequests, setExistingRequests] = useState<ExistingRequest[]>([]);
   const [requestHistory, setRequestHistory] = useState<{ item: Submission; audit: AuditEntry[] } | null>(null);
@@ -57,6 +58,7 @@ export default function StaffCollaboration({ organization, section, employeeName
       const result = await authorizedFetch("GET");
       setData({ events: result.events || [], documents: result.documents || [], templates: result.templates || [], requests: result.requests || [] });
       setReferenceTime(Date.now());
+      setWorkflowTargetHours(Number(result.workflowTargetHours || 48));
       if (section === "workspace") {
         const [announcements, hr] = await Promise.allSettled([
           authorizedFetch("GET", undefined, "announcements"),
@@ -70,6 +72,10 @@ export default function StaffCollaboration({ organization, section, employeeName
     finally { setLoading(false); }
   }, [authorizedFetch, section]);
   useEffect(() => { void Promise.resolve().then(refresh); }, [refresh]);
+  useEffect(() => {
+    const timer = window.setInterval(() => setReferenceTime(Date.now()), 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
   const filteredDocuments = useMemo(() => data.documents.filter((item) =>
     (section === "knowledge" ? item.document_type === "knowledge" : item.document_type === "document") &&
     (!query || [item.title, item.category, item.body].some((value) => value.toLocaleLowerCase("zh-TW").includes(query.trim().toLocaleLowerCase("zh-TW"))))
@@ -120,7 +126,7 @@ export default function StaffCollaboration({ organization, section, employeeName
           <div className="eip-collab-columns">
             <div className="eip-collab-panel">
               <div className="eip-collab-panel-head"><h2>我的工作進度</h2><button onClick={() => go("workflows")}>查看所有申請 <ArrowRight size={15} /></button></div>
-              {data.requests.slice(0, 4).map((item) => <button type="button" className="eip-collab-action-row" key={item.id} onClick={() => { void showRequestHistory(item.id); go("workflows"); }}><span><strong>{data.templates.find((entry) => entry.id === item.template_id)?.name || "流程申請"}</strong><small>{time(item.created_at)}</small></span><span className={`eip-collab-status ${item.status}`}>{statusLabel[item.status]}</span></button>)}
+              {data.requests.slice(0, 4).map((item) => <button type="button" className="eip-collab-action-row" key={item.id} onClick={() => { void showRequestHistory(item.id); go("workflows"); }}><span><strong>{data.templates.find((entry) => entry.id === item.template_id)?.name || "流程申請"}</strong><small>{time(item.created_at)}</small></span><span className={`eip-collab-status ${item.status}`}>{item.status === "pending" && referenceTime - new Date(item.created_at).getTime() >= workflowTargetHours * 3600000 ? "超時待處理" : statusLabel[item.status]}</span></button>)}
               {!data.requests.length ? <p className="eip-collab-empty">還沒有申請紀錄，可從流程中心發起。</p> : null}
             </div>
             <div className="eip-collab-panel">
@@ -192,7 +198,7 @@ export default function StaffCollaboration({ organization, section, employeeName
         </div>
         <div className="eip-collab-panel">
           <div className="eip-collab-panel-head"><h2>我的申請</h2><span>{data.requests.length} 筆</span></div>
-          {data.requests.length ? data.requests.map((item) => <div className="eip-collab-request" key={item.id}><span className={`eip-collab-status ${item.status}`}>{statusLabel[item.status]}</span><strong>{data.templates.find((template) => template.id === item.template_id)?.name || "流程申請"}</strong><small>{time(item.created_at)}</small>{item.decision_note ? <p>簽核備註：{item.decision_note}</p> : null}<button type="button" className="eip-collab-inline-action" onClick={() => void showRequestHistory(item.id)}>查看處理歷程</button></div>) : <p className="eip-collab-empty">尚無新流程申請紀錄。</p>}
+          {data.requests.length ? data.requests.map((item) => <div className="eip-collab-request" key={item.id}><span className={`eip-collab-status ${item.status}`}>{item.status === "pending" && referenceTime - new Date(item.created_at).getTime() >= workflowTargetHours * 3600000 ? "超時待處理" : statusLabel[item.status]}</span><strong>{data.templates.find((template) => template.id === item.template_id)?.name || "流程申請"}</strong><small>{time(item.created_at)}</small>{item.status === "pending" ? <p>待辦處理目標：送出後 {workflowTargetHours} 小時；超時仍可繼續追蹤。</p> : null}{item.decision_note ? <p>簽核備註：{item.decision_note}</p> : null}<button type="button" className="eip-collab-inline-action" onClick={() => void showRequestHistory(item.id)}>查看處理歷程</button></div>) : <p className="eip-collab-empty">尚無新流程申請紀錄。</p>}
           {requestHistory ? <section className="eip-collab-history"><h3>申請處理歷程</h3><p><span>1</span> 已送出申請 · {time(requestHistory.item.created_at)}</p>{requestHistory.audit.map((entry, index) => <p key={index}><span>{index + 2}</span> {statusLabel[entry.new_status]} · {time(entry.created_at)}{entry.note ? ` · ${entry.note}` : ""}</p>)}{requestHistory.item.status === "pending" ? <p><span>…</span> 等待管理員簽核</p> : null}<button type="button" onClick={() => setRequestHistory(null)}>關閉</button></section> : null}
         </div>
       </div> : null}
