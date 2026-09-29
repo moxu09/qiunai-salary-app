@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { WorkspaceInputError, validateFields, validateAnswers } from "../lib/eipWorkspaceValidation.mjs";
 import { WORKFLOW_TARGET_HOURS, workflowOverdueBefore } from "../lib/eipWorkflowSla.mjs";
+import { stepsForRole, requestSteps, planWorkflowDecision } from "../lib/eipWorkflowSteps.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const employee = "1206138511535898654";
@@ -14,7 +15,7 @@ const owner = "847840193859682304";
 const templateId = "c14b93bb-1f84-489c-9072-8826a71b3eab";
 const requestId = "9ef13ca3-4e1f-4a6c-815b-f32ce63ddda1";
 
-function setup() {
+function setup({ multistage = false } = {}) {
   const calls = [];
   const records = {
     eip_workspace_events: [
@@ -92,6 +93,10 @@ function setup() {
     answers: validateAnswers,
     WORKFLOW_TARGET_HOURS,
     workflowOverdueBefore,
+    stepsForRole,
+    requestSteps,
+    planWorkflowDecision,
+    process: { env: { EIP_WORKFLOW_MULTISTAGE_ENABLED: multistage ? "true" : "false" } },
     getAuthUserFromRequest: async (_db, request) => {
       if (!request.discordId) throw new Error("missing");
       return { discordId: request.discordId };
@@ -156,6 +161,41 @@ test("owner-only templates reject store manager decisions", async () => {
   records.eip_workflow_templates[0].approver_role = "owner";
   assert.equal((await route.PATCH(request(manager, { kind: "decision", id: requestId, status: "approved" }))).status, 403);
   assert.equal((await route.PATCH(request(owner, { kind: "decision", id: requestId, status: "approved" }))).status, 200);
+});
+
+test("two-stage decision requires manager then a different owner and snapshots the stage", async () => {
+  const { route, records, calls } = setup({ multistage: true });
+  records.eip_workflow_templates[0].approval_steps = ["manager", "owner"];
+  records.eip_workflow_requests[0].approval_steps = ["manager", "owner"];
+  records.eip_workflow_requests[0].approval_step_index = 0;
+  assert.equal((await route.PATCH(request(owner, { kind: "decision", id: requestId, status: "approved" }))).status, 403);
+  const first = await route.PATCH(request(manager, { kind: "decision", id: requestId, status: "approved", note: "初審符合" }));
+  assert.equal(first.status, 200);
+  assert.equal(first.body.stageCompleted, false);
+  assert.equal(first.body.item.status, "pending");
+  assert.equal(first.body.item.approval_step_index, 1);
+  assert.equal(first.body.item.first_approved_by, manager);
+  assert.equal((await route.PATCH(request(manager, { kind: "decision", id: requestId, status: "approved" }))).status, 403);
+  const final = await route.PATCH(request(owner, { kind: "decision", id: requestId, status: "approved", note: "複審通過" }));
+  assert.equal(final.status, 200);
+  assert.equal(final.body.stageCompleted, true);
+  assert.equal(final.body.item.status, "approved");
+  assert.equal(final.body.item.decided_by, owner);
+  const decisions = calls.filter((entry) => entry.table === "eip_workflow_requests" && entry.updated);
+  assert.equal(decisions.length, 2);
+  assert.ok(decisions.every((entry) => entry.filters.some(([key]) => key === "approval_step_index")));
+});
+
+test("two-stage template stays unavailable until its database migration is enabled", async () => {
+  const formFields = [{ key: "reason", label: "事由", type: "text", required: true, options: [] }];
+  const disabled = setup();
+  assert.equal((await disabled.route.POST(request(owner, { kind: "template", name: "採購簽核", approverRole: "manager_then_owner", fields: formFields }))).status, 503);
+  const enabled = setup({ multistage: true });
+  const result = await enabled.route.POST(request(owner, { kind: "template", name: "採購簽核", approverRole: "manager_then_owner", fields: formFields, isActive: true }));
+  assert.equal(result.status, 201);
+  const insert = enabled.calls.find((entry) => entry.table === "eip_workflow_templates" && entry.inserted).inserted;
+  assert.deepEqual(Array.from(insert.approval_steps), ["manager", "owner"]);
+  assert.equal(insert.approver_role, "owner");
 });
 
 test("rejected decisions require a reason", async () => {

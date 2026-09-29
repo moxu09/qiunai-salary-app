@@ -11,7 +11,7 @@ type Item = Record<string, unknown> & { id: string };
 type Data = { events: Item[]; documents: Item[]; templates: Item[]; requests: Item[] };
 type Kind = "overview" | "event" | "document" | "template" | "decision" | "hr-approvals";
 type RequestStatus = "pending" | "approved" | "rejected" | "all";
-type AuditEntry = { old_status: string; new_status: string; actor_discord_id: string; note: string | null; created_at: string };
+type AuditEntry = { old_status: string; new_status: string; actor_discord_id: string; note: string | null; created_at: string; step_index?: number | null };
 type RequestHistory = { item: Item; audit: AuditEntry[] };
 const empty: Data = { events: [], documents: [], templates: [], requests: [] };
 const dateInput = (value: unknown) => {
@@ -40,6 +40,8 @@ export default function AdminWorkspaceManager({ organization }: { organization: 
   const [requestPage, setRequestPage] = useState(1);
   const [requestSummary, setRequestSummary] = useState({ pending: 0, approved: 0, rejected: 0, overdue: 0 });
   const [workflowTargetHours, setWorkflowTargetHours] = useState(48);
+  const [workflowStagesEnabled, setWorkflowStagesEnabled] = useState(false);
+  const [actorRole, setActorRole] = useState("");
   const [hrPending, setHrPending] = useState<number | null>(null);
   const [workspaceSummary, setWorkspaceSummary] = useState({ upcomingEvents: 0, publishedDocuments: 0, activeTemplates: 0 });
   const [requestPagination, setRequestPagination] = useState({ page: 1, pageSize: 25, total: 0 });
@@ -71,6 +73,8 @@ export default function AdminWorkspaceManager({ organization }: { organization: 
       setData({ events: result.events || [], documents: result.documents || [], templates: result.templates || [], requests: result.requests || [] });
       setRequestSummary(result.requestSummary || { pending: 0, approved: 0, rejected: 0, overdue: 0 });
       setWorkflowTargetHours(Number(result.workflowTargetHours || 48));
+      setWorkflowStagesEnabled(result.workflowStagesEnabled === true);
+      setActorRole(String(result.actorRole || ""));
       setWorkspaceSummary(result.workspaceSummary || { upcomingEvents: 0, publishedDocuments: 0, activeTemplates: 0 });
       setRequestPagination(result.requestPagination || { page: 1, pageSize: 25, total: 0 });
       const notificationResponse = await fetch(`/api/${organization}/admin-notifications`, {
@@ -132,8 +136,8 @@ export default function AdminWorkspaceManager({ organization }: { organization: 
     if (status === "rejected" && !decisionNote.trim()) { setError("退回時請填寫原因"); return; }
     try {
       setBusy(true); setError("");
-      await call("PATCH", { kind: "decision", id: item.id, status, note: decisionNote.trim() });
-      setNotice("已記錄簽核決定。"); setDecisionTarget(null); setDecisionNote(""); setHistory(null);
+      const result = await call("PATCH", { kind: "decision", id: item.id, status, note: decisionNote.trim() });
+      setNotice(status === "approved" && result.stageCompleted === false ? "初審已通過，申請已送交最高管理員複審。" : "已記錄簽核決定。"); setDecisionTarget(null); setDecisionNote(""); setHistory(null);
       if (requestStatus !== "all" && requestPage > 1 && data.requests.length === 1) {
         setRequestPage((page) => page - 1);
       } else {
@@ -217,7 +221,8 @@ export default function AdminWorkspaceManager({ organization }: { organization: 
         </> : <>
           <label>流程名稱<input required maxLength={100} value={String(form.name || "")} onChange={(event) => update("name", event.target.value)} /></label>
           <label>說明<textarea maxLength={2000} value={String(form.description || "")} onChange={(event) => update("description", event.target.value)} /></label>
-          <label>簽核權限<select value={String(form.approverRole || "manager")} onChange={(event) => update("approverRole", event.target.value)}><option value="manager">店經理／最高管理員</option><option value="owner">僅最高管理員</option></select></label>
+          <label>簽核流程<select value={String(form.approverRole || "manager")} onChange={(event) => update("approverRole", event.target.value)}><option value="manager">單關：店經理或最高管理員</option><option value="owner">單關：最高管理員</option>{workflowStagesEnabled ? <option value="manager_then_owner">兩關：店經理初審 → 最高管理員複審</option> : null}</select></label>
+          {workflowStagesEnabled && form.approverRole === "manager_then_owner" ? <p className="eip-collab-helper">兩關需由不同人簽核，初審僅限店經理、複審僅限最高管理員；請先確認兩種角色均有人員可處理。</p> : null}
           <div className="eip-collab-field-list"><h3>表單欄位</h3>{fields.map((field, index) => <div className="eip-collab-field" key={index}>
             <label>欄位代碼<input required pattern="[a-z][a-z0-9_]*" value={field.key} onChange={(event) => update("fields", fields.map((entry, i) => i === index ? { ...entry, key: event.target.value } : entry))} /></label>
             <label>顯示名稱<input required value={field.label} onChange={(event) => update("fields", fields.map((entry, i) => i === index ? { ...entry, label: event.target.value } : entry))} /></label>
@@ -232,7 +237,7 @@ export default function AdminWorkspaceManager({ organization }: { organization: 
       </form>
       <div className="eip-collab-panel"><div className="eip-collab-panel-head"><h2>已建立項目</h2></div>
         {(section === "event" ? data.events : section === "document" ? data.documents : data.templates).map((item) =>
-          <div className="eip-collab-admin-item" key={item.id}><span>{section === "event" ? String(item.starts_at || "") : section === "document" ? `${item.document_type === "knowledge" ? "知識" : "文件"} · v${item.version}` : String(item.approver_role === "owner" ? "最高管理員簽核" : "經理簽核")}</span><strong>{String(item.title || item.name || "")}</strong><small>{item.is_published || item.is_active ? "已發布" : "草稿／停用"}</small><div><button onClick={() => edit(section, item)}>編輯</button>{section === "document" ? <button onClick={() => void showRevisions(item)}>歷史版本</button> : null}</div></div>)}
+          <div className="eip-collab-admin-item" key={item.id}><span>{section === "event" ? String(item.starts_at || "") : section === "document" ? `${item.document_type === "knowledge" ? "知識" : "文件"} · v${item.version}` : Array.isArray(item.approval_steps) && item.approval_steps.length === 2 ? "經理初審 → 最高管理員複審" : String(item.approver_role === "owner" ? "最高管理員簽核" : "經理簽核")}</span><strong>{String(item.title || item.name || "")}</strong><small>{item.is_published || item.is_active ? "已發布" : "草稿／停用"}</small><div><button onClick={() => edit(section, item)}>編輯</button>{section === "document" ? <button onClick={() => void showRevisions(item)}>歷史版本</button> : null}</div></div>)}
         {revisions.length ? <div className="eip-collab-revisions"><h3>歷史版本</h3>{revisions.map((item) => <details key={String(item.version)}><summary>v{String(item.version)} · {String(item.title)} · {String(item.changed_at)}</summary><pre>{String(item.body)}</pre></details>)}</div> : null}
         {section === "document" ? editing ? <WorkspaceDocumentFiles key={editing.id} organization={organization} documentId={editing.id} admin /> : <p className="eip-collab-helper">先儲存文章，即可為這篇知識或文件上傳附件。</p> : null}
       </div>
@@ -243,22 +248,28 @@ export default function AdminWorkspaceManager({ organization }: { organization: 
         <button type="button" key={status} className={!overdueOnly && requestStatus === status ? "is-active" : ""} onClick={() => changeStatus(status)}>{label} <span>{count}</span></button>)}<button type="button" className={overdueOnly ? "is-active" : ""} onClick={showOverdue}>超時待辦 <span>{requestSummary.overdue}</span></button></div>
       {data.requests.map((item) => {
         const template = data.templates.find((entry) => entry.id === item.template_id);
+        const steps = Array.isArray(item.approval_steps) ? item.approval_steps : [template?.approver_role === "owner" ? "owner" : "manager"];
+        const currentStep = Math.min(Number(item.approval_step_index || 0), steps.length - 1);
+        const stepRole = steps[currentStep];
+        const canAct = !workflowStagesEnabled || (stepRole === "owner" ? actorRole === "super_admin" : steps.length === 2 ? actorRole === "store_manager" : actorRole === "store_manager" || actorRole === "super_admin");
         const values = item.form_data && typeof item.form_data === "object" ? Object.entries(item.form_data as Record<string, unknown>) : [];
         return <article className="eip-collab-admin-item" key={item.id}>
           <span>{String(item.created_at || "").slice(0, 16).replace("T", " ")} · {String(item.status === "pending" ? (Date.now() - new Date(String(item.created_at)).getTime() >= workflowTargetHours * 3600000 ? `超過 ${workflowTargetHours} 小時未處理` : "待簽核") : item.status === "approved" ? "已核准" : "已退回")}</span>
           <strong>{String(template?.name || "流程申請")} · {String(item.applicant_name || "")}</strong>
+          {workflowStagesEnabled && steps.length === 2 ? <p>第 {currentStep + 1}／2 關：{stepRole === "manager" ? "店經理初審" : "最高管理員複審"}{item.first_approved_by ? ` · 初審人 ${String(item.first_approved_by)}` : ""}</p> : null}
           <div className="eip-collab-answers">{values.map(([key, value]) => <p key={key}><b>{String((template?.fields as Field[] || []).find((field) => field.key === key)?.label || key)}：</b>{String(value)}</p>)}</div>
           {item.decision_note ? <p>簽核備註：{String(item.decision_note)}</p> : null}
-          <div><button type="button" onClick={() => void showHistory(item)}>處理歷程</button>{item.status === "pending" ? <>
+          <div><button type="button" onClick={() => void showHistory(item)}>處理歷程</button>{item.status === "pending" && canAct ? <>
             <button type="button" disabled={busy} onClick={() => { setDecisionTarget({ id: item.id, status: "approved" }); setDecisionNote(""); }}>核准</button>
             <button type="button" disabled={busy} onClick={() => { setDecisionTarget({ id: item.id, status: "rejected" }); setDecisionNote(""); }}>退回</button>
           </> : null}</div>
-          {decisionTarget?.id === item.id ? <div className="eip-admin-decision-editor"><label>{decisionTarget.status === "rejected" ? "退回原因（必填）" : "簽核備註（選填）"}<textarea maxLength={2000} value={decisionNote} onChange={(event) => setDecisionNote(event.target.value)} /></label><div><button type="button" disabled={busy} onClick={() => setDecisionTarget(null)}>取消</button><button type="button" disabled={busy} onClick={() => void decide(item, decisionTarget.status)}>{busy ? "處理中…" : "確認送出"}</button></div></div> : null}
+          {item.status === "pending" && !canAct ? <p className="eip-collab-helper">目前關卡由{stepRole === "owner" ? "最高管理員" : "店經理"}處理。</p> : null}
+          {decisionTarget?.id === item.id ? <div className="eip-admin-decision-editor"><label>{decisionTarget.status === "rejected" ? "退回原因（必填）" : "簽核備註（選填）"}<textarea maxLength={2000} value={decisionNote} onChange={(event) => setDecisionNote(event.target.value)} /></label><div><button type="button" disabled={busy} onClick={() => setDecisionTarget(null)}>取消</button><button type="button" disabled={busy} onClick={() => void decide(item, decisionTarget.status)}>{busy ? "處理中…" : decisionTarget.status === "approved" && steps.length === 2 && currentStep === 0 ? "通過初審並送交複審" : "確認送出"}</button></div></div> : null}
         </article>;
       })}
       {!data.requests.length ? <p className="eip-collab-empty">此篩選條件目前沒有申請。</p> : null}
       <div className="eip-admin-pagination"><span>第 {requestPagination.page} / {totalPages} 頁</span><button type="button" disabled={requestPage <= 1} onClick={() => setRequestPage((page) => page - 1)}>上一頁</button><button type="button" disabled={requestPage >= totalPages} onClick={() => setRequestPage((page) => page + 1)}>下一頁</button></div>
-      {history ? <section className="eip-admin-history"><h3>處理歷程 · {String(history.item.applicant_name || "員工")}</h3><p>申請建立：{String(history.item.created_at || "").replace("T", " ").slice(0, 16)}</p>{history.audit.map((entry, index) => <p key={index}>{entry.new_status === "approved" ? "已核准" : "已退回"} · {entry.created_at.replace("T", " ").slice(0, 16)}{entry.note ? ` · ${entry.note}` : ""}</p>)}<button type="button" onClick={() => setHistory(null)}>關閉歷程</button></section> : null}
+      {history ? <section className="eip-admin-history"><h3>處理歷程 · {String(history.item.applicant_name || "員工")}</h3><p>申請建立：{String(history.item.created_at || "").replace("T", " ").slice(0, 16)}</p>{history.audit.map((entry, index) => <p key={index}>{entry.new_status === "pending" ? `第 ${Number(entry.step_index ?? 0) + 1} 關通過` : entry.new_status === "approved" ? "已核准" : "已退回"} · {entry.created_at.replace("T", " ").slice(0, 16)} · 處理人 {entry.actor_discord_id}{entry.note ? ` · ${entry.note}` : ""}</p>)}<button type="button" onClick={() => setHistory(null)}>關閉歷程</button></section> : null}
     </div> : null}
   </main>;
 }
