@@ -112,3 +112,24 @@ test("long staff directories scroll inside the chat instead of hiding the compos
   assert.match(css, /\.eip-messages-contacts\s*\{[^}]*min-height:\s*0[^}]*overflow:\s*hidden/s);
   assert.match(css, /\.eip-messages-contact-list\s*\{[^}]*min-height:\s*0[^}]*overflow-y:\s*auto/s);
 });
+
+test("chat stays mounted as a bottom-right pop-up across staff pages", () => {
+  const css = readFileSync(join(root, "app/globals.css"), "utf8");
+  const page = readFileSync(join(root, "app/staff/page.tsx"), "utf8");
+  const widget = readFileSync(join(root, "components/StaffMessages.tsx"), "utf8");
+  assert.match(css, /\.eip-messages\s*\{[^}]*position:\s*fixed[^}]*right:\s*24px[^}]*bottom:\s*94px/s);
+  assert.match(page, /<StaffMessages organization="qiunai"[^>]*open=\{chatOpen\}/);
+  assert.doesNotMatch(page, /activeTab === "messages"\s*\?\s*<StaffMessages/);
+  assert.match(widget, /eip-messages-launcher/);
+  assert.match(widget, /unreadCount/);
+  assert.match(widget, /searchParams\.get\("chat"\)/);
+  assert.match(widget, /if \(!selectedPeerId \|\| !open\) return/);
+});
+
+test("new Qiunai messages are atomically queued for Xiao Nai without exposing the queue to browsers", () => {
+  const sql = readFileSync(join(root, "supabase/migrations/20260929180000_qiunai_eip_message_notifications.sql"), "utf8");
+  assert.match(sql, /after insert on public\.eip_direct_messages/i);
+  assert.match(sql, /new\.organization_code = 'qiunai'/i);
+  assert.match(sql, /on conflict \(message_id\) do nothing/i);
+  assert.match(sql, /revoke all on public\.qiunai_eip_message_notifications from public, anon, authenticated/i);
+});

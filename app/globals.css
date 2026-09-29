@@ -1694,7 +1694,39 @@ input.erp-login-icon-input[type][class] {
   .eip-messages-contacts, .eip-messages-thread { height: 100%; border: 0; }
   .eip-messages-contacts.has-selection, .eip-messages-thread:not(.has-selection) { display: none; }
   .eip-messages-back { display: grid; place-items: center; }
-  .eip-messages-bubble { max-width: 90%; }
+.eip-messages-bubble { max-width: 90%; }
+}
+.eip-messages {
+  position: fixed;
+  right: 24px;
+  bottom: 94px;
+  z-index: 90;
+  width: min(390px, calc(100vw - 24px));
+  margin: 0;
+  overflow: visible;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.eip-messages-launcher { display: flex; align-items: center; gap: 9px; margin-left: auto; padding: 12px 16px; border-radius: 22px; color: #fff; background: var(--msg-accent); box-shadow: 0 12px 30px #233e6050; font-size: 13px; font-weight: 800; cursor: pointer; }
+.eip-messages-launcher b { display: grid; min-width: 22px; height: 22px; padding: 0 5px; place-items: center; border-radius: 12px; color: var(--msg-accent); background: #fff; font-size: 11px; }
+.eip-messages-panel { display: flex; flex-direction: column; height: min(610px, calc(100dvh - 120px)); min-height: 300px; overflow: hidden; border: 1px solid var(--msg-line); border-radius: 18px; background: #fff; box-shadow: 0 20px 60px #21384e38; }
+.eip-messages-heading { flex: 0 0 auto; gap: 10px; padding: 12px 14px; }
+.eip-messages-heading-icon { flex-basis: 36px; height: 36px; border-radius: 11px; }
+.eip-messages-heading h2 { font-size: 16px; }
+.eip-messages-heading span:not(.eip-messages-heading-icon) { font-size: 10px; }
+.eip-messages-close { display: grid; flex: 0 0 32px; height: 32px; margin-left: auto; place-items: center; border-radius: 9px; color: #74899a; cursor: pointer; }
+.eip-messages-close:hover { color: var(--msg-accent); background: var(--msg-soft); }
+.eip-messages-layout { display: block; flex: 1; height: auto; min-height: 0; }
+.eip-messages-contacts, .eip-messages-thread { height: 100%; border: 0; }
+.eip-messages-contacts.has-selection, .eip-messages-thread:not(.has-selection) { display: none; }
+.eip-messages-back { display: grid; place-items: center; }
+.eip-messages-thread-header { min-height: 56px; padding: 8px 12px; }
+.eip-messages-compose { padding: 10px; }
+.eip-messages-compose textarea { resize: none; }
+@media (max-width: 680px) {
+  .eip-messages { right: 12px; bottom: 82px; width: calc(100vw - 24px); }
+  .eip-messages-panel { height: min(560px, calc(100dvh - 102px)); min-height: 240px; }
 }
 .eip-collaboration,.eip-admin-workspace{font-family:inherit;color:#18283e;max-width:1380px;margin:0 auto;padding:24px 18px 64px}
 .eip-collab-hero{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;padding:34px 36px;margin-bottom:20px;border:1px solid #dbe8f3;border-radius:26px;background:linear-gradient(120deg,#f5faff,#fff 58%,#eef9f7);box-shadow:0 20px 48px #315d8710}

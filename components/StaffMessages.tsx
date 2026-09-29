@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
-import { ArrowLeft, MessageCircle, Search, Send, UsersRound } from "lucide-react";
+import { useCallback, useEffect, useRef, useState, type Dispatch, type FormEvent, type SetStateAction } from "react";
+import { ArrowLeft, MessageCircle, Search, Send, UsersRound, X } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
 type Contact = {
@@ -25,6 +25,8 @@ type DirectMessage = {
 type Props = {
   organization: "qiunai" | "deepnight";
   myDiscordId: string;
+  open: boolean;
+  onOpenChange: Dispatch<SetStateAction<boolean>>;
 };
 
 function dateText(value: string) {
@@ -34,7 +36,7 @@ function dateText(value: string) {
   }).format(date);
 }
 
-export default function StaffMessages({ organization, myDiscordId }: Props) {
+export default function StaffMessages({ organization, myDiscordId, open, onOpenChange }: Props) {
   const apiPath = `/api/${organization}/messages`;
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [selectedPeerId, setSelectedPeerId] = useState<string | null>(null);
@@ -50,6 +52,7 @@ export default function StaffMessages({ organization, myDiscordId }: Props) {
   const initialScrollRef = useRef(false);
   const threadRef = useRef<HTMLDivElement | null>(null);
   const selected = contacts.find((contact) => contact.discordId === selectedPeerId);
+  const unreadCount = contacts.reduce((total, contact) => total + contact.unreadCount, 0);
   const visibleContacts = contacts.filter((contact) =>
     !search.trim() || [contact.name, contact.discordId].some((text) =>
       text.toLocaleLowerCase("zh-TW").includes(search.trim().toLocaleLowerCase("zh-TW"))
@@ -92,7 +95,22 @@ export default function StaffMessages({ organization, myDiscordId }: Props) {
   }, [loadContacts]);
 
   useEffect(() => {
-    if (!selectedPeerId) return;
+    if (!contacts.length) return;
+    const url = new URL(window.location.href);
+    const peerId = url.searchParams.get("chat");
+    if (!peerId || !contacts.some((contact) => contact.discordId === peerId)) return;
+    currentPeerRef.current = peerId;
+    initialScrollRef.current = true;
+    setSelectedPeerId(peerId);
+    setLoadingThread(true);
+    onOpenChange(true);
+    url.searchParams.delete("chat");
+    url.searchParams.delete("notice");
+    window.history.replaceState(window.history.state, "", url.toString());
+  }, [contacts, onOpenChange]);
+
+  useEffect(() => {
+    if (!selectedPeerId || !open) return;
     let cancelled = false;
     async function load() {
       try {
@@ -114,7 +132,7 @@ export default function StaffMessages({ organization, myDiscordId }: Props) {
     void Promise.resolve().then(load);
     const timer = window.setInterval(() => { void load(); }, 5000);
     return () => { cancelled = true; window.clearInterval(timer); };
-  }, [apiPath, authorizedFetch, selectedPeerId, loadContacts]);
+  }, [apiPath, authorizedFetch, selectedPeerId, open, loadContacts]);
 
   useEffect(() => {
     if (loadingThread || !threadRef.current) return;
@@ -173,9 +191,13 @@ export default function StaffMessages({ organization, myDiscordId }: Props) {
 
   return (
     <section className={`eip-messages eip-messages-${organization}`} aria-label="員工通訊與對話">
+      {!open ? <button type="button" className="eip-messages-launcher" onClick={() => onOpenChange(true)} aria-label={`開啟員工訊息${unreadCount ? `，${unreadCount} 則未讀` : ""}`}>
+        <MessageCircle size={21} /><span>員工訊息</span>{unreadCount > 0 ? <b>{unreadCount > 99 ? "99+" : unreadCount}</b> : null}
+      </button> : <div className="eip-messages-panel">
       <div className="eip-messages-heading">
         <span className="eip-messages-heading-icon"><UsersRound size={23} /></span>
         <div><p>TEAM COMMUNICATION</p><h2>員工訊息</h2><span>與同公司的在職員工一對一聯絡</span></div>
+        <button type="button" className="eip-messages-close" onClick={() => onOpenChange(false)} aria-label="收合員工訊息"><X size={19} /></button>
       </div>
       {error ? <div role="alert" className="eip-messages-error">{error}</div> : null}
       <div className="eip-messages-layout">
@@ -205,6 +227,7 @@ export default function StaffMessages({ organization, myDiscordId }: Props) {
           </>}
         </div>
       </div>
+      </div>}
     </section>
   );
 }

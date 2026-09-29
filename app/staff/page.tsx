@@ -231,6 +231,7 @@ export default function StaffPage() {
   );
   const salaryMonthMounted = useRef(false);
   const [activeTab, setActiveTab] = useState<PortalTab>("workspace");
+  const [chatOpen, setChatOpen] = useState(false);
   const [canViewDeviceAudit, setCanViewDeviceAudit] = useState(false);
 
   const [profileForm, setProfileForm] = useState({
@@ -1197,12 +1198,12 @@ export default function StaffPage() {
 
       <section id="overview" className="staff-workspace-section relative z-10 scroll-mt-24">
         <div className="staff-portal-grid">
-          <StaffPortalNav activeTab={activeTab} onSelect={setActiveTab} employeeName={staff.display_name || staff.discord_name || staff.discord_id} company="秋奈電競陪玩" showDeviceAudit={canViewDeviceAudit} />
+          <StaffPortalNav activeTab={chatOpen ? "messages" : activeTab} onSelect={(tab) => { if (tab === "messages") setChatOpen(true); else setActiveTab(tab); }} employeeName={staff.display_name || staff.discord_name || staff.discord_id} company="秋奈電競陪玩" showDeviceAudit={canViewDeviceAudit} />
 
           <div className="staff-main-column min-w-0">
         <HrPortalPanel activeTab={activeTab} apiPath="/api/qiunai/hr" department="秋奈電競陪玩" staffName={staff.display_name || staff.discord_name || staff.discord_id} selectedMonth={hrSelectedMonth} onMonthChange={setHrSelectedMonth} />
-        {(["workspace", "calendar", "documents", "knowledge", "workflows"] as const).includes(activeTab as "workspace") ? <StaffCollaboration organization="qiunai" section={activeTab as "workspace" | "calendar" | "documents" | "knowledge" | "workflows"} employeeName={staff.display_name || staff.discord_name || staff.discord_id} onSelect={(tab) => setActiveTab(tab as PortalTab)} /> : null}
-        {activeTab === "messages" ? <StaffMessages organization="qiunai" myDiscordId={staff.discord_id} /> : null}
+        {(["workspace", "calendar", "documents", "knowledge", "workflows"] as const).includes(activeTab as "workspace") ? <StaffCollaboration organization="qiunai" section={activeTab as "workspace" | "calendar" | "documents" | "knowledge" | "workflows"} employeeName={staff.display_name || staff.discord_name || staff.discord_id} onSelect={(tab) => { if (tab === "messages") setChatOpen(true); else setActiveTab(tab as PortalTab); }} /> : null}
+        <StaffMessages organization="qiunai" myDiscordId={staff.discord_id} open={chatOpen} onOpenChange={setChatOpen} />
         {activeTab === "activities" ? <ActivityPortal /> : null}
         {activeTab === "downloads" ? <StaffInstallerDownloads /> : null}
         {activeTab === "device-audit" && canViewDeviceAudit ? (
