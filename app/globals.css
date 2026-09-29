@@ -1794,6 +1794,9 @@ input.erp-login-icon-input[type][class] {
 .eip-workspace-files .eip-collab-panel-head{margin-bottom:8px}
 .eip-workspace-files h3{display:flex;align-items:center;gap:8px;margin:0;color:#23445e;font-size:16px;font-weight:800}
 .eip-workspace-file-list{display:grid;gap:8px}
+.eip-workspace-file-list > div{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;border:1px solid #deebf3;border-radius:11px;background:white}
+.eip-workspace-file-list > div span{display:grid;gap:4px;min-width:0}
+.eip-workspace-file-list > div button{flex:none;width:auto;padding:7px 10px;background:#fff0f0;color:#9d3650}
 .eip-workspace-file-list button{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;padding:12px 14px;border:1px solid #deebf3;border-radius:11px;background:#f9fcff;color:#2c6e9c;text-align:left;cursor:pointer}
 .eip-workspace-file-list button:hover{border-color:#8ec5e7;background:#edf8ff}
 .eip-workspace-file-list button span{display:grid;gap:4px;min-width:0}

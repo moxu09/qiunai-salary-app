@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState, type FormEvent } from "react";
-import { ArrowRight, BookOpenText, CalendarDays, ClipboardCheck, FileText, LayoutDashboard, Plus, Save } from "lucide-react";
+import { ArrowRight, BookOpenText, CalendarDays, ClipboardCheck, FileText, FileUp, LayoutDashboard, Plus, Save } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import WorkspaceDocumentFiles from "@/components/WorkspaceDocumentFiles";
 import AdminApprovals from "@/components/AdminApprovals";
@@ -20,6 +20,8 @@ const dateInput = (value: unknown) => {
   return Number.isNaN(date.getTime()) ? "" : new Date(date.getTime() + 8 * 3600000).toISOString().slice(0, 16);
 };
 const blankField = (index: number): Field => ({ key: `field_${index}`, label: "", type: "text", required: true, options: [] });
+const MAX_DOCUMENT_FILE_BYTES = 25 * 1024 * 1024;
+const DOCUMENT_FILE_EXTENSIONS = new Set(["pdf", "doc", "docx", "xls", "xlsx", "csv", "ppt", "pptx", "txt", "rtf", "jpg", "jpeg", "png", "webp", "gif", "heic", "zip", "rar", "7z"]);
 const initial = {
   event: { title: "", details: "", location: "", startsAt: "", endsAt: "", isPublished: true },
   document: { documentType: "knowledge", category: "一般", title: "", body: "", isPublished: false },
@@ -30,6 +32,8 @@ export default function AdminWorkspaceManager({ organization }: { organization: 
   const [section, setSection] = useState<Kind>("overview");
   const [form, setForm] = useState<Record<string, unknown>>(initial.event);
   const [editing, setEditing] = useState<Item | null>(null);
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
+  const [fileRefreshKey, setFileRefreshKey] = useState(0);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -91,6 +95,7 @@ export default function AdminWorkspaceManager({ organization }: { organization: 
   useEffect(() => { void Promise.resolve().then(refresh); }, [refresh]);
   function choose(next: Kind) {
     setSection(next); setEditing(null); setRevisions([]);
+    setPendingFiles([]);
     if (next === "overview") { setRequestStatus("pending"); setRequestPage(1); setOverdueOnly(false); }
     setForm(next === "decision" || next === "overview" || next === "hr-approvals" ? {} : { ...initial[next] });
     setError(""); setNotice("");
@@ -102,6 +107,30 @@ export default function AdminWorkspaceManager({ organization }: { organization: 
     if (kind === "template") setForm({ isActive: item.is_active });
   }
   const update = (key: string, value: unknown) => setForm((current) => ({ ...current, [key]: value }));
+  function selectDocumentFiles(files: FileList | null) {
+    if (!files?.length) return;
+    const selected = Array.from(files);
+    if (pendingFiles.length + selected.length > 20) { setError("每篇文件最多可附加 20 個檔案"); return; }
+    for (const file of selected) {
+      if (file.size === 0 || file.size > MAX_DOCUMENT_FILE_BYTES) { setError("附件不得為空，且單檔最多 25 MB"); return; }
+      if (!DOCUMENT_FILE_EXTENSIONS.has(file.name.split(".").pop()?.toLowerCase() || "")) { setError(`不支援 ${file.name} 的檔案格式`); return; }
+    }
+    setPendingFiles((current) => [...current, ...selected]);
+    setError("");
+  }
+  async function uploadDocumentFile(documentId: string, file: File) {
+    const { data: auth } = await supabase.auth.getSession();
+    if (!auth.session) throw new Error("登入已過期，請重新登入");
+    const body = new FormData();
+    body.set("documentId", documentId);
+    body.set("file", file);
+    const response = await fetch(`/api/${organization}/workspace/files?documentId=${encodeURIComponent(documentId)}&admin=1`, {
+      method: "POST", cache: "no-store",
+      headers: { Authorization: `Bearer ${auth.session.access_token}` }, body,
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(result.message || `上傳 ${file.name} 失敗`);
+  }
   async function submit(event: FormEvent) {
     event.preventDefault();
     try {
@@ -120,12 +149,39 @@ export default function AdminWorkspaceManager({ organization }: { organization: 
         payload.id = editing.id;
         if (section === "document") payload.version = editing.version;
       }
+      const holdPublication = section === "document" && pendingFiles.length > 0 && Boolean(form.isPublished) && !Boolean(editing?.is_published);
+      if (holdPublication) payload.isPublished = false;
       const result = await call(editing ? "PATCH" : "POST", payload);
-      setNotice(section === "document" ? "文件已儲存，可在右側管理附件。" : editing ? "已儲存變更。" : "已建立；發布狀態依設定生效。");
       if (section === "document") {
-        setEditing(result.item);
-        setForm((current) => ({ ...current, body: result.item.body }));
+        let saved = result.item as Item;
+        setEditing(saved);
+        setForm((current) => ({ ...current, body: saved.body, isPublished: holdPublication ? current.isPublished : saved.is_published }));
+        for (let index = 0; index < pendingFiles.length; index += 1) {
+          try {
+            await uploadDocumentFile(saved.id, pendingFiles[index]);
+          } catch (caught) {
+            setPendingFiles(pendingFiles.slice(index));
+            setFileRefreshKey((current) => current + 1);
+            await refresh();
+            throw new Error(`文件已儲存${holdPublication ? "為草稿" : ""}，但附件「${pendingFiles[index].name}」上傳失敗：${caught instanceof Error ? caught.message : "請稍後重試"}。其餘檔案仍在待上傳清單。`);
+          }
+          setPendingFiles(pendingFiles.slice(index + 1));
+        }
+        if (pendingFiles.length) setFileRefreshKey((current) => current + 1);
+        if (holdPublication) {
+          try {
+            const published = await call("PATCH", { ...form, kind: "document", id: saved.id, version: saved.version, isPublished: true });
+            saved = published.item;
+            setEditing(saved);
+            setForm((current) => ({ ...current, body: saved.body, isPublished: true }));
+          } catch (caught) {
+            await refresh();
+            throw new Error(`附件已上傳，但發布失敗；文件仍是草稿。請按「儲存」重試發布：${caught instanceof Error ? caught.message : "請稍後重試"}`);
+          }
+        }
+        setNotice(pendingFiles.length ? `文件已儲存並上傳 ${pendingFiles.length} 個附件${saved.is_published ? "，已發布給員工" : ""}。` : "文件已儲存；可在下方直接選檔上傳附件。");
       } else {
+        setNotice(editing ? "已儲存變更。" : "已建立；發布狀態依設定生效。");
         setEditing(null); setForm({ ...initial[section as keyof typeof initial] });
       }
       await refresh();
@@ -213,6 +269,11 @@ export default function AdminWorkspaceManager({ organization }: { organization: 
           <label>標題<input required maxLength={120} value={String(form.title || "")} onChange={(event) => update("title", event.target.value)} /></label>
           <label>分類<input required maxLength={50} value={String(form.category || "")} onChange={(event) => update("category", event.target.value)} /></label>
           <label>內容（可留空，改用附件提供全文）<textarea rows={12} maxLength={30000} value={String(form.body || "")} onChange={(event) => update("body", event.target.value)} /></label>
+          <div className="eip-workspace-upload">
+            <label><FileUp size={17} /> 上傳共享文件／知識庫附件<input type="file" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.ppt,.pptx,.txt,.rtf,.jpg,.jpeg,.png,.webp,.gif,.heic,.zip,.rar,.7z" onChange={(event) => { selectDocumentFiles(event.target.files); event.currentTarget.value = ""; }} /></label>
+            <p>可先選檔，再按「儲存並上傳」；不必先建立空白文章。若勾選發布，附件上傳完成前會先維持草稿。單檔最多 25 MB，每篇最多 20 個附件。</p>
+            {pendingFiles.length ? <div className="eip-workspace-file-list">{pendingFiles.map((file, index) => <div key={`${file.name}-${file.lastModified}-${index}`}><span><strong>{file.name}</strong><small>{(file.size / 1024 / 1024).toFixed(1)} MB · 待上傳</small></span><button type="button" onClick={() => setPendingFiles((current) => current.filter((_, at) => at !== index))}>移除</button></div>)}</div> : null}
+          </div>
           <label className="eip-collab-check"><input type="checkbox" checked={Boolean(form.isPublished)} onChange={(event) => update("isPublished", event.target.checked)} /> 發布給員工</label>
           {editing ? <p className="eip-collab-helper">儲存時會保留前一版，可於右側查看修訂紀錄。</p> : null}
         </> : editing ? <>
@@ -233,13 +294,13 @@ export default function AdminWorkspaceManager({ organization }: { organization: 
           </div>)}<button type="button" disabled={fields.length >= 12} onClick={() => update("fields", [...fields, blankField(fields.length + 1)])}><Plus size={15} /> 新增欄位</button></div>
           <label className="eip-collab-check"><input type="checkbox" checked={Boolean(form.isActive)} onChange={(event) => update("isActive", event.target.checked)} /> 立即開放申請</label>
         </>}
-        <div className="eip-collab-form-actions">{editing ? <button type="button" onClick={() => choose(section)}>取消編輯</button> : null}<button disabled={busy} type="submit"><Save size={15} /> {busy ? "儲存中…" : "儲存"}</button></div>
+        <div className="eip-collab-form-actions">{editing ? <button type="button" onClick={() => choose(section)}>取消編輯</button> : null}<button disabled={busy} type="submit"><Save size={15} /> {busy ? "儲存中…" : section === "document" && pendingFiles.length ? `儲存並上傳 ${pendingFiles.length} 個附件` : "儲存"}</button></div>
       </form>
       <div className="eip-collab-panel"><div className="eip-collab-panel-head"><h2>已建立項目</h2></div>
         {(section === "event" ? data.events : section === "document" ? data.documents : data.templates).map((item) =>
-          <div className="eip-collab-admin-item" key={item.id}><span>{section === "event" ? String(item.starts_at || "") : section === "document" ? `${item.document_type === "knowledge" ? "知識" : "文件"} · v${item.version}` : Array.isArray(item.approval_steps) && item.approval_steps.length === 2 ? "經理初審 → 最高管理員複審" : String(item.approver_role === "owner" ? "最高管理員簽核" : "經理簽核")}</span><strong>{String(item.title || item.name || "")}</strong><small>{item.is_published || item.is_active ? "已發布" : "草稿／停用"}</small><div><button onClick={() => edit(section, item)}>編輯</button>{section === "document" ? <button onClick={() => void showRevisions(item)}>歷史版本</button> : null}</div></div>)}
+          <div className="eip-collab-admin-item" key={item.id}><span>{section === "event" ? String(item.starts_at || "") : section === "document" ? `${item.document_type === "knowledge" ? "知識" : "文件"} · v${item.version}` : Array.isArray(item.approval_steps) && item.approval_steps.length === 2 ? "經理初審 → 最高管理員複審" : String(item.approver_role === "owner" ? "最高管理員簽核" : "經理簽核")}</span><strong>{String(item.title || item.name || "")}</strong><small>{item.is_published || item.is_active ? "已發布" : "草稿／停用"}</small><div><button onClick={() => edit(section, item)}>{section === "document" ? "編輯／上傳附件" : "編輯"}</button>{section === "document" ? <button onClick={() => void showRevisions(item)}>歷史版本</button> : null}</div></div>)}
         {revisions.length ? <div className="eip-collab-revisions"><h3>歷史版本</h3>{revisions.map((item) => <details key={String(item.version)}><summary>v{String(item.version)} · {String(item.title)} · {String(item.changed_at)}</summary><pre>{String(item.body)}</pre></details>)}</div> : null}
-        {section === "document" ? editing ? <WorkspaceDocumentFiles key={editing.id} organization={organization} documentId={editing.id} admin /> : <p className="eip-collab-helper">先儲存文章，即可為這篇知識或文件上傳附件。</p> : null}
+        {section === "document" ? editing ? <WorkspaceDocumentFiles key={`${editing.id}:${fileRefreshKey}`} organization={organization} documentId={editing.id} admin /> : <p className="eip-collab-helper">左側可直接選擇檔案，填妥標題後按「儲存並上傳」。</p> : null}
       </div>
     </div> : null}
     {section === "hr-approvals" ? <AdminApprovals apiPath={`/api/${organization}/hr`} embedded onPendingChange={onHrPendingChange} /> : null}
