@@ -16,6 +16,14 @@ const requestId = "9ef13ca3-4e1f-4a6c-815b-f32ce63ddda1";
 function setup() {
   const calls = [];
   const records = {
+    eip_workspace_events: [
+      { id: "future-event", organization_code: "qiunai", is_published: true, ends_at: "2100-01-01T00:00:00Z" },
+      { id: "past-event", organization_code: "qiunai", is_published: true, ends_at: "2020-01-01T00:00:00Z" },
+    ],
+    eip_workspace_documents: [
+      { id: "published-doc", organization_code: "qiunai", is_published: true },
+      { id: "draft-doc", organization_code: "qiunai", is_published: false },
+    ],
     qiunai_staff: [
       { discord_id: employee, display_name: "員工", is_active: true },
       { discord_id: manager, display_name: "經理", is_active: true },
@@ -29,20 +37,36 @@ function setup() {
       id: requestId, organization_code: "qiunai", template_id: templateId,
       applicant_discord_id: employee, status: "pending",
     }],
+    eip_workflow_audit: [{
+      request_id: requestId, organization_code: "qiunai",
+      old_status: "pending", new_status: "approved", actor_discord_id: owner,
+      note: "符合規定", created_at: "2026-09-29T06:00:00Z",
+    }],
   };
   const supabaseAdmin = {
     from(table) {
       const filters = [];
       let inserted = null;
       let updated = null;
+      let selectedOptions = {};
+      let range = null;
+      let rowLimit = null;
       const query = {
-        select() { return this; },
+        select(_columns, options) { selectedOptions = options || {}; return this; },
         eq(key, value) { filters.push([key, value]); return this; },
-        gte() { return this; },
+        gte(key, value) { filters.push([key, { gte: value }]); return this; },
         order() { return this; },
-        limit() { return this; },
+        limit(value) { rowLimit = value; return this; },
+        range(from, to) { range = [from, to]; return this; },
         insert(value) { inserted = value; calls.push({ table, inserted: value }); return this; },
         update(value) { updated = value; calls.push({ table, updated: value, filters }); return this; },
+        then(resolve, reject) {
+          const rows = (records[table] || []).filter((item) => filters.every(([key, value]) =>
+            value && typeof value === "object" && "gte" in value ? item[key] >= value.gte : item[key] === value));
+          calls.push({ table, filters: [...filters], range, selectedOptions });
+          const visible = range ? rows.slice(range[0], range[1] + 1) : rowLimit ? rows.slice(0, rowLimit) : rows;
+          return Promise.resolve({ data: selectedOptions.head ? null : visible, count: selectedOptions.count === "exact" ? rows.length : null, error: null }).then(resolve, reject);
+        },
         result() {
           const rows = (records[table] || []).filter((item) => filters.every(([key, value]) => item[key] === value));
           if (updated && rows.length) Object.assign(rows[0], updated);
@@ -115,6 +139,52 @@ test("owner-only templates reject store manager decisions", async () => {
   records.eip_workflow_templates[0].approver_role = "owner";
   assert.equal((await route.PATCH(request(manager, { kind: "decision", id: requestId, status: "approved" }))).status, 403);
   assert.equal((await route.PATCH(request(owner, { kind: "decision", id: requestId, status: "approved" }))).status, 200);
+});
+
+test("rejected decisions require a reason", async () => {
+  const { route, calls } = setup();
+  assert.equal((await route.PATCH(request(manager, { kind: "decision", id: requestId, status: "rejected", note: " " }))).status, 400);
+  assert.equal(calls.filter((item) => item.updated).length, 0);
+});
+
+test("admin inbox is status-filtered, paginated, and counted across all records", async () => {
+  const { route, records, calls } = setup();
+  for (let index = 0; index < 29; index++) {
+    records.eip_workflow_requests.push({
+      id: `9ef13ca3-4e1f-4a6c-815b-${String(index).padStart(12, "0")}`,
+      organization_code: "qiunai", template_id: templateId,
+      applicant_discord_id: employee, status: "pending",
+    });
+  }
+  records.eip_workflow_requests.push({
+    id: "9ef13ca3-4e1f-4a6c-815b-ffffffffffff", organization_code: "deepnight",
+    template_id: templateId, applicant_discord_id: employee, status: "pending",
+  });
+  const result = await route.GET({ discordId: manager, url: "https://local.test/api/qiunai/workspace?admin=1&status=pending&page=2" });
+  assert.equal(result.status, 200);
+  assert.equal(result.body.requests.length, 5);
+  assert.equal(result.body.requestSummary.pending, 30);
+  assert.equal(result.body.requestPagination.total, 30);
+  assert.equal(result.body.requestPagination.page, 2);
+  assert.equal(result.body.workspaceSummary.upcomingEvents, 1);
+  assert.equal(result.body.workspaceSummary.publishedDocuments, 1);
+  assert.equal(result.body.workspaceSummary.activeTemplates, 1);
+  const query = calls.find((item) => item.table === "eip_workflow_requests" && item.range);
+  assert.deepEqual(query.range, [25, 49]);
+  assert.ok(query.filters.some(([key, value]) => key === "organization_code" && value === "qiunai"));
+  assert.equal((await route.GET({ discordId: manager, url: "https://local.test/api/qiunai/workspace?admin=1&status=invalid" })).status, 400);
+});
+
+test("audit history is visible only to its applicant or a scoped manager", async () => {
+  const { route, records } = setup();
+  const url = `https://local.test/api/qiunai/workspace?audit=${requestId}`;
+  const own = await route.GET({ discordId: employee, url });
+  assert.equal(own.status, 200);
+  assert.equal(own.body.audit.length, 1);
+  assert.equal((await route.GET({ discordId: manager, url })).status, 403);
+  assert.equal((await route.GET({ discordId: manager, url: url + "&admin=1" })).status, 200);
+  records.eip_workflow_requests[0].organization_code = "deepnight";
+  assert.equal((await route.GET({ discordId: manager, url: url + "&admin=1" })).status, 404);
 });
 
 test("workspace migration protects browser roles and records revisions", () => {

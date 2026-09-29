@@ -9,7 +9,8 @@ type Event = { id: string; title: string; details: string; location: string; sta
 type Document = { id: string; document_type: "document" | "knowledge"; category: string; title: string; body: string; version: number; updated_at: string };
 type Field = { key: string; label: string; type: "text" | "textarea" | "date" | "choice"; required: boolean; options: string[] };
 type Template = { id: string; name: string; description: string; fields: Field[]; approver_role: "manager" | "owner" };
-type Submission = { id: string; template_id: string; status: "pending" | "approved" | "rejected"; created_at: string; decision_note: string | null };
+type Submission = { id: string; template_id: string; status: "pending" | "approved" | "rejected"; created_at: string; decided_at: string | null; decision_note: string | null; form_data: Record<string, string> };
+type AuditEntry = { new_status: "approved" | "rejected"; note: string | null; created_at: string };
 type ExistingAnnouncement = { id: string; title: string; created_at: string; requires_signature?: boolean; signature?: { status: string } | null };
 type ExistingRequest = { id: string; request_type: string; status: string; application_date: string };
 type Data = { events: Event[]; documents: Document[]; templates: Template[]; requests: Submission[] };
@@ -31,6 +32,7 @@ export default function StaffCollaboration({ organization, section, employeeName
   const [referenceTime, setReferenceTime] = useState(0);
   const [existingAnnouncements, setExistingAnnouncements] = useState<ExistingAnnouncement[]>([]);
   const [existingRequests, setExistingRequests] = useState<ExistingRequest[]>([]);
+  const [requestHistory, setRequestHistory] = useState<{ item: Submission; audit: AuditEntry[] } | null>(null);
 
   const authorizedFetch = useCallback(async (method: "GET" | "POST", payload?: unknown, endpoint = "workspace") => {
     const { data: auth } = await supabase.auth.getSession();
@@ -86,6 +88,13 @@ export default function StaffCollaboration({ organization, section, employeeName
     } catch (caught) { setError(caught instanceof Error ? caught.message : "送出失敗"); }
     finally { setSending(false); }
   }
+  async function showRequestHistory(id: string) {
+    try {
+      setError("");
+      const result = await authorizedFetch("GET", undefined, `workspace?audit=${encodeURIComponent(id)}`);
+      setRequestHistory({ item: result.item, audit: result.audit || [] });
+    } catch (caught) { setError(caught instanceof Error ? caught.message : "讀取申請進度失敗"); }
+  }
   const go = (tab: string) => { onSelect(tab); window.scrollTo({ top: 0, behavior: "smooth" }); };
   return (
     <section className="eip-collaboration">
@@ -106,6 +115,18 @@ export default function StaffCollaboration({ organization, section, employeeName
             <button onClick={() => go("calendar")}><CalendarDays size={21} /><strong>{upcoming.length}</strong><span>近期團隊日程</span></button>
             <button onClick={() => go("workflows")}><ClipboardCheck size={21} /><strong>{pending + existingRequests.filter((item) => item.status === "pending").length}</strong><span>進行中的申請</span></button>
             <button onClick={() => go("knowledge")}><BookOpenText size={21} /><strong>{data.documents.filter((item) => item.document_type === "knowledge").length}</strong><span>可查閱知識</span></button>
+          </div>
+          <div className="eip-collab-columns">
+            <div className="eip-collab-panel">
+              <div className="eip-collab-panel-head"><h2>我的工作進度</h2><button onClick={() => go("workflows")}>查看所有申請 <ArrowRight size={15} /></button></div>
+              {data.requests.slice(0, 4).map((item) => <button type="button" className="eip-collab-action-row" key={item.id} onClick={() => { void showRequestHistory(item.id); go("workflows"); }}><span><strong>{data.templates.find((entry) => entry.id === item.template_id)?.name || "流程申請"}</strong><small>{time(item.created_at)}</small></span><span className={`eip-collab-status ${item.status}`}>{statusLabel[item.status]}</span></button>)}
+              {!data.requests.length ? <p className="eip-collab-empty">還沒有申請紀錄，可從流程中心發起。</p> : null}
+            </div>
+            <div className="eip-collab-panel">
+              <div className="eip-collab-panel-head"><h2>需要我處理</h2><button onClick={() => go("profile")}>前往公告 <ArrowRight size={15} /></button></div>
+              {existingAnnouncements.filter((item) => item.requires_signature && item.signature?.status !== "signed").slice(0, 4).map((item) => <button type="button" className="eip-collab-action-row" key={item.id} onClick={() => go("profile")}><span><strong>{item.title}</strong><small>公告待簽署</small></span><ArrowRight size={16} /></button>)}
+              {!existingAnnouncements.some((item) => item.requires_signature && item.signature?.status !== "signed") ? <p className="eip-collab-empty">目前沒有需要簽署的公告。</p> : null}
+            </div>
           </div>
           <div className="eip-collab-columns">
             <div className="eip-collab-panel">
@@ -170,7 +191,8 @@ export default function StaffCollaboration({ organization, section, employeeName
         </div>
         <div className="eip-collab-panel">
           <div className="eip-collab-panel-head"><h2>我的申請</h2><span>{data.requests.length} 筆</span></div>
-          {data.requests.length ? data.requests.map((item) => <div className="eip-collab-request" key={item.id}><span className={`eip-collab-status ${item.status}`}>{statusLabel[item.status]}</span><strong>{data.templates.find((template) => template.id === item.template_id)?.name || "已停用流程"}</strong><small>{time(item.created_at)}</small>{item.decision_note ? <p>簽核備註：{item.decision_note}</p> : null}</div>) : <p className="eip-collab-empty">尚無新流程申請紀錄。</p>}
+          {data.requests.length ? data.requests.map((item) => <div className="eip-collab-request" key={item.id}><span className={`eip-collab-status ${item.status}`}>{statusLabel[item.status]}</span><strong>{data.templates.find((template) => template.id === item.template_id)?.name || "流程申請"}</strong><small>{time(item.created_at)}</small>{item.decision_note ? <p>簽核備註：{item.decision_note}</p> : null}<button type="button" className="eip-collab-inline-action" onClick={() => void showRequestHistory(item.id)}>查看處理歷程</button></div>) : <p className="eip-collab-empty">尚無新流程申請紀錄。</p>}
+          {requestHistory ? <section className="eip-collab-history"><h3>申請處理歷程</h3><p><span>1</span> 已送出申請 · {time(requestHistory.item.created_at)}</p>{requestHistory.audit.map((entry, index) => <p key={index}><span>{index + 2}</span> {statusLabel[entry.new_status]} · {time(entry.created_at)}{entry.note ? ` · ${entry.note}` : ""}</p>)}{requestHistory.item.status === "pending" ? <p><span>…</span> 等待管理員簽核</p> : null}<button type="button" onClick={() => setRequestHistory(null)}>關閉</button></section> : null}
         </div>
       </div> : null}
     </section>
