@@ -1198,7 +1198,7 @@ export default function StaffPage() {
 
       <section id="overview" className="staff-workspace-section relative z-10 scroll-mt-24">
         <div className="staff-portal-grid">
-          <StaffPortalNav activeTab={chatOpen ? "messages" : activeTab} onSelect={(tab) => { if (tab === "messages") setChatOpen(true); else setActiveTab(tab); }} employeeName={staff.display_name || staff.discord_name || staff.discord_id} company="秋奈電競陪玩" showDeviceAudit={canViewDeviceAudit} />
+          <StaffPortalNav activeTab={activeTab} onSelect={(tab) => { if (tab === "messages") setChatOpen(true); else setActiveTab(tab); }} employeeName={staff.display_name || staff.discord_name || staff.discord_id} company="秋奈電競陪玩" showDeviceAudit={canViewDeviceAudit} />
 
           <div className="staff-main-column min-w-0">
         <HrPortalPanel activeTab={activeTab} apiPath="/api/qiunai/hr" department="秋奈電競陪玩" staffName={staff.display_name || staff.discord_name || staff.discord_id} selectedMonth={hrSelectedMonth} onMonthChange={setHrSelectedMonth} />

@@ -96,6 +96,18 @@ test("thread reads and read receipts stay within the authenticated pair and orga
   assert.equal(update.filters.organization_code, "qiunai");
   assert.equal(update.filters.recipient_discord_id, selfId);
   assert.equal(update.filters.sender_discord_id, qiunaiPeer);
+  assert.equal(update.filters.read_at, null);
+  assert.ok(!Number.isNaN(Date.parse(update.updated.read_at)));
+});
+
+test("workbench stays selected and only sent messages expose the recipient's read state", () => {
+  const page = readFileSync(join(root, "app/staff/page.tsx"), "utf8");
+  const widget = readFileSync(join(root, "components/StaffMessages.tsx"), "utf8");
+  assert.match(page, /useState<PortalTab>\("workspace"\)/);
+  assert.match(page, /<StaffPortalNav activeTab=\{activeTab\}/);
+  assert.match(widget, /document\.visibilityState === "visible"/);
+  assert.match(widget, /message\.sender_discord_id === myDiscordId \? <span className="eip-messages-receipt"/);
+  assert.match(widget, /message\.read_at \? "已讀" : "未讀"/);
 });
 
 test("database migration denies browser roles direct message access", () => {

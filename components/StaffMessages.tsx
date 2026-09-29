@@ -118,10 +118,13 @@ export default function StaffMessages({ organization, myDiscordId, open, onOpenC
         if (cancelled) return;
         setMessages(Array.isArray(payload.messages) ? payload.messages : []);
         setError("");
-        await authorizedFetch(apiPath, {
-          method: "PATCH",
-          body: JSON.stringify({ peerId: selectedPeerId }),
-        });
+        // A background tab has not actually shown the conversation to its recipient.
+        if (document.visibilityState === "visible") {
+          await authorizedFetch(apiPath, {
+            method: "PATCH",
+            body: JSON.stringify({ peerId: selectedPeerId }),
+          });
+        }
         if (!cancelled) void loadContacts(true);
       } catch (cause) {
         if (!cancelled) setError(cause instanceof Error ? cause.message : "讀取對話失敗");
@@ -219,7 +222,7 @@ export default function StaffMessages({ organization, myDiscordId, open, onOpenC
             <div className="eip-messages-history" ref={threadRef} aria-live="polite">
               {loadingThread ? <p className="eip-messages-empty">載入對話中…</p> : messages.length ? messages.map((message) => (
                 <div key={message.id} className={`eip-messages-bubble-row ${message.sender_discord_id === myDiscordId ? "is-mine" : ""}`}>
-                  <div className="eip-messages-bubble"><p>{message.body}</p><time dateTime={message.created_at}>{dateText(message.created_at)}</time></div>
+                  <div className="eip-messages-bubble"><p>{message.body}</p><div className="eip-messages-bubble-meta"><time dateTime={message.created_at}>{dateText(message.created_at)}</time>{message.sender_discord_id === myDiscordId ? <span className="eip-messages-receipt" title={message.read_at ? `對方於 ${dateText(message.read_at)} 閱讀` : "對方尚未閱讀"}>{message.read_at ? "已讀" : "未讀"}</span> : null}</div></div>
                 </div>
               )) : <p className="eip-messages-empty">還沒有訊息，打聲招呼吧。</p>}
             </div>
