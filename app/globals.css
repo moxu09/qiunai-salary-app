@@ -1652,8 +1652,8 @@ input.erp-login-icon-input[type][class] {
 .eip-messages-heading h2 { color: #21384e; font-size: 21px; font-weight: 850; }
 .eip-messages-heading span:not(.eip-messages-heading-icon) { color: #8193a3; font-size: 12px; }
 .eip-messages-error { margin: 12px 20px 0; padding: 10px 14px; border-radius: 10px; color: #9f253c; background: #fff0f1; font-size: 12px; }
-.eip-messages-layout { display: grid; grid-template-columns: minmax(220px, 310px) minmax(0, 1fr); min-height: 520px; height: min(68vh, 720px); }
-.eip-messages-contacts { display: flex; flex-direction: column; min-width: 0; border-right: 1px solid var(--msg-line); }
+.eip-messages-layout { display: grid; grid-template-columns: minmax(220px, 310px) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); min-height: 520px; height: min(68vh, 720px); overflow: hidden; }
+.eip-messages-contacts { display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow: hidden; border-right: 1px solid var(--msg-line); }
 .eip-messages-search { display: flex; align-items: center; gap: 9px; margin: 15px; padding: 10px 12px; border: 1px solid var(--msg-line); border-radius: 11px; color: #8193a3; }
 .eip-messages-search:focus-within { outline: 2px solid var(--msg-accent); }
 .eip-messages-search input { width: 100%; min-width: 0; border: 0; outline: none; background: transparent; color: #21384e; font-size: 13px; }

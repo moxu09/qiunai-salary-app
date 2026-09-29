@@ -105,3 +105,10 @@ test("database migration denies browser roles direct message access", () => {
   assert.match(sql, /revoke all on function public\.eip_list_conversations\(text, text\) from public, anon, authenticated/i);
   assert.match(sql, /organization_code.*sender_discord_id.*client_nonce/s);
 });
+
+test("long staff directories scroll inside the chat instead of hiding the composer", () => {
+  const css = readFileSync(join(root, "app/globals.css"), "utf8");
+  assert.match(css, /\.eip-messages-layout\s*\{[^}]*grid-template-rows:\s*minmax\(0,\s*1fr\)[^}]*overflow:\s*hidden/s);
+  assert.match(css, /\.eip-messages-contacts\s*\{[^}]*min-height:\s*0[^}]*overflow:\s*hidden/s);
+  assert.match(css, /\.eip-messages-contact-list\s*\{[^}]*min-height:\s*0[^}]*overflow-y:\s*auto/s);
+});
