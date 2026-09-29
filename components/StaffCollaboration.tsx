@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import { ArrowRight, BookOpenText, CalendarDays, CheckCircle2, ClipboardCheck, FileText, MessageSquareText, Search, Send, Sparkles } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import WorkspaceDocumentFiles from "@/components/WorkspaceDocumentFiles";
 
 type Section = "workspace" | "calendar" | "documents" | "knowledge" | "workflows";
 type Event = { id: string; title: string; details: string; location: string; starts_at: string; ends_at: string };
@@ -171,7 +172,7 @@ export default function StaffCollaboration({ organization, section, employeeName
         <label className="eip-collab-search"><Search size={18} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜尋標題、分類或內容" /></label>
         <div className="eip-collab-document-layout">
           <div className="eip-collab-document-list">{filteredDocuments.map((item) => <button key={item.id} className={selectedDocument?.id === item.id ? "is-selected" : ""} onClick={() => setSelectedDocument(item)}><span>{item.category} · v{item.version}</span><strong>{item.title}</strong><small>更新於 {time(item.updated_at)}</small></button>)}{!filteredDocuments.length ? <p className="eip-collab-empty">沒有符合條件的內容。</p> : null}</div>
-          <article className="eip-collab-document-body">{selectedDocument && filteredDocuments.some((item) => item.id === selectedDocument.id) ? <><span>{selectedDocument.category} · 版本 {selectedDocument.version}</span><h3>{selectedDocument.title}</h3><div>{selectedDocument.body}</div></> : <p className="eip-collab-empty">選擇左側文件以閱讀全文。</p>}</article>
+          <article className="eip-collab-document-body">{selectedDocument && filteredDocuments.some((item) => item.id === selectedDocument.id) ? <><span>{selectedDocument.category} · 版本 {selectedDocument.version}</span><h3>{selectedDocument.title}</h3><div>{selectedDocument.body}</div><WorkspaceDocumentFiles key={selectedDocument.id} organization={organization} documentId={selectedDocument.id} /></> : <p className="eip-collab-empty">選擇左側文件以閱讀全文。</p>}</article>
         </div>
       </div> : null}
       {!loading && section === "workflows" ? <div className="eip-collab-columns">

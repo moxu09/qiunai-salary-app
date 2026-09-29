@@ -123,6 +123,18 @@ test("staff submission uses authenticated applicant and server organization", as
   assert.equal(insert.form_data.reason, "請假");
 });
 
+test("documents can be created with attachments instead of typed body text", async () => {
+  const { route, calls } = setup();
+  const result = await route.POST(request(manager, {
+    kind: "document", documentType: "knowledge", title: "操作手冊",
+    category: "新人訓練", body: "", isPublished: false,
+  }));
+  assert.equal(result.status, 201);
+  const insert = calls.find((item) => item.table === "eip_workspace_documents" && item.inserted).inserted;
+  assert.equal(insert.body, "請下載下方附件閱讀全文。");
+  assert.equal(insert.is_published, false);
+});
+
 test("maker cannot approve own request; manager decision is pending-only and audited by DB trigger", async () => {
   const { route, calls } = setup();
   assert.equal((await route.PATCH(request(employee, { kind: "decision", id: requestId, status: "approved" }))).status, 403);

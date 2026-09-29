@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { ArrowRight, BookOpenText, CalendarDays, ClipboardCheck, FileText, LayoutDashboard, Plus, Save } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import WorkspaceDocumentFiles from "@/components/WorkspaceDocumentFiles";
 
 type Field = { key: string; label: string; type: "text" | "textarea" | "date" | "choice"; required: boolean; options: string[] };
 type Item = Record<string, unknown> & { id: string };
@@ -99,10 +100,18 @@ export default function AdminWorkspaceManager({ organization }: { organization: 
           ...field, options: field.type === "choice" ? field.options.map((value) => value.trim()).filter(Boolean) : [],
         }));
       }
-      if (editing) payload.id = editing.id;
-      await call(editing ? "PATCH" : "POST", payload);
-      setNotice(editing ? "已儲存變更。" : "已建立；發布狀態依設定生效。");
-      setEditing(null); setForm({ ...initial[section as keyof typeof initial] });
+      if (editing) {
+        payload.id = editing.id;
+        if (section === "document") payload.version = editing.version;
+      }
+      const result = await call(editing ? "PATCH" : "POST", payload);
+      setNotice(section === "document" ? "文件已儲存，可在右側管理附件。" : editing ? "已儲存變更。" : "已建立；發布狀態依設定生效。");
+      if (section === "document") {
+        setEditing(result.item);
+        setForm((current) => ({ ...current, body: result.item.body }));
+      } else {
+        setEditing(null); setForm({ ...initial[section as keyof typeof initial] });
+      }
       await refresh();
     } catch (caught) { setError(caught instanceof Error ? caught.message : "儲存失敗"); }
     finally { setBusy(false); }
@@ -181,7 +190,7 @@ export default function AdminWorkspaceManager({ organization }: { organization: 
           {!editing ? <label>類型<select value={String(form.documentType || "knowledge")} onChange={(event) => update("documentType", event.target.value)}><option value="knowledge">知識庫文章</option><option value="document">共享文件</option></select></label> : null}
           <label>標題<input required maxLength={120} value={String(form.title || "")} onChange={(event) => update("title", event.target.value)} /></label>
           <label>分類<input required maxLength={50} value={String(form.category || "")} onChange={(event) => update("category", event.target.value)} /></label>
-          <label>內容<textarea required rows={12} maxLength={30000} value={String(form.body || "")} onChange={(event) => update("body", event.target.value)} /></label>
+          <label>內容（可留空，改用附件提供全文）<textarea rows={12} maxLength={30000} value={String(form.body || "")} onChange={(event) => update("body", event.target.value)} /></label>
           <label className="eip-collab-check"><input type="checkbox" checked={Boolean(form.isPublished)} onChange={(event) => update("isPublished", event.target.checked)} /> 發布給員工</label>
           {editing ? <p className="eip-collab-helper">儲存時會保留前一版，可於右側查看修訂紀錄。</p> : null}
         </> : editing ? <>
@@ -207,6 +216,7 @@ export default function AdminWorkspaceManager({ organization }: { organization: 
         {(section === "event" ? data.events : section === "document" ? data.documents : data.templates).map((item) =>
           <div className="eip-collab-admin-item" key={item.id}><span>{section === "event" ? String(item.starts_at || "") : section === "document" ? `${item.document_type === "knowledge" ? "知識" : "文件"} · v${item.version}` : String(item.approver_role === "owner" ? "最高管理員簽核" : "經理簽核")}</span><strong>{String(item.title || item.name || "")}</strong><small>{item.is_published || item.is_active ? "已發布" : "草稿／停用"}</small><div><button onClick={() => edit(section, item)}>編輯</button>{section === "document" ? <button onClick={() => void showRevisions(item)}>歷史版本</button> : null}</div></div>)}
         {revisions.length ? <div className="eip-collab-revisions"><h3>歷史版本</h3>{revisions.map((item) => <details key={String(item.version)}><summary>v{String(item.version)} · {String(item.title)} · {String(item.changed_at)}</summary><pre>{String(item.body)}</pre></details>)}</div> : null}
+        {section === "document" ? editing ? <WorkspaceDocumentFiles key={editing.id} organization={organization} documentId={editing.id} admin /> : <p className="eip-collab-helper">先儲存文章，即可為這篇知識或文件上傳附件。</p> : null}
       </div>
     </div> : null}
     {!loading && section === "decision" ? <div className="eip-collab-panel"><div className="eip-collab-panel-head"><h2>簽核佇列</h2><span>不得簽核自己的申請 · 共 {requestPagination.total} 筆</span></div>
