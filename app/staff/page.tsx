@@ -24,6 +24,7 @@ import { getDiscordIdFromSession } from "@/lib/discordSession";
 import { SERVICE_OPTIONS, type ServiceOption } from "@/lib/serviceOptions";
 import StaffPortalNav, { type PortalTab } from "@/components/StaffPortalNav";
 import StaffMessages from "@/components/StaffMessages";
+import StaffCollaboration from "@/components/StaffCollaboration";
 import HrPortalPanel from "@/components/HrPortalPanel";
 import ErpAuthLinkManager from "@/components/ErpAuthLinkManager";
 import StaffDeviceAuditPanel from "@/components/StaffDeviceAuditPanel";
@@ -229,7 +230,7 @@ export default function StaffPage() {
     getCurrentMonthInput()
   );
   const salaryMonthMounted = useRef(false);
-  const [activeTab, setActiveTab] = useState<PortalTab>("profile");
+  const [activeTab, setActiveTab] = useState<PortalTab>("workspace");
   const [canViewDeviceAudit, setCanViewDeviceAudit] = useState(false);
 
   const [profileForm, setProfileForm] = useState({
@@ -1164,7 +1165,7 @@ export default function StaffPage() {
                 Qiunai Staff
               </p>
               <h1 className="qiunai-title-gradient text-2xl font-black">
-                秋奈電競｜員工薪資中心
+                秋奈電競｜員工工作台
               </h1>
               <p className="mt-1 text-sm text-[#8b5a8f]">
                 {staff.display_name || staff.discord_name || staff.discord_id}
@@ -1200,6 +1201,7 @@ export default function StaffPage() {
 
           <div className="staff-main-column min-w-0">
         <HrPortalPanel activeTab={activeTab} apiPath="/api/qiunai/hr" department="秋奈電競陪玩" staffName={staff.display_name || staff.discord_name || staff.discord_id} selectedMonth={hrSelectedMonth} onMonthChange={setHrSelectedMonth} />
+        {(["workspace", "calendar", "documents", "knowledge", "workflows"] as const).includes(activeTab as "workspace") ? <StaffCollaboration organization="qiunai" section={activeTab as "workspace" | "calendar" | "documents" | "knowledge" | "workflows"} employeeName={staff.display_name || staff.discord_name || staff.discord_id} onSelect={(tab) => setActiveTab(tab as PortalTab)} /> : null}
         {activeTab === "messages" ? <StaffMessages organization="qiunai" myDiscordId={staff.discord_id} /> : null}
         {activeTab === "activities" ? <ActivityPortal /> : null}
         {activeTab === "downloads" ? <StaffInstallerDownloads /> : null}

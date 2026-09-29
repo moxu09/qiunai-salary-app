@@ -18,10 +18,18 @@ import {
   UserRound,
   WalletCards,
   CalendarHeart,
+  LayoutDashboard,
+  CalendarDays,
+  BookOpenText,
   type LucideIcon,
 } from "lucide-react";
 
 export type PortalTab =
+  | "workspace"
+  | "calendar"
+  | "documents"
+  | "knowledge"
+  | "workflows"
   | "messages"
   | "profile"
   | "admin-service"
@@ -49,7 +57,14 @@ const groups: ReadonlyArray<PortalGroup> = [
   {
     title: "協作",
     icon: MessageSquareText,
-    items: [["messages", "員工訊息", MessageSquareText]],
+    items: [
+      ["workspace", "工作台", LayoutDashboard],
+      ["messages", "員工訊息", MessageSquareText],
+      ["calendar", "團隊日程", CalendarDays],
+      ["documents", "共享文件", FileText],
+      ["knowledge", "知識庫", BookOpenText],
+      ["workflows", "流程中心", ClipboardCheck],
+    ],
   },
   {
     title: "人事",

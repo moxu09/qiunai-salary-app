@@ -12,6 +12,7 @@ import {
   FolderDown,
   History,
   Settings,
+  BookOpenText,
   UsersRound,
   WalletCards,
 } from "lucide-react";
@@ -46,6 +47,7 @@ const ADMIN_LINKS: AdminLink[] = [
   { href: "/admin/payroll", label: "發薪模式", icon: WalletCards },
   { href: "/admin/ranking", label: "薪資排序", icon: BarChart3 },
   { href: "/admin/approvals", label: "簽核申請", icon: ClipboardCheck },
+  { href: "/admin/workspace", label: "協作工作台", icon: BookOpenText },
   { href: "/admin/activities", label: "活動管理", icon: CalendarHeart },
   { href: "/admin/files", label: "資料下載", icon: FolderDown },
   { href: "/admin/accounting", label: "會計報表", icon: Coins },
