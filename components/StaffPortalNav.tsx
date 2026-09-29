@@ -13,6 +13,7 @@ import {
   Gift,
   HandCoins,
   HeartHandshake,
+  MessageSquareText,
   ReceiptText,
   UserRound,
   WalletCards,
@@ -21,6 +22,7 @@ import {
 } from "lucide-react";
 
 export type PortalTab =
+  | "messages"
   | "profile"
   | "admin-service"
   | "welfare"
@@ -44,6 +46,11 @@ type PortalGroup = {
 };
 
 const groups: ReadonlyArray<PortalGroup> = [
+  {
+    title: "協作",
+    icon: MessageSquareText,
+    items: [["messages", "員工訊息", MessageSquareText]],
+  },
   {
     title: "人事",
     icon: UserRound,

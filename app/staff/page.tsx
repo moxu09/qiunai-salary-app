@@ -23,6 +23,7 @@ import { supabase } from "@/lib/supabase";
 import { getDiscordIdFromSession } from "@/lib/discordSession";
 import { SERVICE_OPTIONS, type ServiceOption } from "@/lib/serviceOptions";
 import StaffPortalNav, { type PortalTab } from "@/components/StaffPortalNav";
+import StaffMessages from "@/components/StaffMessages";
 import HrPortalPanel from "@/components/HrPortalPanel";
 import ErpAuthLinkManager from "@/components/ErpAuthLinkManager";
 import StaffDeviceAuditPanel from "@/components/StaffDeviceAuditPanel";
@@ -1199,6 +1200,7 @@ export default function StaffPage() {
 
           <div className="staff-main-column min-w-0">
         <HrPortalPanel activeTab={activeTab} apiPath="/api/qiunai/hr" department="秋奈電競陪玩" staffName={staff.display_name || staff.discord_name || staff.discord_id} selectedMonth={hrSelectedMonth} onMonthChange={setHrSelectedMonth} />
+        {activeTab === "messages" ? <StaffMessages organization="qiunai" myDiscordId={staff.discord_id} /> : null}
         {activeTab === "activities" ? <ActivityPortal /> : null}
         {activeTab === "downloads" ? <StaffInstallerDownloads /> : null}
         {activeTab === "device-audit" && canViewDeviceAudit ? (
