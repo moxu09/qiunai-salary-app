@@ -1409,7 +1409,7 @@ function getTaipeiYearMonth(value?: string | null) {
 
 function getRequestStatusText(status: string, rejectReason?: string | null) {
   if (status === "pending") return "申請中";
-  if (status === "approved") return "申請成功，請稍等 0 到 3 個工作日";
+  if (status === "approved") return "申請成功，請稍等 3 到 7 個工作日（例假日不計）";
   if (status === "rejected")
     return `申請遭駁回${rejectReason ? `：${rejectReason}` : ""}`;
   return status || "-";

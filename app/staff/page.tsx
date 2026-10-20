@@ -1275,10 +1275,13 @@ export default function StaffPage() {
                 <div className="mt-2 space-y-1 text-sm leading-6 text-[#8b5a8f]">
                   <p>每月 2 日 00:00 入帳上月 16 日至月底薪資；每月 17 日 00:00 入帳當月 1 日至 15 日薪資。</p>
                   <p>客服底薪與客服接待件數薪資統一於次月 2 日 00:00 入帳。</p>
-                  <p>轉入 ASD 不限提領期間，1 元起申請並立即入帳。</p>
+                  <p>轉入 ASD 不限提領期間、金額，無需手續費並立即入帳，一個月限領 15 次。</p>
                   <p>每月 5 日 09:00 至 25 日 15:30 開放提領。</p>
                   <p>金額須高於 $1,000；本月首次免手續費，第二次起每次 $15。</p>
-                  <p>銀行作業需 0 到 3 個工作日。</p>
+                  <p>為配合政府及銀行作業需 3 到 7 個工作日，例假日不計。</p>
+                  <p className="pt-1 font-bold">提領日期計算如下：</p>
+                  <p>例：提領時間為 10 號 00:00～15:30，則計入 13 號發放。</p>
+                  <p>若提領時間為 10 號 15:31～23:59，則計入 14 號發放。</p>
                   <p>若個人銀行、帳戶、戶名其中一項填寫不完整，則會導致薪資發放失敗，而繼續累積。</p>
                 </div>
               </div>
@@ -2470,7 +2473,7 @@ function formatDateTime(value?: string | null) {
 function getRequestStatusText(request?: SalaryWithdrawRequest | null) {
   if (!request) return "尚未申請";
   if (request.status === "pending") return "申請中";
-  if (request.status === "approved") return "申請成功，請稍等 0 到 3 個工作日";
+  if (request.status === "approved") return "申請成功，請稍等 3 到 7 個工作日（例假日不計）";
   if (request.status === "rejected") {
     return `申請遭駁回${
       request.reject_reason ? `，原因是${request.reject_reason}` : ""
