@@ -1,6 +1,7 @@
 import { createHmac, randomBytes, randomInt, randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { createIchibanOAuthIdentity } from "@/lib/ichibanOAuthIdentity";
 
 const ORIGIN = "https://qiunai.gaming.wearestilllhere.com";
 const headers = {
@@ -47,6 +48,9 @@ export async function POST(request) {
   if (request.headers.get("origin") !== ORIGIN) return response({ ok: false, message: "來源不符" }, 403);
   try {
     const body = await request.json().catch(() => ({}));
+    if (body.action === "oauth") {
+      return response(await createIchibanOAuthIdentity(supabaseAdmin, digest, body.accessToken));
+    }
     if (body.action === "start") {
       const discordId = String(body.discordId || "").trim();
       if (!/^[0-9]{15,25}$/.test(discordId)) return response({ ok: false, message: "請輸入正確的 Discord ID" }, 400);
