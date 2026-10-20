@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { drawIchibanWithAsd } from "../lib/ichibanAsdDraw.js";
+import { drawIchibanWithAsd, getIchibanAsdBalance } from "../lib/ichibanAsdDraw.js";
 
 const challengeId = "12345678-1234-4234-8234-123456789012";
 const requestId = "87654321-4321-4234-8234-210987654321";
@@ -18,6 +18,24 @@ function database({ identity, draw, identityError = null, drawError = null }) {
       };
     },
     async rpc(name, args) { calls.push([name, args]); return { data: draw, error: drawError }; },
+  };
+}
+
+function balanceDatabase({ identity, user, userError = null }) {
+  const calls = [];
+  return {
+    calls,
+    from(table) {
+      return {
+        select(columns) { calls.push([table, "select", columns]); return this; },
+        eq(column, value) { calls.push([table, column, value]); return this; },
+        async maybeSingle() {
+          if (table === "qiunai_ichiban_identity_challenges") return { data: identity, error: null };
+          assert.equal(table, "users");
+          return { data: user, error: userError };
+        },
+      };
+    },
   };
 }
 
@@ -45,4 +63,23 @@ test("相同 requestId 原樣交給具冪等性的資料庫函式", async () => 
   const result = await drawIchibanWithAsd(db, () => "digest", { challengeId, claimToken, requestId });
   assert.equal(result.already_processed, true);
   assert.equal(db.calls.at(-1)[1].p_request_id, requestId);
+});
+
+test("Discord 登入後可讀取 ASD 餘額且不執行扣款", async () => {
+  const db = balanceDatabase({
+    identity: { discord_user_id: "123456789012345678", token_digest: "digest", verified_at: new Date().toISOString(), expires_at: new Date(Date.now() + 60_000).toISOString() },
+    user: { coins: 1234.5 },
+  });
+  const result = await getIchibanAsdBalance(db, () => "digest", { challengeId, claimToken });
+  assert.deepEqual(result, { balance: 1234.5 });
+  assert.deepEqual(db.calls.at(-1), ["users", "user_id", "123456789012345678"]);
+});
+
+test("ASD 餘額查詢失敗時不得誤顯示為零", async () => {
+  const db = balanceDatabase({
+    identity: { discord_user_id: "123456789012345678", token_digest: "digest", verified_at: new Date().toISOString(), expires_at: new Date(Date.now() + 60_000).toISOString() },
+    user: null,
+    userError: new Error("database unavailable"),
+  });
+  await assert.rejects(() => getIchibanAsdBalance(db, () => "digest", { challengeId, claimToken }), /database unavailable/);
 });

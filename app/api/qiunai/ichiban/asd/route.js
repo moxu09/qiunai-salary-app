@@ -1,7 +1,7 @@
 import { createHmac } from "node:crypto";
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { drawIchibanWithAsd } from "@/lib/ichibanAsdDraw";
+import { drawIchibanWithAsd, getIchibanAsdBalance } from "@/lib/ichibanAsdDraw";
 import { ICHIBAN_CORS, ICHIBAN_ORIGIN } from "@/lib/ichibanEcpay";
 
 function digest(value) {
@@ -30,7 +30,12 @@ export async function POST(request) {
     return NextResponse.json({ ok: false, message: "來源不符" }, { status: 403, headers: ICHIBAN_CORS });
   }
   try {
-    const draw = await drawIchibanWithAsd(supabaseAdmin, digest, await request.json());
+    const body = await request.json();
+    if (body?.action === "balance") {
+      const result = await getIchibanAsdBalance(supabaseAdmin, digest, body);
+      return NextResponse.json({ ok: true, ...result }, { headers: ICHIBAN_CORS });
+    }
+    const draw = await drawIchibanWithAsd(supabaseAdmin, digest, body);
     return NextResponse.json({ ok: true, draw }, { headers: ICHIBAN_CORS });
   } catch (error) {
     const message = error?.message || "ASD 付款暫時無法使用";
