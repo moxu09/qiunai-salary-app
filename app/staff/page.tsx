@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { getMonthlyOrderAmount } from "@/lib/creditedSalaryCommission";
 import { getDiscordIdFromSession } from "@/lib/discordSession";
 import { SERVICE_OPTIONS, type ServiceOption } from "@/lib/serviceOptions";
 import StaffPortalNav, { type PortalTab } from "@/components/StaffPortalNav";
@@ -33,7 +34,6 @@ import StaffInstallerDownloads from "@/components/StaffInstallerDownloads";
 import MonthSelect from "@/components/MonthSelect";
 import {
   formatTaipeiDateTime,
-  getNextTaipeiMonthText,
   getTaipeiMonthInput,
   getTaipeiMonthText,
   getTaipeiYear,
@@ -193,6 +193,7 @@ export default function StaffPage() {
   const [staff, setStaff] = useState<Staff | null>(null);
   const [orders, setOrders] = useState<SalaryOrder[]>([]);
   const [allSalaryOrders, setAllSalaryOrders] = useState<SalaryOrder[]>([]);
+  const [creditedSalaryProgress, setCreditedSalaryProgress] = useState({ currentMonth: 0, previousMonth: 0 });
   const [reviewedOrders, setReviewedOrders] = useState<SalaryOrder[]>([]);
   const [bonusList, setBonusList] = useState<BonusItem[]>([]);
 
@@ -335,7 +336,7 @@ export default function StaffPage() {
       return {
         currentRate: 80,
         currentLabel: "尚未判定",
-        totalOrderAmount: 0,
+        monthlyCreditedSalary: 0,
         thisYearSalary: 0,
         progress85: 0,
         progress90: 0,
@@ -347,10 +348,7 @@ export default function StaffPage() {
     const openingEnd = new Date("2026-09-01T00:00:00+08:00");
     const now = new Date();
 
-    const totalOrderAmount = allSalaryOrders.reduce(
-      (sum, order) => sum + Number(order.order_amount || 0),
-      0
-    );
+    const monthlyCreditedSalary = creditedSalaryProgress.currentMonth;
 
     const thisYear = getTaipeiYear();
 
@@ -376,7 +374,7 @@ export default function StaffPage() {
 
     const progress85 = Math.min(
       100,
-      Math.round((totalOrderAmount / 10000) * 100)
+      Math.round((Math.max(0, monthlyCreditedSalary) / 10000) * 100)
     );
 
     const progress90 = Math.min(
@@ -399,40 +397,23 @@ export default function StaffPage() {
       if (previousYearSalary >= 100000) {
         currentRate = 90;
         currentLabel = "去年薪資達標｜今年 90%";
-      } else if (is85ActiveThisMonth(allSalaryOrders)) {
+      } else if (creditedSalaryProgress.previousMonth >= 10000) {
         currentRate = 85;
-        currentLabel = "累積接單滿 10,000｜85%";
+        currentLabel = "上月訂單金額滿 10,000｜本月 85%";
       }
-    }
-
-    const latestOrderWithRate = [...allSalaryOrders]
-      .filter((order) => order.salary_rate)
-      .sort(
-        (a, b) =>
-          new Date(b.order_finished_at || b.created_at).getTime() -
-          new Date(a.order_finished_at || a.created_at).getTime()
-      )[0];
-
-    if (
-      latestOrderWithRate &&
-      staff.commission_tier === "auto" &&
-      now >= openingEnd
-    ) {
-      currentRate = Number(latestOrderWithRate.salary_rate || currentRate);
-      currentLabel = latestOrderWithRate.salary_level || currentLabel;
     }
 
     return {
       currentRate,
       currentLabel,
-      totalOrderAmount,
+      monthlyCreditedSalary,
       thisYearSalary,
       progress85,
       progress90,
-      remaining85: Math.max(0, 10000 - totalOrderAmount),
+      remaining85: Math.max(0, 10000 - monthlyCreditedSalary),
       remaining90: Math.max(0, 100000 - thisYearSalary),
     };
-  }, [staff, allSalaryOrders]);
+  }, [staff, allSalaryOrders, creditedSalaryProgress]);
 
   async function init() {
     setLoading(true);
@@ -532,6 +513,17 @@ export default function StaffPage() {
 
   async function loadSalaryData(discordId: string) {
     const { startIso, endIso } = getMonthRange(selectedMonth);
+    const now = new Date().toISOString();
+    try {
+      const [currentMonth, previousMonth] = await Promise.all([
+        getMonthlyOrderAmount(supabase, discordId, now),
+        getMonthlyOrderAmount(supabase, discordId, now, -1),
+      ]);
+      setCreditedSalaryProgress({ currentMonth, previousMonth });
+    } catch (error) {
+      console.error("load credited salary progress error:", error);
+      setPageError("讀取訂單金額升級進度失敗，請重新整理。");
+    }
 
     const { data: orderData, error: orderError } = await supabase
       .from("qiunai_salary_orders")
@@ -562,15 +554,20 @@ export default function StaffPage() {
       setReviewedOrders((reviewData || []) as SalaryOrder[]);
     }
 
-    const { data: allOrderData, error: allOrderError } = await supabase
-      .from("qiunai_salary_orders")
-      .select("*")
-      .eq("discord_id", discordId)
-      .or("is_deleted.eq.false,is_deleted.is.null")
-      .order("order_finished_at", { ascending: false });
-
-    if (allOrderError) {
-      console.error("load all salary orders error:", allOrderError);
+    const allOrderData: SalaryOrder[] = [];
+    for (let from = 0; ; from += 1000) {
+      const { data, error } = await supabase
+        .from("qiunai_salary_orders").select("*").eq("discord_id", discordId)
+        .or("is_deleted.eq.false,is_deleted.is.null")
+        .order("order_finished_at", { ascending: false }).order("id", { ascending: true })
+        .range(from, from + 999);
+      if (error) {
+        console.error("load all salary orders error:", error);
+        setPageError("讀取年度薪資升級進度失敗，請重新整理。");
+        break;
+      }
+      allOrderData.push(...((data || []) as SalaryOrder[]));
+      if ((data || []).length < 1000) break;
     }
 
     const { data: bonusData, error: bonusError } = await supabase
@@ -1722,20 +1719,21 @@ export default function StaffPage() {
                 </div>
 
                 <p className="mt-3 text-sm leading-6 text-[#8b5a8f]">
-                  85% 依累積接單金額判定；90%
-                  依今年薪資進度，達標後隔年整年適用。
+                  85% 依當月一般訂單＋打賞金額判定，滿 10,000 元後隔月生效一個月；90% 依今年薪資進度，達標後隔年生效一年。
+                  <br />
+                  2027年將會有新制度改革
                 </p>
               </div>
 
               <div className="grid flex-1 gap-4 lg:max-w-2xl">
                 <ProgressBlock
-                  title="升級 85% 進度"
+                  title="本月一般訂單＋打賞｜升級 85% 進度"
                   percent={commissionInfo.progress85}
-                  current={commissionInfo.totalOrderAmount}
+                  current={commissionInfo.monthlyCreditedSalary}
                   target={10000}
                   note={
                     commissionInfo.remaining85 === 0
-                      ? "已達 10,000，依規則下個月開始可進入 85%"
+                      ? "本月一般訂單＋打賞已達 10,000，次月適用 85% 一個月"
                       : `還差 $${commissionInfo.remaining85.toLocaleString()}`
                   }
                 />
@@ -2396,36 +2394,7 @@ function getManualCommissionRate(tier: string | null) {
   return null;
 }
 
-function is85ActiveThisMonth(orders: SalaryOrder[]) {
-  const sortedOrders = [...orders].sort(
-    (a, b) =>
-      new Date(a.order_finished_at || a.created_at).getTime() -
-      new Date(b.order_finished_at || b.created_at).getTime()
-  );
 
-  let total = 0;
-  let firstReachDate: string | null = null;
-
-  for (const order of sortedOrders) {
-    total += Number(order.order_amount || 0);
-
-    if (total >= 10000) {
-      firstReachDate = order.order_finished_at || order.created_at;
-      break;
-    }
-  }
-
-  if (!firstReachDate) return false;
-
-  const reachNextMonth = getNextMonthText(firstReachDate);
-  const currentMonth = getMonthText(new Date());
-
-  return currentMonth >= reachNextMonth;
-}
-
-function getNextMonthText(dateText: string) {
-  return getNextTaipeiMonthText(dateText);
-}
 
 function getMonthText(date: Date) {
   return getTaipeiMonthText(date);

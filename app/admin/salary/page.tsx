@@ -18,6 +18,7 @@ import {
   WalletCards,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { getMonthlyOrderAmount } from "@/lib/creditedSalaryCommission";
 import { useQiunaiAdminGuard } from "@/lib/useQiunaiAdminGuard";
 import WorkReportReviewPanel, {
   WorkReport,
@@ -394,7 +395,7 @@ export default function AdminSalaryPage() {
     entryType: "order" | "tip",
     finishedAt: string
   ) {
-    const regularRate = getStaffSalaryRate(
+    const regularRate = getManualRateForPreview(
       staffList.find((staff) => staff.discord_id === discordId),
       finishedAt
     );
@@ -418,7 +419,7 @@ export default function AdminSalaryPage() {
     );
 
     const orderAmount = Number(orderForm.order_amount);
-    const defaultRate = getStaffSalaryRate(
+    const defaultRate = await getStaffSalaryRate(
       selectedStaff,
       orderForm.order_finished_at
     );
@@ -427,7 +428,9 @@ export default function AdminSalaryPage() {
         ? defaultRate === 95
           ? 95
           : 90
-        : Number(orderForm.salary_rate);
+        : selectedStaff?.commission_tier === "auto" || !selectedStaff?.commission_tier
+          ? defaultRate
+          : Number(orderForm.salary_rate);
     const bonusAmount = Number(orderForm.bonus_amount || 0);
     const staffSalary = Math.round(orderAmount * (salaryRate / 100));
     const serviceName =
@@ -838,7 +841,7 @@ export default function AdminSalaryPage() {
 
   async function approveWorkReport(report: WorkReport) {
     const staff = staffList.find((item) => item.discord_id === report.staff_id);
-    const regularRate = getStaffSalaryRate(staff, report.ended_at);
+    const regularRate = await getStaffSalaryRate(staff, report.ended_at);
     const isTip =
       report.order_type.includes("打賞") ||
       report.service_name.includes("打賞");
@@ -2171,7 +2174,7 @@ function getDisplayStaffName(staff: Staff) {
   );
 }
 
-function getStaffSalaryRate(
+function getManualRateForPreview(
   staff: Staff | null | undefined,
   orderFinishedAt?: string
 ) {
@@ -2188,6 +2191,37 @@ function getStaffSalaryRate(
   }
 
   return 80;
+}
+
+async function getStaffSalaryRate(
+  staff: Staff | null | undefined,
+  orderFinishedAt?: string
+) {
+  const at = orderFinishedAt
+    ? (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(orderFinishedAt) ? dateTimeInputToTaipeiIso(orderFinishedAt) : new Date(orderFinishedAt).toISOString())
+    : new Date().toISOString();
+  const manual = getManualRateForPreview(staff, at);
+  if (staff?.commission_tier && staff.commission_tier !== "auto") return manual;
+  if (new Date(at) < new Date("2026-09-01T00:00:00+08:00")) return 90;
+  if (!staff) throw new Error("找不到員工抽成設定");
+  const year = new Date(new Date(at).getTime() + 8 * 3600000).getUTCFullYear();
+  let previousYearSalary = 0;
+  for (let from = 0; ; from += 1000) {
+    const { data, error } = await supabase.from("qiunai_salary_orders")
+      .select("staff_salary").eq("discord_id", staff.discord_id).eq("is_deleted", false)
+      .gte("order_finished_at", new Date(`${year - 1}-01-01T00:00:00+08:00`).toISOString())
+      .lt("order_finished_at", new Date(`${year}-01-01T00:00:00+08:00`).toISOString())
+      .order("id", { ascending: true }).range(from, from + 999);
+    if (error) throw error;
+    previousYearSalary += (data || []).reduce((sum, row) => sum + Number(row.staff_salary || 0), 0);
+    if ((data || []).length < 1000) break;
+  }
+  let rate = previousYearSalary >= 100000 ? 90 :
+    await getMonthlyOrderAmount(supabase, staff.discord_id, at, -1) >= 10000 ? 85 : 80;
+  const { data: activity, error } = await supabase.from("salary_activity_commission_settings")
+    .select("activity_rate").eq("app_key", "qiunai").lte("starts_at", at).gt("ends_at", at).maybeSingle();
+  if (error) throw error;
+  return Math.max(rate, Number(activity?.activity_rate || 0));
 }
 
 function getNowInput() {
