@@ -11,12 +11,12 @@ export async function GET(request, { params }) {
   try {
     await authorizeErpRequest(supabaseAdmin, request, "qiunai", "canViewAllAdmin");
     const { id } = await params;
-    const { data: activity, error } = await supabaseAdmin.from("qiunai_activities").select("id,title,starts_at,allow_not_attending,allow_distance").eq("id", id).maybeSingle();
+    const { data: activity, error } = await supabaseAdmin.from("qiunai_activities").select("id,title,starts_at,allow_not_attending,allow_distance,allow_multiple_options").eq("id", id).maybeSingle();
     if (error) throw error;
     if (!activity) throw new Error("找不到活動");
     const { data: options, error: optionError } = await supabaseAdmin.from("qiunai_activity_options").select("id,label").eq("activity_id", id).order("sort_order");
     if (optionError) throw optionError;
-    const { data: responses, error: responseError } = await supabaseAdmin.from("qiunai_activity_responses").select("id,response_status,selected_option_id,staff_nickname,staff_real_name,staff_phone").eq("activity_id", id).order("staff_nickname");
+    const { data: responses, error: responseError } = await supabaseAdmin.from("qiunai_activity_responses").select("id,response_status,selected_option_id,selected_option_ids,staff_nickname,staff_real_name,staff_phone").eq("activity_id", id).order("staff_nickname");
     if (responseError) throw responseError;
     const responseIds = (responses || []).map((item) => item.id);
     const { data: guests, error: guestError } = responseIds.length ? await supabaseAdmin.from("qiunai_activity_guests").select("response_id,slot,guest_name,guest_phone").in("response_id", responseIds).order("slot") : { data: [], error: null };
@@ -37,6 +37,10 @@ export async function GET(request, { params }) {
     sheet.getCell("B2").value = new Date(activity.starts_at);
     sheet.getCell("B2").numFmt = "yyyy-mm-dd hh:mm";
     sheet.getCell("A3").value = `回覆總數：${(responses || []).length} 人`;
+    if (activity.allow_multiple_options) {
+      sheet.mergeCells("B3:E3");
+      sheet.getCell("B3").value = "複選者列於各個所選分類；回覆總數不重複計算";
+    }
     sheet.getCell("A3").font = { name: "Arial", size: 11, bold: true, color: { argb: "FF5B3768" } };
     const headers = ["員工暱稱", "員工名字", "員工電話", "員工親友", "親友電話"];
     for (const group of groups) {

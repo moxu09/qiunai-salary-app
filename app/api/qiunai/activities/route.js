@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { authorizeErpRequest } from "@/lib/erpAccess";
 import { getAuthUserFromRequest } from "@/lib/salaryWallet";
+import { normalizeActivityOptionIds } from "@/lib/activityOptionSelection";
 
 export const dynamic = "force-dynamic";
 
@@ -137,6 +138,7 @@ export async function POST(request) {
       participant_note: clean(body.participantNote, 2000) || null,
       allow_not_attending: body.allowNotAttending !== false,
       allow_distance: body.allowDistance !== false,
+      allow_multiple_options: body.allowMultipleOptions === true,
       is_published: body.isPublished !== false, created_by: access.discordId,
     }).select("*").single();
     if (error) throw error;
@@ -171,13 +173,18 @@ export async function PATCH(request) {
       if (!eligibility.eligible) throw new Error(`你目前不符合參與門檻：${eligibility.reasons.join("、")}`);
       const guests = status === "attending" ? (Array.isArray(body.guests) ? body.guests : []).slice(0, 1).map((guest, index) => ({ slot: index + 1, guest_name: clean(guest.name, 100), guest_phone: clean(guest.phone, 30) })).filter((guest) => guest.guest_name && guest.guest_phone) : [];
       if ((Array.isArray(body.guests) ? body.guests : []).length > 1) throw new Error("每位員工最多攜帶一位親友");
-      const optionId = status === "attending" && body.optionId ? clean(body.optionId, 100) : null;
-      if (optionId) {
-        const { data: option } = await supabaseAdmin.from("qiunai_activity_options").select("id").eq("id", optionId).eq("activity_id", activityId).maybeSingle();
-        if (!option) throw new Error("活動選項不正確");
+      const options = await optionsFor([activityId]);
+      let existingResponse = null;
+      if (body.optionIds === undefined) {
+        const { data, error: existingError } = await supabaseAdmin.from("qiunai_activity_responses")
+          .select("selected_option_ids").eq("activity_id", activityId).eq("discord_id", discordId).maybeSingle();
+        if (existingError) throw existingError;
+        existingResponse = data;
       }
+      const optionIds = normalizeActivityOptionIds(activity, body, options, existingResponse);
       const { data: response, error: responseError } = await supabaseAdmin.from("qiunai_activity_responses").upsert({
-        activity_id: activityId, discord_id: discordId, response_status: status, selected_option_id: optionId,
+        activity_id: activityId, discord_id: discordId, response_status: status,
+        selected_option_id: optionIds[0] || null, selected_option_ids: optionIds,
         staff_nickname: staff.display_name || staff.discord_name || discordId, staff_real_name: staff.real_name || null, staff_phone: staff.phone || null,
         submitted_at: new Date().toISOString(), updated_at: new Date().toISOString(),
       }, { onConflict: "activity_id,discord_id" }).select("*").single();
@@ -199,9 +206,18 @@ export async function PATCH(request) {
       return NextResponse.json({ ok: true });
     }
     if (body.action === "edit") {
-      const { data: activity, error: activityError } = await supabaseAdmin.from("qiunai_activities").select("id").eq("id", id).maybeSingle();
+      const { data: activity, error: activityError } = await supabaseAdmin.from("qiunai_activities").select("id,allow_multiple_options").eq("id", id).maybeSingle();
       if (activityError) throw activityError;
       if (!activity) throw new Error("找不到活動");
+      const allowMultipleOptions = body.allowMultipleOptions === undefined
+        ? activity.allow_multiple_options : body.allowMultipleOptions === true;
+      if (!allowMultipleOptions) {
+        const { data: responses, error: responseError } = await supabaseAdmin.from("qiunai_activity_responses")
+          .select("selected_option_ids").eq("activity_id", id);
+        if (responseError) throw responseError;
+        if ((responses || []).some((response) => response.selected_option_ids?.length > 1))
+          throw new Error("已有員工提交複選回覆，請先請員工改為單一選項，再關閉複選");
+      }
       const title = clean(body.title, 120);
       const startsAt = new Date(body.startsAt);
       if (!title || Number.isNaN(startsAt.getTime())) throw new Error("請填寫活動名稱與開始時間");
@@ -218,7 +234,7 @@ export async function PATCH(request) {
       const removedIds = (existingOptions || []).filter((item) => !retainedIds.has(item.id)).map((item) => item.id);
       if (removedIds.length) {
         const { count, error: responseError } = await supabaseAdmin.from("qiunai_activity_responses")
-          .select("id", { count: "exact", head: true }).eq("activity_id", id).in("selected_option_id", removedIds);
+          .select("id", { count: "exact", head: true }).eq("activity_id", id).overlaps("selected_option_ids", removedIds);
         if (responseError) throw responseError;
         if (count) throw new Error("已有員工選擇的活動選項不能刪除，請保留該選項");
       }
@@ -249,6 +265,7 @@ export async function PATCH(request) {
         participant_note: clean(body.participantNote, 2000) || null,
         allow_not_attending: body.allowNotAttending !== false,
         allow_distance: body.allowDistance !== false,
+        allow_multiple_options: allowMultipleOptions,
         is_published: body.isPublished !== false,
         updated_at: new Date().toISOString(),
       }).eq("id", id);

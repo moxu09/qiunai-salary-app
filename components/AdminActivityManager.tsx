@@ -13,6 +13,7 @@ type ResponseRow = {
   staff_real_name?: string | null;
   staff_phone?: string | null;
   selected_option_id?: string | null;
+  selected_option_ids?: string[];
   guests: Guest[];
 };
 type Activity = {
@@ -27,6 +28,7 @@ type Activity = {
   min_employment_days: number;
   allow_not_attending: boolean;
   allow_distance: boolean;
+  allow_multiple_options?: boolean;
   eligibility_note?: string | null;
   participant_note?: string | null;
   options: Array<{ id: string; label: string; note?: string | null }>;
@@ -54,6 +56,7 @@ const blank = () => ({
   participantNote: "",
   allowNotAttending: true,
   allowDistance: true,
+  allowMultipleOptions: false,
   isPublished: true,
   options: [{ label: "", note: "" }] as FormOption[],
 });
@@ -124,6 +127,7 @@ export default function AdminActivityManager() {
       participantNote: activity.participant_note || "",
       allowNotAttending: activity.allow_not_attending !== false,
       allowDistance: activity.allow_distance !== false,
+      allowMultipleOptions: activity.allow_multiple_options === true,
       isPublished: activity.is_published,
       options: activity.options.length
         ? activity.options.map((option) => ({ id: option.id, label: option.label, note: option.note || "" }))
@@ -298,6 +302,11 @@ export default function AdminActivityManager() {
             </button>
           </div>
           <div className="mt-3 space-y-3">
+            <label className="flex items-center gap-2 text-sm font-bold text-slate-700">
+              <input type="checkbox" checked={form.allowMultipleOptions} onChange={(e) => setField("allowMultipleOptions", e.target.checked)} />
+              允許複選活動選項
+            </label>
+            <p className="text-xs text-slate-500">未勾選時為單選；僅影響參與分類，參與狀態仍為單選。</p>
             {form.options.map((option, index) => (
               <div key={index} className="grid gap-2 sm:grid-cols-[1fr_1.5fr_auto]">
                 <input
@@ -383,6 +392,7 @@ export default function AdminActivityManager() {
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div>
                   <h3 className="font-black text-slate-900">{activity.title}</h3>
+                  <p className="mt-1 text-xs font-bold text-pink-600">活動選項：{activity.allow_multiple_options ? "可複選" : "單選"}</p>
                   <p className="mt-1 text-xs text-slate-500">
                     {new Date(activity.starts_at).toLocaleString("zh-TW")}｜截止{" "}
                     {new Date(activity.response_deadline).toLocaleString("zh-TW")}
@@ -456,6 +466,7 @@ export default function AdminActivityManager() {
                 className={`activity-print-area mt-5 overflow-x-auto ${printActivityId === activity.id ? "is-printing" : ""}`}
               >
                 <h4 className="hidden text-center text-lg font-black print:block">{activity.title}－活動回覆名單</h4>
+                {activity.allow_multiple_options ? <p className="mb-2 text-xs text-slate-500">複選者會列於各個所選分類；參與總人數不重複計算。</p> : null}
                 {groupActivityResponses(activity).map((group) => (
                   <section key={group.key} className="mb-5 break-inside-avoid">
                     <h5 className="mb-2 rounded-lg bg-pink-50 px-3 py-2 font-black text-slate-800">

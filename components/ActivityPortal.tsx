@@ -17,6 +17,7 @@ type Activity = {
   participant_note?: string | null;
   allow_not_attending?: boolean;
   allow_distance?: boolean;
+  allow_multiple_options?: boolean;
   locked: boolean;
   eligibility: {
     eligible: boolean;
@@ -28,6 +29,7 @@ type Activity = {
   response?: {
     response_status: "attending" | "not_attending" | "distance";
     selected_option_id?: string | null;
+    selected_option_ids?: string[];
     guests?: Array<{ guest_name: string; guest_phone: string }>;
   } | null;
 };
@@ -88,7 +90,8 @@ export default function ActivityPortal() {
 function ActivityForm({ activity, onSaved }: { activity: Activity; onSaved: () => Promise<void> }) {
   const existing = activity.response;
   const [status, setStatus] = useState(existing?.response_status || "");
-  const [optionId, setOptionId] = useState(existing?.selected_option_id || "");
+  const [optionIds, setOptionIds] = useState<string[]>(existing?.selected_option_ids?.length
+    ? existing.selected_option_ids : existing?.selected_option_id ? [existing.selected_option_id] : []);
   const [guests, setGuests] = useState<Guest[]>(
     (existing?.guests || []).map((guest) => ({ name: guest.guest_name, phone: guest.guest_phone })),
   );
@@ -102,7 +105,16 @@ function ActivityForm({ activity, onSaved }: { activity: Activity; onSaved: () =
     activity.eligibility.eligible &&
     !activity.locked &&
     statuses.some(([value]) => value === status) &&
-    (status !== "attending" || !activity.options.length || optionId);
+    (status !== "attending" || !activity.options.length || (
+      optionIds.length > 0 && (activity.allow_multiple_options || optionIds.length === 1) &&
+      optionIds.every((id) => activity.options.some((option) => option.id === id))
+    ));
+
+  function toggleOption(id: string) {
+    setOptionIds((current) => activity.allow_multiple_options
+      ? current.includes(id) ? current.filter((value) => value !== id) : [...current, id]
+      : [id]);
+  }
 
   function updateGuest(index: number, field: keyof Guest, value: string) {
     setGuests((current) =>
@@ -127,7 +139,7 @@ function ActivityForm({ activity, onSaved }: { activity: Activity; onSaved: () =
           action: "respond",
           activityId: activity.id,
           status,
-          optionId: status === "attending" ? optionId : null,
+          optionIds: status === "attending" ? optionIds : [],
           guests: status === "attending" ? guests : [],
         }),
       });
@@ -216,17 +228,17 @@ function ActivityForm({ activity, onSaved }: { activity: Activity; onSaved: () =
       {status === "attending" ? (
         <div className="mt-5 space-y-4">
           {activity.options.length ? (
-            <fieldset>
-              <legend className="text-sm font-black text-slate-700">活動選項</legend>
+            <fieldset disabled={!activity.eligibility.eligible || activity.locked || busy}>
+              <legend className="text-sm font-black text-slate-700">活動選項（{activity.allow_multiple_options ? "可複選" : "單選"}）</legend>
               <div className="mt-2 grid gap-2">
                 {activity.options.map((option) => (
                   <label key={option.id} className="rounded-2xl border border-slate-200 p-3">
                     <span className="flex items-center gap-2 text-sm font-bold text-slate-700">
                       <input
-                        type="radio"
+                        type={activity.allow_multiple_options ? "checkbox" : "radio"}
                         name={`option-${activity.id}`}
-                        checked={optionId === option.id}
-                        onChange={() => setOptionId(option.id)}
+                        checked={optionIds.includes(option.id)}
+                        onChange={() => toggleOption(option.id)}
                       />
                       {option.label}
                     </span>
