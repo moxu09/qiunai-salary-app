@@ -5,7 +5,7 @@ const path = require('node:path');
 const vm = require('node:vm');
 const { getMonthlyOrderAmount } = require('../lib/creditedSalaryCommission');
 const root = path.resolve(__dirname, '..');
-function dbFor(rows, tier = 'auto') {
+function dbFor(rows, tier = 'auto', conflict = false) {
   const writes = [];
   return { writes, from(table) {
     let data = rows.slice(); let patch;
@@ -16,7 +16,12 @@ function dbFor(rows, tier = 'auto') {
       lt(k, v) { data = data.filter(r => r[k] < v); return q; },
       lte() { return q; }, gt() { return q; }, order() { return q; },
       range: async (a, b) => ({ data: data.slice(a, b + 1), error: null }),
-      maybeSingle: async () => ({ data: null, error: null }),
+      maybeSingle: async () => {
+        if (!patch) return { data: null, error: null };
+        if (conflict) return { data: null, error: null };
+        writes.push(patch);
+        return { data: { id: 'pending' }, error: null };
+      },
       single: async () => ({ data: table === 'qiunai_staff' ? { discord_id: 'staff', commission_tier: tier }
         : { id: 'pending', discord_id: 'staff', order_amount: 1000, order_finished_at: '2026-10-21T00:00:00Z',
           service_name: '語聊', admin_note: '{}' }, error: null }),
@@ -63,6 +68,22 @@ test('查詢失敗不得當零業績', async () => {
   const db = dbFor([]); const from = db.from;
   db.from = table => { const q = from(table); q.range = async () => ({ error: Error('database unavailable') }); return q; };
   await assert.rejects(getMonthlyOrderAmount(db, 'staff', '2026-10-21'), /database unavailable/);
+});
+test('另一位審核者已先完成時，核准及駁回均不得假回報成功', async () => {
+  for (const action of ['approve', 'reject']) {
+    const db = dbFor([], 'auto', true);
+    await assert.rejects(reviewFunction()(db, 'qiunai',
+      { id: 'pending', action, reason: '重複申報' }, 'reviewer'), /已被其他人審核/);
+    assert.equal(db.writes.length, 0);
+  }
+});
+test('正常駁回仍更新一次並回傳結果', async () => {
+  const db = dbFor([]);
+  const result = await reviewFunction()(db, 'qiunai',
+    { id: 'pending', action: 'reject', reason: '時長不正確' }, 'reviewer');
+  assert.equal(result.action, 'reject');
+  assert.equal(db.writes.length, 1);
+  assert.equal(db.writes[0].status, '工時已駁回');
 });
 test('員工進度不得回到歷史累積或被最後一筆打賞抽成覆蓋；人工新增與審核也讀上月業績', () => {
   const staff = fs.readFileSync(path.join(root, 'app/staff/page.tsx'), 'utf8');
