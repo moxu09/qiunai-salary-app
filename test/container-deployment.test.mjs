@@ -8,6 +8,7 @@ test("container build excludes local credentials and generated output", () => {
   const ignore = read(".dockerignore").split("\n");
   for (const entry of [".git", ".env", ".env.*", "node_modules", ".next", "*.pem", "*.key"])
     assert.ok(ignore.includes(entry), `Missing exclusion: ${entry}`);
+  assert.ok(!ignore.includes(".github"), "Container regression tests need the workflow source");
 });
 
 test("standalone runtime contains Chinese PDF assets and uses non-root server", () => {

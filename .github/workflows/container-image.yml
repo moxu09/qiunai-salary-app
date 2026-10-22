@@ -63,8 +63,9 @@ jobs:
             --env SUPABASE_SERVICE_ROLE_KEY=smoke-only-not-a-real-key \
             "eip-smoke:${GITHUB_SHA}"
           node scripts/container-smoke.mjs
-          docker exec eip-smoke node -e '
+          docker exec --env EXPECTED_REVISION eip-smoke node -e '
             const fs = require("node:fs");
+            if (process.env.APP_REVISION !== process.env.EXPECTED_REVISION) throw Error("Wrong container revision");
             for (const path of ["assets/employment/contract-v1.1.pdf", "assets/employment/NotoSansCJKtc-Regular.otf", "assets/employment/deepnight-logo.png", "node_modules/@fontsource/noto-sans-tc/files/noto-sans-tc-chinese-traditional-400-normal.woff", "node_modules/@fontsource/noto-sans-tc/files/noto-sans-tc-chinese-traditional-700-normal.woff"])
               if (fs.statSync(path).size === 0) throw Error("Missing runtime asset");
             if (process.getuid() === 0) throw Error("Container must not run as root");
