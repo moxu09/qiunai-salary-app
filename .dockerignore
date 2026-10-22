@@ -1,0 +1,17 @@
+.git
+.github
+.env
+.env.*
+node_modules
+.next
+out
+build
+coverage
+android
+ios
+*.log
+*.tsbuildinfo
+.DS_Store
+*.pem
+*.key
+*.p12
