@@ -29,6 +29,8 @@ test("CI publishes immutable image only after runtime smoke succeeds", () => {
   assert.match(workflow, /packages: write/);
   assert.match(workflow, /persist-credentials: false/);
   assert.match(workflow, /sha-\$\{GITHUB_SHA\}/);
+  assert.ok(workflow.indexOf("visibility !== 'private'") < workflow.indexOf("docker/build-push-action@"));
+  assert.doesNotMatch(workflow, /response\.status !== 404/);
   assert.doesNotMatch(workflow, /secrets\.(?:SUPABASE_SERVICE_ROLE_KEY|DISCORD_BOT_TOKEN|CRON_SECRET)/);
   assert.doesNotMatch(workflow, /visibility:\s*public|railway.*(?:edit|deploy|up)/);
 });
