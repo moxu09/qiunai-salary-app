@@ -108,12 +108,11 @@ const groups: ReadonlyArray<PortalGroup> = [
 
 type StaffPortalNavProps = {
   activeTab: PortalTab;
-  onSelect: (tab: PortalTab, department?: string) => void;
+  onSelect: (tab: PortalTab) => void;
   employeeName: string;
   company: string;
   showDeviceAudit?: boolean;
   brand?: React.ReactNode;
-  departments?: Array<{ key: string; name: string }>;
 };
 
 export default function StaffPortalNav({
@@ -123,7 +122,6 @@ export default function StaffPortalNav({
   company,
   showDeviceAudit = false,
   brand,
-  departments,
 }: StaffPortalNavProps) {
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(groups.map((group) => [group.title, true])),
@@ -136,13 +134,6 @@ export default function StaffPortalNav({
     }));
   }
 
-  const navigationGroups: ReadonlyArray<PortalGroup & { department?: string }> = groups.flatMap(
-    (group) =>
-      group.title === "訂單" && departments
-        ? departments.map((d) => ({ ...group, title: `${d.name}訂單`, department: d.key }))
-        : [group],
-  );
-
   return (
     <aside className="staff-portal-nav">
       <div className="staff-portal-brand">
@@ -153,7 +144,7 @@ export default function StaffPortalNav({
 
       <nav className="staff-portal-menu">
         {[
-          ...navigationGroups,
+          ...groups,
           ...(showDeviceAudit
             ? [
                 {
@@ -163,7 +154,7 @@ export default function StaffPortalNav({
                 },
               ]
             : []),
-        ].map(({ title, icon: GroupIcon, items, department }) => {
+        ].map(({ title, icon: GroupIcon, items }) => {
           const isOpen = openGroups[title] ?? true;
           const regionId = `staff-portal-${title}`;
 
@@ -190,10 +181,10 @@ export default function StaffPortalNav({
                     {items.map(([tab, label, Icon]) => (
                       <Link
                         key={tab}
-                        href={`${HR_ROUTES[tab]}${department ? `#${department}` : ""}`}
+                        href={HR_ROUTES[tab]}
                         onClick={(event) => {
                           event.preventDefault();
-                          onSelect(tab, department);
+                          onSelect(tab);
                           window.scrollTo({ top: 0, behavior: "smooth" });
                         }}
                         className={`staff-portal-link ${activeTab === tab ? "is-active" : ""}`}

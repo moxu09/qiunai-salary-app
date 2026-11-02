@@ -202,9 +202,9 @@ export default function UnifiedHrPortal() {
     await supabase.auth.signOut();
     router.replace("/");
   }
-  function select(tab: string, department?: string) {
+  function select(tab: string) {
     const next = HR_ROUTES[tab as keyof typeof HR_ROUTES];
-    if (next) router.push(`${next}${department ? `#${department}` : ""}`);
+    if (next) router.push(next);
   }
   if (loading)
     return (
@@ -268,7 +268,6 @@ export default function UnifiedHrPortal() {
             employeeName={employeeName}
             company="秋奈 × 深夜"
             brand={<Logos departments={session.departments} />}
-            departments={departments}
             showDeviceAudit={canAudit}
           />
           <div className="staff-main-column min-w-0">
