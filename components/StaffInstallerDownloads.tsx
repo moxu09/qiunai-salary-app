@@ -48,7 +48,7 @@ export default function StaffInstallerDownloads() {
   return (
     <section className="mt-6 rounded-3xl border border-pink-100 bg-white p-6 shadow-sm">
       <h2 className="flex items-center gap-3 text-xl font-black text-[#3f2947]">
-        <MonitorDown size={24} className="text-pink-500" />秋奈 EIP App 下載
+        <MonitorDown size={24} className="text-pink-500" />秋奈 HR App 下載
       </h2>
       <p className="mt-2 text-sm text-[#80647d]">選擇與裝置相符的版本。檔案為 ZIP，下載後先解壓縮再開啟。</p>
       <div className="mt-5 grid gap-3 md:grid-cols-2">

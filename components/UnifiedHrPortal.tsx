@@ -12,6 +12,7 @@ import StaffCollaboration from "@/components/StaffCollaboration";
 import StaffMessages from "@/components/StaffMessages";
 import HrPortalPanel from "@/components/HrPortalPanel";
 import ActivityPortal from "@/components/ActivityPortal";
+import DeepnightStaffInstallerDownloads from "@/components/DeepnightStaffInstallerDownloads";
 import StaffInstallerDownloads from "@/components/StaffInstallerDownloads";
 import ErpAuthLinkManager from "@/components/ErpAuthLinkManager";
 import StaffDeviceAuditPanel from "@/components/StaffDeviceAuditPanel";
@@ -318,7 +319,13 @@ export default function UnifiedHrPortal() {
             {activeTab === "downloads" ? (
               <Card title="App 下載">
                 <p className="hr-note">網頁版 HR 已合併；現有安裝版仍使用原部門入口。</p>
-                <StaffInstallerDownloads />
+                {session.departments.map((d) =>
+                  d.key === "qiunai" ? (
+                    <StaffInstallerDownloads key={d.key} />
+                  ) : (
+                    <DeepnightStaffInstallerDownloads key={d.key} />
+                  ),
+                )}
               </Card>
             ) : null}
             {activeTab === "device-audit" && canAudit ? <StaffDeviceAuditPanel /> : null}
