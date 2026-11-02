@@ -1,9 +1,10 @@
+import { privateCourseCatalog } from "@/lib/service/courses";
 import { hrAuth, hrFail } from "@/lib/hrServer";
 import { hrSource, annotate } from "@/lib/hrUpstream";
 export const dynamic = "force-dynamic";
 export async function GET(request) {
   try {
-    const { departments } = await hrAuth(request);
+    const { departments, discordId } = await hrAuth(request);
     const url = new URL(request.url);
     if (url.searchParams.has("audit")) {
       const key = url.searchParams.get("department");
@@ -36,6 +37,8 @@ export async function GET(request) {
             field === "templates" ? "name" : field === "requests" ? null : "title",
           ),
         );
+      try { result.documents.push(...await privateCourseCatalog(key, discordId)); }
+      catch { result.serviceCoursesUnavailable = true; }
       result.workflowStagesEnabled ||= data.workflowStagesEnabled === true;
     }
     result.events.sort((a, b) => a.starts_at.localeCompare(b.starts_at));

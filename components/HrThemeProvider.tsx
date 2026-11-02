@@ -13,7 +13,8 @@ const EMPTY:Store={owned:[],products:HR_THEMES,orders:[],departments:[],asdBalan
 const STORAGE_KEY="wearestillhere.hr.appearance";
 export async function hrThemeRequest(path:string,body?:unknown){
  const {data}=await supabase.auth.getSession();if(!data.session)throw Error("請先登入員工 HR");
- const response=await fetch(path,{method:body?"POST":"GET",headers:{Authorization:`Bearer ${data.session.access_token}`,...(body?{"Content-Type":"application/json"}:{})},...(body?{body:JSON.stringify(body)}:{}),cache:"no-store"});
+ const endpoint=typeof window!=="undefined"&&window.location.pathname.startsWith("/service")&&path==="/api/hr/themes"?"/service/api/themes":path;
+ const response=await fetch(endpoint,{method:body?"POST":"GET",headers:{Authorization:`Bearer ${data.session.access_token}`,...(body?{"Content-Type":"application/json"}:{})},...(body?{body:JSON.stringify(body)}:{}),cache:"no-store"});
  const result=await response.json();if(!response.ok)throw Error(result.message||"主題服務暫時無法使用");return result;
 }
 const ThemeContext=createContext<{theme:HrTheme;setTheme:(theme:HrTheme)=>Promise<void>;store:Store;refresh:()=>Promise<void>;error:string;ready:boolean}>({theme:"qiunai",setTheme:async()=>{},store:EMPTY,refresh:async()=>{},error:"",ready:false});

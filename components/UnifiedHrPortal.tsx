@@ -156,6 +156,7 @@ export default function UnifiedHrPortal() {
   const router = useRouter();
   const pathname = usePathname();
   const activeTab = (hrTabForPath(pathname) || "workspace") as PortalTab;
+  const authPath = activeTab === "knowledge" ? HR_ROUTES.knowledge : pathname;
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -168,7 +169,7 @@ export default function UnifiedHrPortal() {
     try {
       const { data } = await supabase.auth.getSession();
       if (!data.session) {
-        router.replace(`/?next=${encodeURIComponent(pathname)}`);
+        router.replace(`/?next=${encodeURIComponent(window.location.pathname || authPath)}`);
         return;
       }
       const result = await hrFetch("/api/hr/session");
@@ -190,7 +191,7 @@ export default function UnifiedHrPortal() {
     } finally {
       setLoading(false);
     }
-  }, [pathname, router]);
+  }, [authPath, router]);
   useEffect(() => {
     void init();
   }, [init]);

@@ -4,6 +4,9 @@ import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react
 import { ArrowRight, BookOpenText, CalendarDays, CheckCircle2, ClipboardCheck, FileText, MessageSquareText, Search, Send, Sparkles } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import WorkspaceDocumentFiles from "@/components/WorkspaceDocumentFiles";
+import KnowledgeLibrary from "@/components/KnowledgeLibrary";
+import Link from "next/link";
+import { knowledgeCourseHref } from "@/lib/knowledgeCourses.mjs";
 
 type Section = "workspace" | "calendar" | "documents" | "knowledge" | "workflows";
 type Event = { id: string; title: string; details: string; location: string; starts_at: string; ends_at: string };
@@ -14,7 +17,7 @@ type Submission = { organization?: "qiunai" | "deepnight"; id: string; template_
 type AuditEntry = { new_status: "pending" | "approved" | "rejected"; actor_discord_id: string; note: string | null; created_at: string; step_index?: number | null };
 type ExistingAnnouncement = { id: string; title: string; created_at: string; requires_signature?: boolean; signature?: { status: string } | null };
 type ExistingRequest = { id: string; request_type: string; status: string; application_date: string };
-type Data = { events: Event[]; documents: Document[]; templates: Template[]; requests: Submission[] };
+type Data = { serviceCoursesUnavailable?: boolean; events: Event[]; documents: Document[]; templates: Template[]; requests: Submission[] };
 type Props = { organization: "qiunai" | "deepnight" | "hr"; section: Section; employeeName: string; onSelect: (tab: string) => void };
 const emptyData: Data = { events: [], documents: [], templates: [], requests: [] };
 const time = (value: string) => new Intl.DateTimeFormat("zh-TW", { timeZone: "Asia/Taipei", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(value));
@@ -60,7 +63,7 @@ export default function StaffCollaboration({ organization, section, employeeName
     try {
       setLoading(true);
       const result = await authorizedFetch("GET");
-      setData({ events: result.events || [], documents: result.documents || [], templates: result.templates || [], requests: result.requests || [] });
+      setData({ serviceCoursesUnavailable: result.serviceCoursesUnavailable === true, events: result.events || [], documents: result.documents || [], templates: result.templates || [], requests: result.requests || [] });
       setReferenceTime(Date.now());
       setWorkflowTargetHours(Number(result.workflowTargetHours || 48));
       setWorkflowStagesEnabled(result.workflowStagesEnabled === true);
@@ -119,6 +122,7 @@ export default function StaffCollaboration({ organization, section, employeeName
         <button type="button" className="eip-collab-refresh" onClick={() => void refresh()}>重新整理</button>
       </div>
       {error ? <p className="eip-collab-alert" role="alert">{error}</p> : null}
+      {section === "knowledge" && data.serviceCoursesUnavailable ? <p className="eip-collab-alert" role="alert">客服課程暫時無法載入，請重新整理或稍後再試。</p> : null}
       {notice ? <p className="eip-collab-notice" role="status">{notice}</p> : null}
       {loading ? <p className="eip-collab-empty">正在同步工作資料…</p> : null}
       {!loading && section === "workspace" ? (
@@ -157,7 +161,10 @@ export default function StaffCollaboration({ organization, section, employeeName
           </div>
           <div className="eip-collab-panel">
             <div className="eip-collab-panel-head"><h2>最近更新的知識</h2><button onClick={() => go("knowledge")}>開啟知識庫 <ArrowRight size={15} /></button></div>
-            <div className="eip-collab-tile-grid">{data.documents.filter((item) => item.document_type === "knowledge").slice(0, 3).map((item) => <button className="eip-collab-tile" key={item.id} onClick={() => { setSelectedDocument(item); go("knowledge"); }}><BookOpenText size={18} /><span>{item.category}</span><strong>{item.title}</strong></button>)}</div>
+            <div className="eip-collab-tile-grid">{data.documents.filter((item) => item.document_type === "knowledge").slice(0, 3).map((item) => {
+              const department = item.organization || (organization === "hr" ? null : organization);
+              return department ? <Link className="eip-collab-tile" key={`${department}:${item.id}`} href={knowledgeCourseHref(department, item.id)}><BookOpenText size={18} /><span>{item.category}</span><strong>{item.title}</strong></Link> : null;
+            })}</div>
             {!data.documents.some((item) => item.document_type === "knowledge") ? <p className="eip-collab-empty">知識庫尚未發布文章。</p> : null}
           </div>
           <div className="eip-collab-columns">
@@ -178,8 +185,9 @@ export default function StaffCollaboration({ organization, section, employeeName
         <div className="eip-collab-panel-head"><h2>團隊行事曆</h2><span>台灣時間 · 近期活動與會議</span></div>
         {data.events.length ? data.events.map((item) => <article className="eip-collab-event" key={item.id}><div className="eip-collab-event-time">{time(item.starts_at)}<br />至 {time(item.ends_at)}</div><div><h3>{item.title}</h3>{item.location ? <p>地點：{item.location}</p> : null}{item.details ? <p>{item.details}</p> : null}</div></article>) : <p className="eip-collab-empty">目前沒有已發布的日程。</p>}
       </div> : null}
-      {!loading && (section === "documents" || section === "knowledge") ? <div className="eip-collab-panel">
-        <div className="eip-collab-panel-head"><h2>{section === "knowledge" ? "團隊知識庫" : "共享文件"}</h2><span>{filteredDocuments.length} 篇</span></div>
+      {section === "knowledge" ? <KnowledgeLibrary organization={organization} documents={data.documents.filter((item) => item.document_type === "knowledge")} loading={loading} /> : null}
+      {!loading && section === "documents" ? <div className="eip-collab-panel">
+        <div className="eip-collab-panel-head"><h2>共享文件</h2><span>{filteredDocuments.length} 篇</span></div>
         <label className="eip-collab-search"><Search size={18} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜尋標題、分類或內容" /></label>
         <div className="eip-collab-document-layout">
           <div className="eip-collab-document-list">{filteredDocuments.map((item) => <button key={item.id} aria-pressed={selectedDocument?.id === item.id} className={selectedDocument?.id === item.id ? "is-selected" : ""} onClick={() => setSelectedDocument(item)}><span>{item.category} · v{item.version}</span><strong>{item.title}</strong><small>更新於 {time(item.updated_at)}</small></button>)}{!filteredDocuments.length ? <p className="eip-collab-empty">沒有符合條件的內容。</p> : null}</div>

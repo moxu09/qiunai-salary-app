@@ -9,13 +9,14 @@ type Props = {
   organization: "qiunai" | "deepnight";
   documentId: string;
   admin?: boolean;
+  apiPath?: string;
 };
 
 const fileSize = (bytes: number) => bytes >= 1024 * 1024
   ? `${(bytes / 1024 / 1024).toFixed(1)} MB`
   : `${Math.max(1, Math.ceil(bytes / 1024))} KB`;
 
-export default function WorkspaceDocumentFiles({ organization, documentId, admin = false }: Props) {
+export default function WorkspaceDocumentFiles({ organization, documentId, admin = false, apiPath }: Props) {
   const [files, setFiles] = useState<WorkspaceFile[]>([]);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(true);
@@ -27,7 +28,7 @@ export default function WorkspaceDocumentFiles({ organization, documentId, admin
     const { data } = await supabase.auth.getSession();
     if (!data.session) throw new Error("登入已過期，請重新登入");
     const query = `documentId=${encodeURIComponent(documentId)}${admin ? "&admin=1" : ""}${suffix}`;
-    const response = await fetch(`/api/${organization}/workspace/files?${query}`, {
+    const response = await fetch(`${apiPath || `/api/${organization}/workspace/files`}?${query}`, {
       method,
       cache: "no-store",
       headers: { Authorization: `Bearer ${data.session.access_token}` },
@@ -36,7 +37,7 @@ export default function WorkspaceDocumentFiles({ organization, documentId, admin
     const result = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(result.message || "附件操作失敗");
     return result;
-  }, [admin, documentId, organization]);
+  }, [admin, documentId, organization, apiPath]);
 
   const refresh = useCallback(async () => {
     try {
