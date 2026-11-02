@@ -2,7 +2,7 @@
 /* eslint-disable @next/next/no-img-element */
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { LogOut, RefreshCw, WalletCards, Save, UserRound } from "lucide-react";
+import { LogOut, RefreshCw, WalletCards, Save, UserRound, LockKeyhole } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { HR_DEPARTMENTS, HR_ROUTES, hrTabForPath, allocateWithdrawal } from "@/lib/hrRoutes.mjs";
 import { HrThemeBanner, HrAppearancePanel, HrThemeDecorations } from "@/components/HrThemeProvider";
@@ -475,7 +475,7 @@ function DepartmentStatus({ departments }: { departments: Department[] }) {
     </Card>
   );
 }
-function WalletPanel({ departments }: { departments: Department[] }) {
+export function WalletPanel({ departments }: { departments: Department[] }) {
   const [wallets, setWallets] = useState<WalletDepartment[]>([]);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -759,8 +759,8 @@ function WalletPanel({ departments }: { departments: Department[] }) {
           disabled={!canSubmit}
           onClick={() => void submit()}
         >
-          <WalletCards size={18} />
-          {busy ? "處理中…" : destination === "bank" ? "送出提領申請" : "轉入本人 ASD 錢包"}
+          {!canSubmit && !busy ? <LockKeyhole size={18} /> : <WalletCards size={18} />}
+          {busy ? "處理中…" : loading ? "同步錢包中…" : destination === "bank" && !windowOpen ? "尚未開放提領" : destination === "bank" ? "送出提領申請" : "轉入本人 ASD 錢包"}
         </button>
       </div>
       <WithdrawalStatements departments={departments} />

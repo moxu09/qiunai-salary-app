@@ -418,6 +418,27 @@
 .hr-theme-root .hr-unified :is(button,a,input,select,textarea,summary):focus-visible { outline:3px solid var(--hr-link) !important; outline-offset:3px; }
 .hr-theme-root .hr-unified .staff-portal-nav :is(button,a):focus-visible { outline-color:var(--hr-nav-text) !important; }
 
+/* Primary and unavailable actions need clear lettering as well as distinct states. */
+.hr-theme-root .hr-unified button,
+.hr-theme-root .hr-unified button :is(span,strong,small) { -webkit-text-fill-color:currentColor !important; }
+.hr-theme-qiunai { --hr-action-bg:#244a7d; --hr-action-hover:#17345d; --hr-disabled-bg:#465770; --hr-disabled-text:#fff; }
+.hr-theme-deepnight { --hr-action-bg:#61451f; --hr-action-hover:#493315; --hr-disabled-bg:#5d5549; --hr-disabled-text:#fff; }
+:is(.hr-theme-qiunai,.hr-theme-deepnight) .hr-unified :is(.qiunai-button,button.text-white,.eip-collab-form-actions button[type="submit"],.eip-workspace-upload button,.eip-messages-compose button,.eip-messages-launcher) {
+  min-height:44px !important; font-size:15px !important; font-weight:800 !important; text-shadow:none;
+}
+:is(.hr-theme-qiunai,.hr-theme-deepnight) .hr-unified :is(.qiunai-button,button.text-white,.eip-collab-form-actions button[type="submit"],.eip-workspace-upload button,.eip-messages-compose button,.eip-messages-launcher):not(:disabled) {
+  background:var(--hr-action-bg) !important; color:#fff !important; -webkit-text-fill-color:#fff;
+  border:2px solid var(--hr-action-bg) !important; opacity:1; filter:none;
+}
+:is(.hr-theme-qiunai,.hr-theme-deepnight) .hr-unified :is(.qiunai-button,button.text-white,.eip-collab-form-actions button[type="submit"],.eip-workspace-upload button,.eip-messages-compose button,.eip-messages-launcher):hover:not(:disabled) {
+  background:var(--hr-action-hover) !important; color:#fff !important; border-color:var(--hr-action-hover) !important; filter:none;
+}
+:is(.hr-theme-qiunai,.hr-theme-deepnight).hr-theme-root .hr-unified button:disabled {
+  background:var(--hr-disabled-bg) !important; color:var(--hr-disabled-text) !important; -webkit-text-fill-color:var(--hr-disabled-text);
+  border:2px dashed var(--hr-disabled-bg) !important; opacity:1 !important; box-shadow:none !important;
+}
+:is(.hr-theme-qiunai,.hr-theme-deepnight).hr-theme-root .hr-unified button:disabled :is(span,strong,small,svg) { color:inherit !important; }
+
 /* Halloween navigation: stickers sit above the labels without taking pointer input. */
 .hr-theme-halloween-2026 .hr-unified .staff-portal-group { position:relative; isolation:isolate; }
 .hr-halloween-nav-decoration { position:absolute; inset:0; z-index:3; pointer-events:none; user-select:none; }
