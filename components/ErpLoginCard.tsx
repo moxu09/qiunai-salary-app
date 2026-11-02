@@ -9,7 +9,7 @@ import {
   MessageCircle,
   ShieldCheck,
 } from "lucide-react";
-import { HrThemeArtwork } from "@/components/HrThemeProvider";
+import { HrThemeArtwork, HrThemeDecorations } from "@/components/HrThemeProvider";
 import { supabase } from "@/lib/supabase";
 
 type Theme = "deepnight" | "qiunai";
@@ -125,6 +125,7 @@ export default function ErpLoginCard({
           : "flex min-h-screen items-center justify-center bg-[#eef7fd] px-4 py-10 text-slate-900"
       }
     >
+      {isQiunai ? <HrThemeDecorations /> : null}
       <div className="relative z-10 w-full max-w-lg">
         <div className="hr-login-art">
           {admin ? <ShieldCheck size={40} /> : isQiunai ? <HrThemeArtwork /> : <Gamepad2 size={40} />}

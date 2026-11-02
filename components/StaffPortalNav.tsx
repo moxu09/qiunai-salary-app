@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { HrSidebarArtwork } from "@/components/HrThemeProvider";
 import { HR_ROUTES } from "@/lib/hrRoutes.mjs";
 import {
   BadgeCheck,
@@ -222,6 +223,7 @@ export default function StaffPortalNav({
           );
         })}
       </nav>
+      <HrSidebarArtwork />
     </aside>
   );
 }

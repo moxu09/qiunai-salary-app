@@ -1,7 +1,8 @@
 "use client";
 /* eslint-disable @next/next/no-img-element */
+import Image from "next/image";
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
-import { Check, MoonStar, Sparkles, Palette } from "lucide-react";
+import { Check, MoonStar, Sparkles, Palette, Gamepad2, Headphones, Cloud, Heart, Star, LampDesk, Music2 } from "lucide-react";
 
 type HrTheme = "qiunai" | "deepnight";
 const STORAGE_KEY = "wearestillhere.hr.appearance";
@@ -32,6 +33,11 @@ export default function HrThemeProvider({ children }: { children: ReactNode }) {
   </ThemeContext.Provider>;
 }
 
+function HrSceneImage({ theme: selected, sizes = "(max-width: 760px) 100vw, 70vw", eager = false }: { theme?: HrTheme; sizes?: string; eager?: boolean }) {
+  const { theme } = useContext(ThemeContext);
+  return <span className="hr-scene-image" aria-hidden="true"><Image src={(selected || theme) === "qiunai" ? "/brand/qiunai-cloud-room.png" : "/brand/deepnight-lounge.png"} alt="" fill sizes={sizes} loading={eager ? "eager" : "lazy"} /></span>;
+}
+
 export function HrThemeArtwork({ theme: selected }: { theme?: HrTheme }) {
   const { theme } = useContext(ThemeContext);
   const current = selected || theme;
@@ -45,9 +51,20 @@ export function HrThemeArtwork({ theme: selected }: { theme?: HrTheme }) {
   </div>;
 }
 
+export function HrThemeDecorations() {
+  const { theme } = useContext(ThemeContext);
+  const icons = theme === "qiunai" ? [Gamepad2, Cloud, Heart, Headphones, Star, Sparkles] : [MoonStar, LampDesk, Star, Headphones, Music2, Sparkles];
+  return <div className="hr-scene-decorations" aria-hidden="true"><HrSceneImage sizes="100vw" eager />{icons.map((Icon, index) => <span className={`hr-scene-sticker hr-scene-sticker-${index}`} key={index}><Icon strokeWidth={1.4} /></span>)}</div>;
+}
+
+export function HrSidebarArtwork() {
+  return <div className="hr-sidebar-art" aria-hidden="true"><HrSceneImage sizes="220px" /><HrThemeArtwork /></div>;
+}
+
 export function HrThemeBanner() {
   const { theme } = useContext(ThemeContext);
   return <div className="hr-theme-banner">
+    <HrSceneImage eager />
     <div className="hr-theme-banner-copy">
       <span className="hr-theme-kicker">{theme === "qiunai" ? "QIUNAI · A LITTLE JOY EVERY DAY" : "DEEPNIGHT · WE ARE STILL HERE"}</span>
       <h2>{theme === "qiunai" ? "小奈陪你，今天也一起加油！" : "夜再深，這裡總有一盞燈。"}</h2>
@@ -68,7 +85,7 @@ export function HrAppearancePanel() {
         onClick={() => setTheme(option)}
         className={`hr-theme-option hr-option-${option}${theme === option ? " is-selected" : ""}`}
       >
-        <span className="hr-theme-option-preview"><HrThemeArtwork theme={option} />
+        <span className="hr-theme-option-preview"><HrSceneImage theme={option} sizes="(max-width: 760px) 100vw, 35vw" /><HrThemeArtwork theme={option} />
           <span className="hr-preview-window"><i /><i /><i /></span>
         </span>
         <span className="hr-theme-option-info">

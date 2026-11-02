@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { LogOut, RefreshCw, WalletCards, Save, UserRound } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { HR_DEPARTMENTS, HR_ROUTES, hrTabForPath, allocateWithdrawal } from "@/lib/hrRoutes.mjs";
-import { HrThemeBanner, HrAppearancePanel } from "@/components/HrThemeProvider";
+import { HrThemeBanner, HrAppearancePanel, HrThemeDecorations } from "@/components/HrThemeProvider";
 import HrCareerPanel from "@/components/HrCareerPanel";
 import StaffPortalNav, { type PortalTab } from "@/components/StaffPortalNav";
 import StaffCollaboration from "@/components/StaffCollaboration";
@@ -240,6 +240,7 @@ export default function UnifiedHrPortal() {
     activeTab.startsWith("approval-");
   return (
     <main className="qiunai-page staff-workspace hr-unified">
+      <HrThemeDecorations />
       <header className="staff-workspace-header">
         <div className="hr-header-inner">
           <div>

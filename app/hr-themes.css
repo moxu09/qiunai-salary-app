@@ -134,3 +134,110 @@
 .hr-theme-deepnight .hr-unified .hr-theme-option.is-selected { border-color: #92743a; box-shadow: 0 0 0 3px #92743a1a; }
 .hr-theme-deepnight .is-selected .hr-theme-option-status { background: #69522c; border-color: #69522c; }
 .hr-theme-root .hr-unified .staff-portal-link svg { color: inherit; }
+
+/* Scenic edition: illustrations occupy their own space; working surfaces stay opaque. */
+.hr-theme-qiunai { --hr-paper: #fffefd; --hr-scene: url('/brand/qiunai-cloud-room.png'); }
+.hr-theme-deepnight { --hr-paper: #fffcf5; --hr-scene: url('/brand/deepnight-lounge.png'); }
+.hr-theme-root .hr-unified {
+  background: linear-gradient(#edf5ff80, #f6f0fb99), var(--hr-scene) center / cover fixed !important;
+}
+.hr-theme-deepnight .hr-unified {
+  background: linear-gradient(#0c182d80, #111e3699), var(--hr-scene) center / cover fixed !important;
+}
+.hr-theme-root .hr-unified::before { opacity: .35; }
+.hr-theme-root .hr-unified::after { content: none; }
+.hr-theme-root .hr-theme-banner {
+  min-height: 300px; padding: 32px; align-items: center; border: 1px solid #ffffffb3;
+  background: linear-gradient(90deg, #f5fafffa 0%, #f5faffe8 32%, #f5faff55 58%, transparent 75%), var(--hr-scene) center / cover;
+  box-shadow: 0 12px 32px #30486a12;
+}
+.hr-theme-root .hr-theme-banner::before { content: none; }
+.hr-theme-banner-copy { max-width: 52%; }
+.hr-theme-banner h2 { font-size: clamp(21px, 2.3vw, 30px); }
+.hr-theme-root .hr-theme-banner > .hr-theme-artwork {
+  position: absolute; right: 20px; bottom: 16px; width: 100px; height: 100px;
+  border: 1px solid #ffffffab; border-radius: 50%; background: #f2f8ffe8;
+  box-shadow: 0 5px 22px #3d689326;
+}
+.hr-theme-banner > .hr-theme-artwork img { width: 90px; height: 90px; }
+.hr-theme-banner > .hr-theme-artwork .hr-art-orbit { width: 85px; height: 85px; }
+.hr-theme-banner > .hr-theme-artwork :is(.hr-art-sparkle, .hr-art-star, .hr-art-moon) { display: none; }
+.hr-theme-deepnight .hr-theme-banner {
+  background: linear-gradient(90deg, #101e35f5 0%, #101e35e8 30%, #101e3555 60%, transparent 80%), var(--hr-scene) center / cover;
+  border-color: #d9bf7880;
+}
+.hr-theme-deepnight .hr-theme-banner > .hr-theme-artwork { background: #14233de8; border-color: #d8bb6d80; }
+.hr-theme-root .hr-theme-option-preview {
+  height: 240px; background: linear-gradient(#edf5ff11, #edf5ff11), url('/brand/qiunai-cloud-room.png') center / cover;
+}
+.hr-theme-root .hr-option-deepnight .hr-theme-option-preview {
+  background: linear-gradient(#14203911, #14203911), url('/brand/deepnight-lounge.png') center / cover;
+}
+.hr-theme-option-preview > .hr-theme-artwork {
+  position: absolute; right: 12px; bottom: 12px; width: 90px; height: 90px;
+  border: 1px solid #c1d5eb; border-radius: 50%; background: #f5faffe8;
+}
+.hr-theme-option-preview .hr-theme-artwork img { width: 80px; height: 80px; }
+.hr-theme-option-preview .hr-art-deepnight { background: #15243dee; border-color: #cbb574aa; }
+.hr-theme-option-preview .hr-theme-artwork :is(.hr-art-orbit, .hr-art-sparkle, .hr-art-star, .hr-art-moon) { display: none; }
+.hr-scene-decorations { position: fixed; inset: 0; pointer-events: none; z-index: -1; overflow: hidden; }
+.hr-scene-sticker { position: absolute; display: grid; place-items: center; width: 80px; height: 80px; border: 2px solid #ffffffb0; border-radius: 26px; background: #edf5ffbd; color: #668ac0; box-shadow: 0 8px 24px #5b84b81a; }
+.hr-scene-sticker svg { width: 46px; height: 46px; }
+.hr-scene-sticker-0 { top: 15%; right: 2%; transform: rotate(14deg); }
+.hr-scene-sticker-1 { top: 36%; left: 21%; transform: rotate(-13deg); }
+.hr-scene-sticker-2 { bottom: 10%; right: 3%; transform: rotate(-12deg); }
+.hr-scene-sticker-3 { top: 65%; left: 23%; transform: rotate(9deg); }
+.hr-scene-sticker-4 { top: 43%; right: 1%; transform: rotate(17deg); }
+.hr-scene-sticker-5 { bottom: 3%; left: 48%; transform: rotate(-10deg); }
+.hr-theme-deepnight .hr-scene-sticker { color: #e0c384; background: #16253dbf; border-color: #c8ad6666; box-shadow: 0 8px 24px #0002; }
+.hr-theme-root .hr-unified .hr-sidebar-art {
+  display: grid; place-items: center; min-height: 170px; margin-top: 24px; border: 1px solid #ffffff50;
+  border-radius: 20px; background: linear-gradient(#ebf4ff22, #ebf4ff33), var(--hr-scene) center / cover; overflow: hidden;
+}
+.hr-sidebar-art .hr-theme-artwork { width: 100px; height: 100px; border-radius: 50%; background: #f2f8ffe8; }
+.hr-sidebar-art .hr-theme-artwork img { width: 88px; height: 88px; }
+.hr-sidebar-art .hr-art-deepnight { background: #15233deb; }
+.hr-sidebar-art :is(.hr-art-orbit, .hr-art-sparkle, .hr-art-star, .hr-art-moon) { display: none; }
+.hr-theme-root .hr-unified .staff-portal-link svg { color: inherit !important; }
+@media (max-width: 1023px) {
+  .hr-theme-root .hr-unified .hr-sidebar-art { display: none; }
+  .hr-scene-sticker-1, .hr-scene-sticker-3 { left: 1%; }
+  .hr-theme-root .hr-unified { background-attachment: scroll !important; }
+}
+@media (max-width: 760px) {
+  .hr-theme-root .hr-theme-banner { display: block; min-height: 0; padding: 180px 0 0; background: var(--hr-scene) center top / auto 240px no-repeat, var(--hr-paper); }
+  .hr-theme-banner-copy { max-width: none; padding: 20px; background: var(--hr-paper); border-top: 1px solid var(--hr-border); }
+  .hr-theme-banner h2 { font-size: 20px; }
+  .hr-theme-deepnight .hr-theme-banner :is(h2, .hr-theme-kicker) { color: #69532c; }
+  .hr-theme-deepnight .hr-theme-banner p { color: #655b4d; }
+  .hr-theme-root .hr-theme-banner > .hr-theme-artwork { top: 90px; right: 16px; bottom: auto; width: 76px; height: 76px; }
+  .hr-theme-banner > .hr-theme-artwork img { width: 70px; height: 70px; }
+  .hr-theme-banner > .hr-theme-artwork .hr-art-orbit { display: none; }
+  .hr-theme-root .hr-theme-option-preview { height: 220px; }
+  .hr-scene-sticker { width: 55px; height: 55px; border-radius: 18px; opacity: .7; }
+  .hr-scene-sticker svg { width: 30px; height: 30px; }
+}
+/* Next Image supplies correctly sized WebP artwork instead of full-size PNG downloads. */
+.hr-theme-root { --hr-scene: none; }
+.hr-theme-root .hr-unified { background: #edf5ff !important; }
+.hr-theme-deepnight .hr-unified { background: #101d34 !important; }
+.hr-scene-image { position: absolute; inset: 0; display: block; overflow: hidden; pointer-events: none; }
+.hr-scene-image img { object-fit: cover; }
+.hr-scene-decorations > .hr-scene-image::after { content: ""; position: absolute; inset: 0; background: linear-gradient(#edf5ff80, #f6f0fb99); }
+.hr-theme-deepnight .hr-scene-decorations > .hr-scene-image::after { background: linear-gradient(#0c182d80, #111e3699); }
+.hr-theme-root .hr-theme-banner { background: #e4f1ff; }
+.hr-theme-banner > .hr-scene-image::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, #f5fafffa 0%, #f5faffe8 32%, #f5faff55 58%, transparent 75%); }
+.hr-theme-deepnight .hr-theme-banner > .hr-scene-image::after { background: linear-gradient(90deg, #101e35f5 0%, #101e35e8 30%, #101e3555 60%, transparent 80%); }
+.hr-theme-banner-copy, .hr-theme-banner > .hr-theme-artwork, .hr-theme-option-preview > .hr-theme-artwork, .hr-preview-window { z-index: 1; }
+.hr-theme-root .hr-theme-option-preview { background: #e2efff; }
+.hr-theme-root .hr-option-deepnight .hr-theme-option-preview { background: #1d2d48; }
+.hr-theme-root .hr-unified .hr-sidebar-art { position: relative; background: #203859; }
+.hr-sidebar-art > .hr-theme-artwork { z-index: 1; }
+@media (max-width: 760px) {
+  .hr-theme-banner > .hr-scene-image { bottom: auto; height: 180px; }
+  .hr-theme-banner > .hr-scene-image img { object-position: 70% 52%; }
+  .hr-theme-banner > .hr-scene-image::after { content: none; }
+  .hr-theme-banner-copy { position: relative; }
+}
+.hr-theme-qiunai .hr-theme-banner > .hr-art-qiunai,
+.hr-theme-option-preview > .hr-art-qiunai { display: none; }

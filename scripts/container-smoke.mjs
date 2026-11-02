@@ -48,11 +48,20 @@ for (const path of [
   const response = await read(path);
   assert.ok([400, 401, 403].includes(response.status), "未登入的管理 API 應拒絕存取");
 }
-for (const path of ["/employment/deepnight-logo.png", "/brand/xiaonai.png", "/brand/deepnight-gold.png"]) {
+for (const path of ["/employment/deepnight-logo.png", "/brand/xiaonai.png", "/brand/deepnight-gold.png", "/brand/qiunai-cloud-room.png", "/brand/deepnight-lounge.png"]) {
   const image = await read(path);
   assert.equal(image.status, 200, `品牌圖片載入失敗：${path}`);
   assert.ok(image.headers.get("content-type")?.startsWith("image/"), `品牌圖片格式錯誤：${path}`);
 }
+for (const scene of ["qiunai-cloud-room", "deepnight-lounge"]) {
+  const image = await fetch(new URL(`/_next/image?url=%2Fbrand%2F${scene}.png&w=640&q=75`, origin), {
+    headers: { Accept: "image/webp" }, signal: AbortSignal.timeout(15000),
+  });
+  assert.equal(image.status, 200, `主題圖片最佳化失敗：${scene}`);
+  assert.equal(image.headers.get("content-type"), "image/webp", "手機主題圖片應使用 WebP");
+  assert.ok((await image.arrayBuffer()).byteLength < 400000, "手機主題圖片不應載入完整 PNG");
+}
+console.log("兩套主題插畫與手機 WebP 圖片最佳化驗證通過。");
 // Exercise the actual HTTP authority through Next's production server. Its
 // internal NextRequest hostname can differ when running behind Railway's edge.
 async function readHost(hostname, path) {
