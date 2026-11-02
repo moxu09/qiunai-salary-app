@@ -2228,3 +2228,5 @@ main.service-console.service-store-deepnight{background:radial-gradient(ellipse 
 .service-console :is(input,select,textarea):focus-visible{outline:3px solid #d16b00!important;outline-offset:3px}
 .service-console h1{font-size:24px!important}.service-console h2{font-size:22px!important}.service-console h3{font-size:18px!important}.service-console .service-hero h2{font-size:32px!important}.service-console .service-output textarea{min-height:300px!important}
 @media(max-width:760px){main.service-console{padding:18px 14px!important}.service-console h1{font-size:19px!important}.service-console .service-hero h2{font-size:27px!important}.service-console button{font-size:16px!important}}
+
+.service-staff-directory{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(240px,100%),1fr));gap:10px;margin-top:18px}.service-staff-directory a{display:grid;gap:6px;border:1px solid var(--svc-line);border-radius:12px;padding:14px;min-height:70px;overflow-wrap:anywhere;text-decoration:none}.service-staff-directory a span{font-size:13px}

@@ -16,7 +16,7 @@ export async function POST(request, context) {
   if (error) throw error;
   if (!template) throw Object.assign(Error("模板不存在"), { status: 404 });
   const now = Date.now();
-  if ((template.starts_at && Date.parse(template.starts_at) > now) || (template.ends_at && Date.parse(template.ends_at) <= now)) throw Object.assign(Error("這份活動模板已停售或尚未開放"), { status: 409 });
+  if ((template.starts_at && Date.parse(template.starts_at) > now) || (template.ends_at && Date.parse(template.ends_at) <= now)) throw Object.assign(Error("這份活動模板已到期或尚未開放"), { status: 409 });
   let text;
   try { text = engine.compileTemplate(template, body.values, { organization: body.department, version: body.version }); }
   catch (error) { throw Object.assign(Error(error.message), { status: 400 }); }

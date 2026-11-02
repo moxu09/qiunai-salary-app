@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { legacyEmployeeTarget, supervisorTarget } from "@/lib/hrHostRouting.mjs";
 
-// The new EIP host serves the existing supervisor application unchanged.
+// Existing supervisor routes proxy upstream; the service namespace stays local.
 export function proxy(request: NextRequest) {
   const hostname = request.headers.get("host") || request.nextUrl.hostname;
   const employeeTarget = legacyEmployeeTarget(
