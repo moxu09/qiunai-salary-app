@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { HrSidebarArtwork } from "@/components/HrThemeProvider";
+import { HrHalloweenNavDecorations, HrSidebarArtwork } from "@/components/HrThemeProvider";
 import { HR_ROUTES } from "@/lib/hrRoutes.mjs";
 import {
   BadgeCheck,
@@ -176,7 +176,7 @@ export default function StaffPortalNav({
                 },
               ]
             : []),
-        ].map(({ title, icon: GroupIcon, items }) => {
+        ].map(({ title, icon: GroupIcon, items }, groupIndex) => {
           const isOpen = openGroups[title] ?? true;
           const regionId = `staff-portal-${title}`;
 
@@ -219,6 +219,7 @@ export default function StaffPortalNav({
                   </div>
                 </div>
               </div>
+              <HrHalloweenNavDecorations index={groupIndex} />
             </section>
           );
         })}
