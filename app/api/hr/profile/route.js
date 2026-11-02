@@ -3,7 +3,7 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 export const dynamic = "force-dynamic";
 export async function PATCH(request) {
   try {
-    const { discordId } = await hrAuth(request);
+    const { discordId, departments } = await hrAuth(request);
     const body = await request.json();
     const profile = {};
     const fields = {
@@ -21,6 +21,7 @@ export async function PATCH(request) {
     }
     if (profile.birthday && !/^\d{4}-\d{2}-\d{2}$/.test(profile.birthday))
       throw Error("生日格式錯誤");
+    profile._organizations = departments.map((d) => d.key);
     const { error } = await supabaseAdmin.rpc("hr_update_profile_atomic", {
       p_discord_id: discordId,
       p_profile: profile,

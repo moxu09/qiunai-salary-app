@@ -38,7 +38,7 @@ begin
   raise exception 'TEST EXPECTED REJECTION';
  exception when others then if sqlerrm='TEST EXPECTED REJECTION' then raise;end if;end;
  insert into hr_verification values('legacy insert cannot overdraw a wallet',true);
- perform hr_update_profile_atomic(actor,'{"display_name":"same profile","real_name":"test","phone":"0900000000","gender":null,"birthday":"2000-01-01","bank_name":"new bank","bank_account":"new account","avatar_url":null}');
+ perform hr_update_profile_atomic(actor,'{"display_name":"same profile","_organizations":["qiunai","deepnight"],"real_name":"test","phone":"0900000000","gender":null,"birthday":"2000-01-01","bank_name":"new bank","bank_account":"new account","avatar_url":null}');
  if (select phone from qiunai_staff where discord_id=actor)<>'0900000000' or (select phone from players where discord_id=actor)<>'0900000000' then raise exception '個人資料未同步';end if;
  insert into hr_verification values('one profile updates only the same employee in both departments',true);
  if has_function_privilege('anon','hr_request_withdrawal_atomic(text,uuid,jsonb,text,jsonb,date)','execute') or has_function_privilege('authenticated','hr_request_withdrawal_atomic(text,uuid,jsonb,text,jsonb,date)','execute') then raise exception '瀏覽器角色可執行金額交易';end if;

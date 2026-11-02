@@ -30,8 +30,8 @@ create or replace function public.hr_update_profile_atomic(p_discord_id text,p_p
 returns void language plpgsql security definer set search_path=public as $$
 begin
  if p_discord_id is null or p_discord_id!~'^\d{15,22}$' then raise exception '員工身分無效';end if;
- update public.players set real_name=p_profile->>'real_name',phone=p_profile->>'phone',gender=p_profile->>'gender',birthday=nullif(p_profile->>'birthday','')::date,bank_name=p_profile->>'bank_name',bank_account=p_profile->>'bank_account',updated_at=now() where discord_id=p_discord_id and is_active is distinct from false;
- update public.qiunai_staff set real_name=p_profile->>'real_name',phone=p_profile->>'phone',gender=p_profile->>'gender',birthday=nullif(p_profile->>'birthday','')::date,bank_name=p_profile->>'bank_name',bank_account=p_profile->>'bank_account',updated_at=now() where discord_id=p_discord_id and is_active is distinct from false;
+ update public.players set real_name=p_profile->>'real_name',phone=p_profile->>'phone',gender=p_profile->>'gender',birthday=nullif(p_profile->>'birthday','')::date,bank_name=p_profile->>'bank_name',bank_account=p_profile->>'bank_account',updated_at=now() where discord_id=p_discord_id and is_active is distinct from false and (p_profile->'_organizations') ? 'deepnight';
+ update public.qiunai_staff set real_name=p_profile->>'real_name',phone=p_profile->>'phone',gender=p_profile->>'gender',birthday=nullif(p_profile->>'birthday','')::date,bank_name=p_profile->>'bank_name',bank_account=p_profile->>'bank_account',updated_at=now() where discord_id=p_discord_id and is_active is distinct from false and (p_profile->'_organizations') ? 'qiunai';
 end $$;
 
 create or replace function public.hr_request_withdrawal_atomic(p_discord_id text,p_batch_id uuid,p_amounts jsonb,p_destination text,p_payload jsonb,p_start_date date default '2026-07-17')
