@@ -38,7 +38,7 @@ for (const path of ["/staff", "/personal/data", "/order/order.details", "/order/
   console.log(`${path}: 頁面、${assets.length} 個資產及複選修正驗證通過`);
 }
 
-for(const path of ["/service/", "/service/templates", "/service/courses", "/collaboration/knowledge/qiunai/11111111-1111-4111-8111-111111111111"]){
+for(const path of ["/service/", "/service/templates", "/service/courses", "/service/flows/example", "/service/prices", "/service/broadcasts", "/collaboration/knowledge/qiunai/11111111-1111-4111-8111-111111111111"]){
  const response=await read(path);assert.equal(response.status,200,`${path} 載入失敗`);
  const html=await response.text();
  const assets=[...new Set([...html.matchAll(/(?:src|href)="([^\"]*\/service\/assets\/_next\/static\/[^\"]+)"/g)].map(match=>match[1].replaceAll("&amp;","&")))];
@@ -48,6 +48,8 @@ for(const path of ["/service/", "/service/templates", "/service/courses", "/coll
 for (const path of [
   "/api/hr/session",
   "/service/api/catalog",
+  "/service/api/manual?department=qiunai",
+  "/service/api/desk/deepnight",
   "/service/api/courses/qiunai/11111111-1111-4111-8111-111111111111",
   "/api/hr/knowledge/qiunai/11111111-1111-4111-8111-111111111111",
   "/api/hr/themes",

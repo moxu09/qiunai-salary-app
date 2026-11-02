@@ -1,0 +1,13 @@
+export type Department='qiunai'|'deepnight';
+export type ServiceLink={label:string;url:string;description?:string};
+export type Field={key:string;label:string;type:string;required?:boolean;maxLength?:number;options?:string[]};
+export type Template={id:string;slug?:string;title:string;description:string;category:string;version:number;fields:Field[];destination_label:string;destination_url?:string};
+export type Staff={discordId:string;name:string;url:string};
+export type Phrase={key:string;text:string;when?:string;details?:{title:string;body:string}[]};
+export type Step={key:string;text:string;detail?:string;links?:ServiceLink[];actions?:string[]};
+export type Stage={title:string;steps:Step[];extras?:{title:string;body?:string;steps?:Step[];links?:ServiceLink[]}[]};
+export type ManualContent={stages?:Stage[];phrases?:Phrase[];context?:string;checks?:string[];warnings?:string[];evidence?:{label:string;body:string;date?:string;url?:string|null}[];url?:string;description?:string;command?:string;historical?:boolean;amount?:number|null;unit?:string;detail?:string;chapter?:number;imageName?:string};
+export type Entry={id:string;kind:string;slug:string;title:string;category:string;summary:string;version:number;ends_at?:string|null;updated_at?:string;content?:ManualContent;imageUrl?:string|null};
+export type DeskItem={id:string;kind:'note'|'track'|'broadcast';label:string;body:string;customer_discord_id?:string;url?:string;priority:boolean;archived_at?:string;version:number;updated_at:string};
+export type DeskData={notes:DeskItem[];tracking:DeskItem[];broadcasts:DeskItem[]};
+export const storeName=(department:Department)=>department==='deepnight'?'深夜不關燈':'秋奈電競';

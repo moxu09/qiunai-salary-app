@@ -4,6 +4,7 @@ import HrThemeProvider from "@/components/HrThemeProvider";
 import "./globals.css";
 import "./hr-themes.css";
 import './course-management.css';
+import './service-workspace.css';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
