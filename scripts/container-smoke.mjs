@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import http from "node:http";
+import https from "node:https";
 
 const origin = process.env.SMOKE_ORIGIN || "http://127.0.0.1:3000";
 const revision = process.env.EXPECTED_REVISION;
@@ -48,4 +50,21 @@ for (const path of [
 }
 const logo = await read("/employment/deepnight-logo.png");
 assert.equal(logo.status, 200, "缺少公開圖片");
+// Exercise the actual HTTP authority through Next's production server. Its
+// internal NextRequest hostname can differ when running behind Railway's edge.
+const supervisor = await new Promise((resolve, reject) => {
+  const address = new URL("/", origin);
+  const client = address.protocol === "https:" ? https : http;
+  const request = client.get(address, { headers: { Host: "eip.wearestilllhere.com" } }, (response) => {
+    let body = "";
+    response.setEncoding("utf8");
+    response.on("data", (chunk) => { body += chunk; });
+    response.on("end", () => resolve({ status: response.statusCode, body }));
+  });
+  request.setTimeout(15000, () => request.destroy(Error("主管網域驗證逾時")));
+  request.on("error", reject);
+});
+assert.equal(supervisor.status, 200, "主管網域入口載入失敗");
+assert.ok(supervisor.body.includes("<title>深夜不關燈 EIP</title>"), "主管網域必須顯示既有主管應用程式");
+console.log("主管 HTTP 網域已導向既有後台登入頁。");
 console.log(`容器驗證完成${revision ? `，版本 ${revision}` : ""}；未進行資料庫寫入、扣款或通知。`);
