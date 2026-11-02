@@ -432,6 +432,7 @@
 .hr-halloween-spider-body circle { stroke:none; fill:#fff0d2; }
 .hr-halloween-spider-smile { stroke-width:1.3; }
 .hr-halloween-nav-decoration-3 .hr-halloween-nav-spider { top:-20px; right:28px; width:31px; height:73px; transform:rotate(8deg); }
+.hr-theme-halloween-2026 .staff-portal-group:not(.is-open) .hr-halloween-nav-decoration-0 .hr-halloween-nav-spider { top:-22px; width:30px; height:70px; }
 .hr-halloween-nav-shard { position:absolute; display:block; background:linear-gradient(145deg,#d59969,#703b76 68%); filter:drop-shadow(1px 3px 1px #13051e); }
 .hr-halloween-nav-shard-one { top:29px; right:9px; width:12px; height:15px; clip-path:polygon(8% 0,100% 30%,65% 100%,0 70%); transform:rotate(24deg); }
 .hr-halloween-nav-shard-two { top:42px; right:27px; width:7px; height:9px; clip-path:polygon(0 0,100% 23%,35% 100%); transform:rotate(-18deg); }
