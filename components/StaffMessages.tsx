@@ -200,7 +200,7 @@ export default function StaffMessages({ organization, myDiscordId, open, onOpenC
       <div className="eip-messages-heading">
         <span className="eip-messages-heading-icon"><UsersRound size={23} /></span>
         <div><p>TEAM COMMUNICATION</p><h2>員工訊息</h2><span>與同公司的在職員工一對一聯絡</span></div>
-        <button type="button" className="eip-messages-close" onClick={() => onOpenChange(false)} aria-label="收合員工訊息"><X size={19} /></button>
+        <button type="button" className="eip-messages-close" onClick={() => onOpenChange(false)} aria-label="收合員工訊息" title="收合員工訊息"><X size={19} /></button>
       </div>
       {error ? <div role="alert" className="eip-messages-error">{error}</div> : null}
       <div className="eip-messages-layout">
@@ -209,6 +209,7 @@ export default function StaffMessages({ organization, myDiscordId, open, onOpenC
           {loadingContacts ? <p className="eip-messages-empty">載入通訊錄中…</p>
             : visibleContacts.length ? <div className="eip-messages-contact-list">{visibleContacts.map((contact) => (
               <button type="button" key={contact.discordId} onClick={() => openContact(contact.discordId)}
+                aria-pressed={selectedPeerId === contact.discordId}
                 className={`eip-messages-contact ${selectedPeerId === contact.discordId ? "is-selected" : ""}`}>
                 <span className="eip-messages-avatar">{contact.name.slice(0, 1)}</span>
                 <span className="eip-messages-contact-content"><strong>{contact.name}</strong><small>{contact.lastMessage || "開始對話"}</small></span>
@@ -218,7 +219,7 @@ export default function StaffMessages({ organization, myDiscordId, open, onOpenC
         </aside>
         <div className={`eip-messages-thread ${selectedPeerId ? "has-selection" : ""}`}>
           {!selectedPeerId ? <div className="eip-messages-placeholder"><MessageCircle size={42} /><h3>選擇一位員工開始對話</h3><p>訊息只會顯示給對話雙方，不會公開在公告或訂單裡。</p></div> : <>
-            <header className="eip-messages-thread-header"><button type="button" className="eip-messages-back" onClick={() => { currentPeerRef.current = null; setSelectedPeerId(null); }} aria-label="返回通訊錄"><ArrowLeft size={20} /></button><span className="eip-messages-avatar">{selected?.name.slice(0, 1) || "員"}</span><strong>{selected?.name || "員工"}</strong></header>
+            <header className="eip-messages-thread-header"><button type="button" className="eip-messages-back" onClick={() => { currentPeerRef.current = null; setSelectedPeerId(null); }} aria-label="返回通訊錄" title="返回通訊錄"><ArrowLeft size={20} /></button><span className="eip-messages-avatar">{selected?.name.slice(0, 1) || "員"}</span><strong>{selected?.name || "員工"}</strong></header>
             <div className="eip-messages-history" ref={threadRef} aria-live="polite">
               {loadingThread ? <p className="eip-messages-empty">載入對話中…</p> : messages.length ? messages.map((message) => (
                 <div key={message.id} className={`eip-messages-bubble-row ${message.sender_discord_id === myDiscordId ? "is-mine" : ""}`}>

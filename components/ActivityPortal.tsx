@@ -298,7 +298,7 @@ function ActivityForm({ activity, onSaved, organization }: { activity: Activity;
                     onClick={() =>
                       setGuests((current) => current.filter((_, itemIndex) => itemIndex !== index))
                     }
-                    className="rounded-xl bg-rose-50 p-2 text-rose-600"
+                    className="hr-icon-button rounded-xl bg-rose-50 p-2 text-rose-600"
                   >
                     <Trash2 size={17} />
                   </button>

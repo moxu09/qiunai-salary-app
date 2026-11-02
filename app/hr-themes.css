@@ -52,7 +52,7 @@
   background: linear-gradient(115deg, var(--hr-primary), var(--hr-primary-end)) !important;
   border-color: var(--hr-primary) !important; color: #fff !important;
 }
-.hr-theme-root .hr-unified :is(.qiunai-button, button.text-white, .eip-messages-launcher):hover:not(:disabled) { filter: brightness(.9); background: var(--hr-primary) !important; }
+.hr-theme-root .hr-unified :is(.qiunai-button, button.text-white, .eip-messages-launcher):hover:not(:disabled) { filter:none; background: var(--hr-primary) !important; }
 .hr-theme-root .hr-unified :is(.qiunai-soft-button, .eip-collab-refresh, button.bg-violet-50) { background: var(--hr-soft) !important; color: var(--hr-ink) !important; border-color: var(--hr-border) !important; }
 .hr-theme-root .hr-unified button:disabled { background: #e3e6eb !important; color: #536072 !important; border-color: #acb5c2 !important; }
 .hr-theme-root .hr-unified :is(input, select, textarea) { border-color: var(--hr-border) !important; }
@@ -420,7 +420,7 @@
 
 /* Primary and unavailable actions need clear lettering as well as distinct states. */
 .hr-theme-root .hr-unified button,
-.hr-theme-root .hr-unified button :is(span,strong,small) { -webkit-text-fill-color:currentColor !important; }
+.hr-theme-root .hr-unified button :is(span,strong,small,b,p,code,em,i) { -webkit-text-fill-color:currentColor !important; }
 .hr-theme-qiunai { --hr-action-bg:#244a7d; --hr-action-hover:#17345d; --hr-disabled-bg:#465770; --hr-disabled-text:#fff; }
 .hr-theme-deepnight { --hr-action-bg:#61451f; --hr-action-hover:#493315; --hr-disabled-bg:#5d5549; --hr-disabled-text:#fff; }
 :is(.hr-theme-qiunai,.hr-theme-deepnight) .hr-unified :is(.qiunai-button,button.text-white,.eip-collab-form-actions button[type="submit"],.eip-workspace-upload button,.eip-messages-compose button,.eip-messages-launcher) {
@@ -433,11 +433,89 @@
 :is(.hr-theme-qiunai,.hr-theme-deepnight) .hr-unified :is(.qiunai-button,button.text-white,.eip-collab-form-actions button[type="submit"],.eip-workspace-upload button,.eip-messages-compose button,.eip-messages-launcher):hover:not(:disabled) {
   background:var(--hr-action-hover) !important; color:#fff !important; border-color:var(--hr-action-hover) !important; filter:none;
 }
-:is(.hr-theme-qiunai,.hr-theme-deepnight).hr-theme-root .hr-unified button:disabled {
-  background:var(--hr-disabled-bg) !important; color:var(--hr-disabled-text) !important; -webkit-text-fill-color:var(--hr-disabled-text);
-  border:2px dashed var(--hr-disabled-bg) !important; opacity:1 !important; box-shadow:none !important;
+
+
+/* All employee controls share high-contrast tokens, including metadata in clickable cards. */
+.hr-theme-root { --hr-positive:#145437; --hr-warning:#62400a; --hr-danger:#84233a; --hr-disabled-text:#334155; }
+.hr-theme-qiunai { --hr-paper:#fff; --hr-link:#2a4f80; --hr-control-border:#6b819f; --hr-muted:#3b4d66; --hr-primary:#244a7d; --hr-primary-end:#4c3c7f; --hr-nav:#142a4b; --hr-nav-end:#23385a; --hr-nav-text:#f4f7ff; --hr-disabled-text:#fff; }
+.hr-theme-deepnight { --hr-paper:#fffcf5; --hr-muted:#514637; --hr-link:#624418; --hr-primary:#61451f; --hr-disabled-text:#fff; }
+.hr-theme-solid { --hr-muted:#3b4655; }
+.hr-theme-black { --hr-muted:#c7c7c7; --hr-positive:#c8f4de; --hr-warning:#ffe0a0; --hr-danger:#ffe1e6; }
+.hr-theme-blue { --hr-link:#204970; }
+.hr-theme-halloween-2026 { --hr-muted:#56394f; }
+.hr-theme-root .hr-unified :is(.eip-collab-action-row,.eip-collab-tile,.eip-collab-template) { color:var(--hr-ink); }
+.hr-theme-root .hr-unified .eip-collab-action-row small { color:var(--hr-muted) !important; }
+.hr-theme-root .hr-unified .eip-collab-inline-action { color:var(--hr-link) !important; }
+.hr-theme-root .hr-unified :is(.eip-workspace-file-list button,.eip-collab-history button) { background:var(--hr-paper) !important; color:var(--hr-link) !important; border-color:var(--hr-control-border) !important; }
+.hr-theme-root .hr-unified .eip-workspace-file-list button strong { color:var(--hr-ink) !important; }
+.hr-theme-root .hr-unified .eip-workspace-file-list button small { color:var(--hr-muted) !important; }
+.hr-theme-root .hr-unified .eip-collab-history { background:var(--hr-soft); color:var(--hr-ink); border-color:var(--hr-control-border); }
+.hr-theme-root .hr-unified .eip-collab-history p { color:var(--hr-muted); }
+.hr-theme-root .hr-unified :is(.eip-workspace-file-list button,.eip-collab-action-row,button[class*="hover:bg-slate-50"]):hover { background:var(--hr-soft) !important; }
+.hr-theme-root .hr-unified label:has(input:is([type="checkbox"],[type="radio"])) { color:var(--hr-ink) !important; opacity:1 !important; }
+.hr-theme-root .hr-unified label:has(input:is([type="checkbox"],[type="radio"])) :is(span,strong,small) { color:inherit !important; }
+.hr-theme-root .hr-unified input:is([type="checkbox"],[type="radio"]) { accent-color:var(--hr-primary) !important; }
+.hr-theme-root .hr-unified :is([class~="bg-cyan-50"],[class~="bg-slate-100"],[class~="bg-gray-100"],[class~="bg-sky-100"],[class~="bg-pink-100"],[class~="bg-violet-100"]) { background:var(--hr-soft) !important; }
+.hr-theme-root .hr-unified :is(.qiunai-soft-button,.eip-collab-refresh,.eip-collab-template,.eip-collab-tile,.eip-collab-document-list button,.eip-collab-form-actions button,.eip-collab-actions button,.eip-workspace-file-list button) { border-color:var(--hr-control-border) !important; }
+.hr-theme-root .hr-unified input[type="file"]::file-selector-button { min-height:44px; padding:9px 14px; margin-right:12px; border:1px solid var(--hr-primary); border-radius:12px; background:var(--hr-primary); color:#fff; -webkit-text-fill-color:#fff; font:inherit; font-weight:800; cursor:pointer; }
+.hr-theme-root .hr-unified input[type="file"]:disabled::file-selector-button { background:var(--hr-disabled-bg); color:var(--hr-disabled-text); -webkit-text-fill-color:var(--hr-disabled-text); cursor:not-allowed; }
+
+
+/* Keep unavailable actions distinct; the primary arm also gives this reset equal cascade weight. */
+.hr-theme-root .hr-unified :is(button,button.text-white):disabled {
+  background:var(--hr-disabled-bg) !important; color:var(--hr-disabled-text) !important;
+  border:2px dashed var(--hr-control-border) !important; opacity:1 !important; filter:none !important; box-shadow:none !important;
 }
-:is(.hr-theme-qiunai,.hr-theme-deepnight).hr-theme-root .hr-unified button:disabled :is(span,strong,small,svg) { color:inherit !important; }
+.hr-theme-root .hr-unified :is(button,button.text-white):disabled :is(span,strong,small,svg,b,p,code) { color:inherit !important; -webkit-text-fill-color:currentColor !important; background:transparent !important; }
+/* Field text must not inherit the white lettering intended for dark disabled buttons. */
+.hr-theme-root { --hr-field-disabled-bg:#e3e7ed; --hr-field-disabled-text:#334155; }
+.hr-theme-black { --hr-field-disabled-bg:#303030; --hr-field-disabled-text:#e2e8f0; }
+.hr-theme-root .hr-unified :is(input:not([type="checkbox"]):not([type="radio"]),select,textarea):disabled {
+  background:var(--hr-field-disabled-bg) !important; color:var(--hr-field-disabled-text) !important;
+  -webkit-text-fill-color:var(--hr-field-disabled-text) !important; border-style:dashed !important;
+}
+.hr-theme-root .hr-unified :is(input,textarea):disabled::placeholder { color:var(--hr-field-disabled-text) !important; -webkit-text-fill-color:var(--hr-field-disabled-text) !important; }
+.hr-theme-black .hr-unified :is(input,select,textarea) { color-scheme:dark; }
+.hr-theme-root .hr-unified #ECPayPayment { --hr-field-disabled-bg:#eef1f5; --hr-field-disabled-text:#334155; --hr-placeholder:#435267; }
+.hr-theme-root .hr-unified #ECPayPayment :is(input,select,textarea) { color-scheme:light; }
+.hr-theme-root .hr-unified input:is([type="checkbox"],[type="radio"]) { accent-color:var(--hr-link) !important; }
+.hr-theme-root .hr-unified label:has(input:checked) { border-color:var(--hr-link) !important; box-shadow:inset 0 0 0 2px var(--hr-link); }
+.hr-theme-root .hr-unified label:has(input.sr-only:checked)::before { content:"✓ "; color:var(--hr-link); font-weight:900; }
+.hr-theme-root .hr-unified label:has(input.sr-only:focus-visible) { outline:3px solid var(--hr-link) !important; outline-offset:3px; }
+.hr-theme-root .hr-unified :is(fieldset:disabled label,label:has(input:is([type="checkbox"],[type="radio"]):disabled)) { cursor:not-allowed; border-style:dashed; border-color:var(--hr-control-border) !important; background:var(--hr-field-disabled-bg) !important; color:var(--hr-field-disabled-text) !important; }
+.hr-theme-root .hr-unified :is(.eip-collab-document-list button.is-selected,.eip-messages-contact.is-selected) { box-shadow:inset 4px 0 0 var(--hr-link); }
+.hr-theme-root .hr-unified .staff-portal-link.is-active { box-shadow:inset 4px 0 0 var(--hr-nav-text); }
+.hr-theme-root .hr-unified :is(.eip-collab-document-list button,.eip-messages-contact,.hr-theme-option-status,.eip-collab-metrics button,.hr-device-audit-hero button):focus-visible { outline-offset:-4px; }
+.hr-theme-root .hr-unified .hr-theme-option.is-selected .hr-theme-option-status:focus-visible { outline-color:#fff !important; }
+.hr-theme-root .hr-unified .eip-messages-launcher:focus-visible { outline-color:#fff !important; box-shadow:0 0 0 6px #111827 !important; }
+.hr-theme-root .hr-unified :is(.eip-collab-actions button,.eip-collab-template) svg { color:var(--hr-link); }
+.hr-theme-root .hr-unified :is(.hr-icon-button,.eip-messages-back,.eip-messages-close) {
+  display:inline-grid; place-items:center; flex-shrink:0; min-width:44px; min-height:44px;
+  border:1px solid var(--hr-control-border) !important; background:var(--hr-soft) !important; color:var(--hr-link) !important;
+}
+.hr-theme-root .hr-unified .hr-icon-button[aria-label^="移除"] { color:var(--hr-danger) !important; }
+.hr-theme-root .hr-unified .hr-signature-surface { background:#fff !important; color:#111827 !important; color-scheme:light; }
+.hr-theme-root .hr-unified .hr-signature-surface [aria-hidden] span { color:rgb(146 64 14 / .15) !important; }
+.hr-theme-root .hr-unified .hr-device-audit-hero { background:var(--hr-hero-paper) !important; color:var(--hr-hero-ink) !important; }
+.hr-theme-root .hr-unified .hr-device-audit-hero h1 { color:var(--hr-hero-ink) !important; }
+.hr-theme-root .hr-unified .hr-device-audit-hero p { color:var(--hr-hero-muted) !important; }
+.hr-theme-root .hr-unified .eip-collab-history p span { background:var(--hr-soft); color:var(--hr-link); }
+
+.hr-theme-black { --hr-disabled-bg:#303030; --hr-disabled-text:#e2e8f0; }
+.hr-theme-root .hr-unified .staff-portal-link:not(.is-active):hover,
+.hr-theme-root .hr-unified .staff-portal-group-toggle:hover { background:var(--hr-nav) !important; box-shadow:inset 0 0 0 1px var(--hr-nav-text); }
+
+.hr-theme-root .hr-unified :is(.staff-portal-group-icon,.staff-portal-chevron) { color:inherit !important; opacity:1; }
+.hr-theme-root .hr-unified .staff-portal-link::after { display:none; }
+
+/* Native modal confines keyboard focus and restores it when the document closes. */
+dialog.hr-announcement-modal { margin:0; width:100%; height:100dvh; max-width:none; max-height:none; border:0; background:transparent; color:inherit; }
+dialog.hr-announcement-modal[open] { display:flex; }
+dialog.hr-announcement-modal:not([open]) { display:none; }
+dialog.hr-announcement-modal::backdrop { background:rgb(15 23 42 / .65); }
+.hr-announcement-modal .hr-announcement-sheet { max-height:calc(100dvh - 24px); }
+@media(min-width:640px) { .hr-announcement-modal .hr-announcement-sheet { max-height:calc(100dvh - 48px); } }
+
 
 /* Halloween navigation: stickers sit above the labels without taking pointer input. */
 .hr-theme-halloween-2026 .hr-unified .staff-portal-group { position:relative; isolation:isolate; }
@@ -467,7 +545,7 @@
 .hr-theme-halloween-2026 .hr-unified .staff-portal-group:nth-child(2) .staff-portal-link:nth-child(2)::before,
 .hr-theme-halloween-2026 .hr-unified .staff-portal-group:nth-child(3) .staff-portal-link:nth-child(3)::before {
   content:""; position:absolute; inset:1px 0; z-index:-1; pointer-events:none;
-  background:linear-gradient(115deg,#61304c,#3b194d 68%,#75465a); border:1px solid #ad6c6199;
+  background:linear-gradient(115deg,#57283f,#3b194d 68%,#5b3048); border:1px solid #ad6c6199;
   clip-path:polygon(3% 0,41% 0,43% 10%,44% 0,97% 0,100% 18%,96% 30%,100% 38%,98% 63%,100% 72%,96% 78%,98% 100%,65% 100%,63% 89%,62% 100%,2% 100%,0 78%,3% 65%,0 56%,2% 40%,0 17%);
 }
 .hr-theme-halloween-2026 .hr-unified :is(.staff-portal-group:nth-child(2),.staff-portal-group:nth-child(4)) .staff-portal-group-toggle::after {
