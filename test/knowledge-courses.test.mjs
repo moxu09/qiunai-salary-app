@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { runInNewContext } from "node:vm";
 import { knowledgeCourseLocation, knowledgeCourseHref, knowledgeChapters } from "../lib/knowledgeCourses.mjs";
-import { createKnowledgeCourseHandler, createKnowledgeCompletionHandler } from "../lib/knowledgeCourseHandler.mjs";
+import { createKnowledgeCourseHandler, createKnowledgeCompletionHandler,createKnowledgeProgressHandler } from "../lib/knowledgeCourseHandler.mjs";
 import { hrTabForPath } from "../lib/hrRoutes.mjs";
 
 const id = "11111111-1111-4111-8111-111111111111";
@@ -92,10 +92,10 @@ test("the actual HR API uses scoped course loading with authenticated identity a
   const source = readFileSync(new URL("../app/api/hr/knowledge/[department]/[id]/route.js", import.meta.url), "utf8")
     .replace(/^import .*\n/gm, "").replaceAll("export ", "");
   const calls=[]; let expired=false;
-  const globals={Response,Error,createKnowledgeCourseHandler,createKnowledgeCompletionHandler,
-   hrAuth:async()=>{if(expired)throw Error("登入已失效，請重新登入");return {discordId:"123456789012345678",departments:[{key:"qiunai"}]};},
+  const globals={Response,Error,createKnowledgeCourseHandler,createKnowledgeCompletionHandler,createKnowledgeProgressHandler,
+   authorizeCourseReader:async()=>{if(expired)throw Error("登入已失效，請重新登入");return {discordId:"123456789012345678",departments:[{key:"qiunai"}]};},
    loadKnowledgeCourse:async(department,documentId,actor)=>{calls.push([department,documentId,actor.discordId]);return row;},
-   loadCourseCompletion:async(...args)=>{calls.push(args);return null;},completePrivateCourse:async()=>{throw Error('not called');}};
+   loadCourseCompletion:async(...args)=>{calls.push(args);return null;},loadCourseProgress:async()=>null,learnCourse:async()=>{},completePrivateCourse:async()=>{throw Error('not called');}};
   runInNewContext(source+"\nthis.handler=GET;",globals);
   assert.equal((await globals.handler(request(""),context())).status,401);
   assert.equal((await globals.handler(request(),context())).status,200);

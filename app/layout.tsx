@@ -3,6 +3,7 @@ import AppLanguageProvider from "@/components/AppLanguageProvider";
 import HrThemeProvider from "@/components/HrThemeProvider";
 import "./globals.css";
 import "./hr-themes.css";
+import './course-management.css';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",

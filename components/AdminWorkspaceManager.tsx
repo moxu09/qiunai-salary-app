@@ -5,11 +5,12 @@ import { ArrowRight, BookOpenText, CalendarDays, ClipboardCheck, FileText, FileU
 import { supabase } from "@/lib/supabase";
 import WorkspaceDocumentFiles from "@/components/WorkspaceDocumentFiles";
 import AdminApprovals from "@/components/AdminApprovals";
+import AdminCourseManager from '@/components/AdminCourseManager';
 
 type Field = { key: string; label: string; type: "text" | "textarea" | "date" | "choice"; required: boolean; options: string[] };
 type Item = Record<string, unknown> & { id: string };
 type Data = { events: Item[]; documents: Item[]; templates: Item[]; requests: Item[] };
-type Kind = "overview" | "event" | "document" | "template" | "decision" | "hr-approvals";
+type Kind = "overview" | "event" | "document" | "template" | "decision" | "hr-approvals" | "course";
 type RequestStatus = "pending" | "approved" | "rejected" | "all";
 type AuditEntry = { old_status: string; new_status: string; actor_discord_id: string; note: string | null; created_at: string; step_index?: number | null };
 type RequestHistory = { item: Item; audit: AuditEntry[] };
@@ -35,6 +36,7 @@ export default function AdminWorkspaceManager({ organization }: { organization: 
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [fileRefreshKey, setFileRefreshKey] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [observedAt,setObservedAt]=useState(0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -75,6 +77,7 @@ export default function AdminWorkspaceManager({ organization }: { organization: 
       const result = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(result.message || "讀取失敗");
       setData({ events: result.events || [], documents: result.documents || [], templates: result.templates || [], requests: result.requests || [] });
+      setObservedAt(Date.now());
       setRequestSummary(result.requestSummary || { pending: 0, approved: 0, rejected: 0, overdue: 0 });
       setWorkflowTargetHours(Number(result.workflowTargetHours || 48));
       setWorkflowStagesEnabled(result.workflowStagesEnabled === true);
@@ -97,7 +100,7 @@ export default function AdminWorkspaceManager({ organization }: { organization: 
     setSection(next); setEditing(null); setRevisions([]);
     setPendingFiles([]);
     if (next === "overview") { setRequestStatus("pending"); setRequestPage(1); setOverdueOnly(false); }
-    setForm(next === "decision" || next === "overview" || next === "hr-approvals" ? {} : { ...initial[next] });
+    setForm(next === "decision" || next === "overview" || next === "hr-approvals" || next === 'course' ? {} : { ...initial[next] });
     setError(""); setNotice("");
   }
   function edit(kind: Kind, item: Item) {
@@ -224,15 +227,16 @@ export default function AdminWorkspaceManager({ organization }: { organization: 
   }
   const fields = (form.fields || []) as Field[];
   const totalPages = Math.max(1, Math.ceil(requestPagination.total / requestPagination.pageSize));
-  const upcomingEvents = data.events.filter((item) => Boolean(item.is_published) && new Date(String(item.ends_at)).getTime() >= Date.now());
+  const upcomingEvents = data.events.filter((item) => Boolean(item.is_published) && new Date(String(item.ends_at)).getTime() >= observedAt);
   return <main className="eip-admin-workspace">
     <div className="eip-collab-hero"><div><p className="eip-collab-eyebrow">TEAM OPERATIONS</p><h1>協作工作台</h1><p>從待辦簽核到日程、文件和流程設定，前後台同步處理。</p></div><button className="eip-collab-refresh" onClick={() => void refresh()}>重新整理</button></div>
     {error ? <p className="eip-collab-alert" role="alert">{error}</p> : null}
     {notice ? <p className="eip-collab-notice" role="status">{notice}</p> : null}
     <div className="eip-admin-workspace-tabs">
-      {([["overview", "總覽", LayoutDashboard], ["decision", "流程簽核", ClipboardCheck], ["hr-approvals", "行政／人事簽核", ClipboardCheck], ["event", "團隊日程", CalendarDays], ["document", "文件／知識庫", BookOpenText], ["template", "流程設定", FileText]] as const).map(([kind, label, Icon]) =>
+      {([["overview", "總覽", LayoutDashboard], ["decision", "流程簽核", ClipboardCheck], ["hr-approvals", "行政／人事簽核", ClipboardCheck], ["event", "團隊日程", CalendarDays], ["document", "文件／知識庫", BookOpenText], ['course','課程管理',BookOpenText], ["template", "流程設定", FileText]] as const).map(([kind, label, Icon]) =>
         <button key={kind} onClick={() => choose(kind)} className={section === kind ? "is-active" : ""}><Icon size={17} /> {label}</button>)}
     </div>
+    {section==='course'?<AdminCourseManager key={organization} organization={organization}/>:null}
     {loading ? <p className="eip-collab-empty">正在讀取管理資料…</p> : null}
     {!loading && section === "overview" ? <>
       <div className="eip-admin-overview-stats">
@@ -255,7 +259,7 @@ export default function AdminWorkspaceManager({ organization }: { organization: 
         </section>
       </div>
     </> : null}
-    {!loading && section !== "decision" && section !== "overview" && section !== "hr-approvals" ? <div className="eip-collab-columns">
+    {!loading && section !== "decision" && section !== "overview" && section !== "hr-approvals" && section !== 'course' ? <div className="eip-collab-columns">
       <form className="eip-collab-panel eip-collab-form" onSubmit={(event) => void submit(event)}>
         <h2>{editing ? "編輯" : "新增"}{section === "event" ? "日程" : section === "document" ? "文章" : "流程"}</h2>
         {section === "event" ? <>
@@ -315,7 +319,7 @@ export default function AdminWorkspaceManager({ organization }: { organization: 
         const canAct = !workflowStagesEnabled || (stepRole === "owner" ? actorRole === "super_admin" : steps.length === 2 ? actorRole === "store_manager" : actorRole === "store_manager" || actorRole === "super_admin");
         const values = item.form_data && typeof item.form_data === "object" ? Object.entries(item.form_data as Record<string, unknown>) : [];
         return <article className="eip-collab-admin-item" key={item.id}>
-          <span>{String(item.created_at || "").slice(0, 16).replace("T", " ")} · {String(item.status === "pending" ? (Date.now() - new Date(String(item.created_at)).getTime() >= workflowTargetHours * 3600000 ? `超過 ${workflowTargetHours} 小時未處理` : "待簽核") : item.status === "approved" ? "已核准" : "已退回")}</span>
+          <span>{String(item.created_at || "").slice(0, 16).replace("T", " ")} · {String(item.status === "pending" ? (observedAt - new Date(String(item.created_at)).getTime() >= workflowTargetHours * 3600000 ? `超過 ${workflowTargetHours} 小時未處理` : "待簽核") : item.status === "approved" ? "已核准" : "已退回")}</span>
           <strong>{String(template?.name || "流程申請")} · {String(item.applicant_name || "")}</strong>
           {workflowStagesEnabled && steps.length === 2 ? <p>第 {currentStep + 1}／2 關：{stepRole === "manager" ? "店經理初審" : "最高管理員複審"}{item.first_approved_by ? ` · 初審人 ${String(item.first_approved_by)}` : ""}</p> : null}
           <div className="eip-collab-answers">{values.map(([key, value]) => <p key={key}><b>{String((template?.fields as Field[] || []).find((field) => field.key === key)?.label || key)}：</b>{String(value)}</p>)}</div>

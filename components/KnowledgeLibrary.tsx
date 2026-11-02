@@ -5,14 +5,16 @@ import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, ArrowRight, BookOpenText, ChevronLeft, ChevronRight, Search } from "lucide-react";
 import { supabase } from "@/lib/supabase";
-import { knowledgeChapters, knowledgeCourseHref, knowledgeCourseLocation, knowledgeSummary } from "@/lib/knowledgeCourses.mjs";
+import { knowledgeCourseHref, knowledgeCourseLocation, knowledgeSummary } from "@/lib/knowledgeCourses.mjs";
 import WorkspaceDocumentFiles from "@/components/WorkspaceDocumentFiles";
+import CourseLearning,{type LearningProgress} from '@/components/CourseLearning';
+import {courseChapters} from '@/lib/courseRules.mjs';
 
 type Department = "qiunai" | "deepnight";
-type Document = { is_course?: boolean; id: string; organization?: Department; title: string; category: string; body: string; version: number; updated_at: string };
+type Document = { is_course?: boolean; managed?:boolean; chapters?:{id:string;title:string;body:string}[];requirements?:React.ComponentProps<typeof CourseLearning>['requirements'];quiz?:React.ComponentProps<typeof CourseLearning>['quiz']; id: string; organization?: Department; title: string; category: string; body: string; version: number; updated_at: string };
 type Props = { documents: Document[]; organization: Department | "hr"; loading: boolean; basePath?: string; apiBase?: string; libraryHref?: string };
 type Completion = { document_version: number; completed_at: string };
-type Reader = { key: string; loading: boolean; document: Document | null; completion: Completion | null; error: string };
+type Reader = { key: string; loading: boolean; document: Document | null; completion: Completion | null; progress?:LearningProgress|null; error: string };
 const departmentName = (department: Department) => department === "qiunai" ? "秋奈電競" : "深夜不關燈";
 function dateLabel(value: string, withTime = false) {
   const date = new Date(value);
@@ -50,7 +52,7 @@ export default function KnowledgeLibrary({ documents, organization, loading, bas
         });
         const result = await response.json();
         if (!response.ok || !result.document) throw Error(result.message || "課程暫時無法讀取");
-        if (!controller.signal.aborted) setReader({ key, loading: false, document: result.document, completion: result.completion || null, error: "" });
+        if (!controller.signal.aborted) setReader({ key, loading: false, document: result.document, completion: result.completion || null, progress:result.progress||null, error: "" });
       } catch (error) {
         if (!controller.signal.aborted) setReader({ key, loading: false, document: null, completion: null, error: error instanceof Error ? error.message : "課程暫時無法讀取" });
       }
@@ -108,7 +110,7 @@ export default function KnowledgeLibrary({ documents, organization, loading, bas
   // Never display the previous course while a different store/id is loading.
   const current = reader?.key === readerKey ? reader : null;
   const course = current?.document;
-  const chapters = knowledgeChapters(course?.body || "");
+  const chapters: {id:string;number:number;title:string;body:string}[] = courseChapters(course);
   const lesson = location.lesson as number | null;
   const missingLesson = lesson != null && lesson > chapters.length;
   const courseUrl = href(location.department, location.id);
@@ -131,7 +133,8 @@ export default function KnowledgeLibrary({ documents, organization, loading, bas
             </nav>
           </>}
           <section className="hr-course-files" aria-label="課程附件"><h3>課程附件</h3><WorkspaceDocumentFiles key={`${location.department}:${course.id}:${course.version}`} organization={location.department} documentId={course.id} apiPath={course.is_course ? `${apiBase}/${location.department}/${course.id}/files` : undefined} /></section>
-          {course.is_course && !missingLesson && (lesson == null || lesson === chapters.length) ? <section className="hr-course-completion" aria-label="課程結訓">
+          {course.managed&&course.requirements&&!missingLesson?<CourseLearning key={`${location.department}:${course.id}:${course.version}`} api={`${apiBase}/${location.department}/${course.id}`} version={course.version} chapters={chapters} lesson={lesson} requirements={course.requirements} quiz={course.quiz||[]} initialProgress={current.progress||null} initialCompletion={current.completion}/>:null}
+          {course.is_course && !course.managed && !missingLesson && (lesson == null || lesson === chapters.length) ? <section className="hr-course-completion" aria-label="課程結訓">
             <h3>課程結訓</h3>
             {current.completion?.document_version === course.version ? <p role="status">已於 {dateLabel(current.completion.completed_at, true)} 結訓。</p> : <p>完成閱讀後，按下結訓以保存你的課程完成紀錄。</p>}
             {completionError.key === readerKey && completionError.message ? <p className="eip-collab-alert" role="alert">{completionError.message}</p> : null}
