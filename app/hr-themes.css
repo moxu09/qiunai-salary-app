@@ -241,3 +241,75 @@
 }
 .hr-theme-qiunai .hr-theme-banner > .hr-art-qiunai,
 .hr-theme-option-preview > .hr-art-qiunai { display: none; }
+
+/* Paid solid themes use flat surfaces without illustrations or decorative patterns. */
+.hr-theme-solid { --hr-ink:#202733; --hr-muted:#526070; --hr-accent:#343e4e; --hr-border:#c8ced6; --hr-paper:#fff; --hr-soft:#f2f4f7; --hr-nav:#f4f5f7; --hr-nav-end:#f4f5f7; --hr-nav-text:#253043; --hr-primary:#303b4c; --hr-primary-end:#303b4c; --hr-canvas:#fff; }
+.hr-theme-black { --hr-ink:#f2f2f2; --hr-muted:#c0c0c0; --hr-accent:#f0f0f0; --hr-border:#494949; --hr-paper:#121212; --hr-soft:#222; --hr-nav:#080808; --hr-nav-end:#080808; --hr-nav-text:#ededed; --hr-primary:#414141; --hr-primary-end:#414141; --hr-canvas:#000; }
+.hr-theme-blue { --hr-canvas:#b8d9ff; --hr-nav:#234c7a; --hr-nav-end:#234c7a; --hr-nav-text:#edf5ff; --hr-primary:#265587; --hr-primary-end:#265587; --hr-border:#9dbce0; --hr-soft:#e8f2ff; }
+.hr-theme-gray { --hr-canvas:#d2d5da; --hr-nav:#3f444c; --hr-nav-end:#3f444c; --hr-nav-text:#f6f7f9; --hr-primary:#454c57; --hr-primary-end:#454c57; --hr-border:#b2b9c2; --hr-soft:#edf0f3; }
+.hr-theme-pink { --hr-canvas:#fbd4e6; --hr-nav:#65364f; --hr-nav-end:#65364f; --hr-nav-text:#ffeff8; --hr-primary:#793454; --hr-primary-end:#793454; --hr-border:#e1abc7; --hr-soft:#fff0f7; }
+.hr-theme-solid .hr-unified { background:var(--hr-canvas) !important; }
+.hr-theme-solid .hr-unified::before,.hr-theme-solid .hr-unified::after { display:none; }
+.hr-theme-solid .hr-unified .staff-portal-nav { background:var(--hr-nav) !important; }
+.hr-theme-solid .hr-unified .staff-portal-link { color:var(--hr-nav-text) !important; }
+.hr-theme-solid .hr-unified .staff-portal-link.is-active { background:var(--hr-primary) !important; color:#fff !important; }
+.hr-theme-solid .hr-theme-banner { min-height:160px; display:flex; padding:28px; background:var(--hr-paper) !important; border-color:var(--hr-border); }
+.hr-theme-solid .hr-theme-banner-copy { max-width:none; padding:0; border:0; background:transparent; }
+.hr-theme-solid .hr-theme-banner :is(h2,p,.hr-theme-kicker) { color:var(--hr-ink); }
+.hr-solid-preview { position:relative; display:flex; flex-direction:column; align-items:center; gap:7px; font-size:56px; font-weight:800; letter-spacing:-.06em; }
+.hr-solid-preview > span { font-size:12px; font-weight:500; letter-spacing:.08em; }
+
+.hr-theme-halloween-2026 { --hr-ink:#3b263f; --hr-muted:#745968; --hr-accent:#8b3d20; --hr-border:#e4c3a8; --hr-paper:#fff9f0; --hr-soft:#ffeddb; --hr-nav:#241033; --hr-nav-end:#3d1450; --hr-nav-text:#ffdcad; --hr-primary:#7c2b49; --hr-primary-end:#542368; }
+.hr-theme-halloween-2026 .hr-unified { background:#1d092f !important; }
+.hr-theme-halloween-2026 .hr-scene-decorations > .hr-scene-image::after { background:linear-gradient(#20093660,#16082499); }
+.hr-theme-halloween-2026 .hr-theme-banner > .hr-scene-image::after { background:linear-gradient(90deg,#230b36fa 0%,#230b36e8 32%,#230b3666 60%,transparent 80%); }
+.hr-theme-halloween-2026 .hr-theme-banner :is(h2,.hr-theme-kicker) { color:#ffda9a; }
+.hr-theme-halloween-2026 .hr-theme-banner p { color:#ffe9cd; }
+.hr-theme-halloween-2026 .hr-scene-sticker { color:#ffbd70; background:#361247ce; border-color:#ed9a5390; }
+.hr-theme-halloween-2026 .hr-art-halloween-2026 { background:#30113ce8 !important; border-color:#efac72 !important; color:#ffc787; }
+.hr-seasonal-badge { position:absolute; left:12px; top:12px; display:flex; align-items:center; gap:6px; padding:7px 10px; border-radius:20px; background:#ffcc83; color:#43182a; font-size:11px; font-weight:900; z-index:2; }
+.hr-theme-root .hr-unified article.hr-theme-option { cursor:default; }
+.hr-theme-root .hr-unified .hr-theme-option-info > h2 { margin:0; font-size:16px; line-height:1.6; }
+.hr-theme-option-info > p { margin:0; }
+.hr-theme-option-info .hr-theme-price { display:flex; align-items:baseline; gap:12px; color:var(--hr-ink); font-size:21px; font-weight:900; }
+.hr-theme-price > span { color:var(--hr-muted); font-size:12px; font-weight:500; }
+.hr-theme-deadline { font-size:12px; line-height:1.8; color:#924c24; }
+.hr-theme-root .hr-unified button.hr-theme-option-status { cursor:pointer; width:100%; font-size:13px !important; }
+.hr-theme-checkout { margin-top:24px; padding:22px; border:2px solid var(--hr-border); border-radius:22px; background:var(--hr-soft); scroll-margin-top:18px; }
+.hr-checkout-heading { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin-bottom:18px; }
+.hr-theme-root .hr-checkout-heading h2 { margin:0 0 8px; font-size:19px; }
+.hr-checkout-heading p { color:var(--hr-muted); font-size:13px; line-height:1.8; }
+.hr-theme-root .hr-checkout-heading > button { flex-shrink:0; width:auto; padding:10px; }
+.hr-theme-checkout > label:not(.hr-theme-consent) { display:flex; flex-direction:column; gap:8px; margin:15px 0; font-weight:700; font-size:14px; }
+.hr-theme-checkout :is(select,input:not([type="checkbox"])) { width:100%; min-width:0; border:1px solid var(--hr-border); border-radius:12px; padding:12px; background:var(--hr-paper); color:var(--hr-ink); }
+.hr-theme-consent { display:flex; align-items:flex-start; gap:10px; margin-top:20px; padding:14px; border:1px solid var(--hr-border); border-radius:14px; background:var(--hr-paper); font-size:13px; line-height:1.9; }
+.hr-theme-root .hr-theme-consent input[type="checkbox"] { width:19px !important; height:19px !important; min-height:19px !important; flex-shrink:0; margin-top:3px; accent-color:var(--hr-primary); }
+.hr-theme-history { margin-top:30px; border-top:1px solid var(--hr-border); padding-top:22px; }
+.hr-theme-history-row { display:flex; justify-content:space-between; gap:14px; padding:16px 0; border-top:1px solid var(--hr-border); }
+.hr-theme-history-row > div { min-width:0; }
+.hr-theme-history-row > div:last-child:not(:first-child) { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+.hr-theme-history-row strong { font-size:14px; }
+.hr-theme-history-row p,.hr-theme-history-row small { color:var(--hr-muted); font-size:12px; line-height:1.8; }
+#ECPayPayment { min-width:0; margin-top:18px; color:#222; background:#fff; border-radius:16px; overflow:hidden; }
+
+/* Legacy HR components also receive readable surfaces in the pure black theme. */
+.hr-theme-black .hr-unified :is(.eip-collab-hero,.eip-collab-metrics button,.eip-collab-panel,.eip-collab-template,.eip-collab-tile,.eip-collab-document,.eip-collab-document-body,.eip-messages-panel,.eip-messages-compose,.hr-theme-option,.hr-theme-option-info) { background:#121212 !important; color:#f2f2f2 !important; border-color:#494949; }
+.hr-theme-black .hr-unified :is(.bg-white,[class*="bg-white/"],[class*="bg-pink-"],[class*="bg-violet-"],[class*="bg-slate-"],[class*="bg-sky-"],[class*="bg-blue-"]) { background:#191919 !important; }
+.hr-theme-black .hr-unified :is(h1,h2,h3,h4,p,strong,small,label,td,th,summary) { color:#f2f2f2 !important; }
+.hr-theme-black .hr-unified :is(.hr-note,.hr-theme-option-description,.hr-theme-price > span,.hr-theme-kicker) { color:#c6c6c6 !important; }
+.hr-theme-black .hr-unified :is(input,select,textarea) { background:#1c1c1c !important; color:#f2f2f2 !important; }
+.hr-theme-black .hr-unified .hr-error { background:#442329 !important; color:#ffe1e6 !important; }
+.hr-theme-black .hr-unified .hr-success { background:#153b2c !important; color:#c9f5df !important; }
+.hr-theme-black .hr-unified .hr-theme-option-status { background:#292929; border-color:#606060; color:#fff; }
+.hr-theme-black .hr-unified .hr-theme-option.is-selected { border-color:#d5d5d5; box-shadow:0 0 0 3px #ddd2; }
+.hr-theme-black #ECPayPayment { color-scheme:light; }
+.hr-theme-black #ECPayPayment :is(p,label,input,select,span,strong,small) { color:#222 !important; background-color:#fff !important; }
+@media(max-width:760px) {
+ .hr-theme-solid .hr-theme-banner { padding:22px; }
+ .hr-theme-halloween-2026 .hr-theme-banner-copy :is(h2,.hr-theme-kicker) { color:#74372c; }
+ .hr-theme-halloween-2026 .hr-theme-banner-copy p { color:#71525f; }
+ .hr-theme-checkout { padding:16px; }
+ .hr-theme-history-row { flex-direction:column; }
+ .hr-checkout-heading { gap:10px; }
+ .hr-theme-root .hr-checkout-heading h2 { font-size:17px; }
+}
