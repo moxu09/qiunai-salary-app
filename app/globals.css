@@ -2135,6 +2135,7 @@ input.erp-login-icon-input[type][class] {
 
   .hr-unified .staff-portal-group-toggle {
     width: 100%;
+    min-width: 0;
     margin: 0 0 5px;
     white-space: normal;
     text-align: left;
@@ -2142,6 +2143,18 @@ input.erp-login-icon-input[type][class] {
 
   .hr-unified .staff-portal-items {
     flex-direction: column;
+  }
+
+  .hr-unified .staff-portal-items-collapse {
+    display: none;
+    max-width: none;
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+
+  .hr-unified .staff-portal-items-collapse.is-open {
+    display: block;
   }
 
   .hr-unified .staff-portal-link {
