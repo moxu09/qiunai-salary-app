@@ -10,7 +10,7 @@ import WorkspaceDocumentFiles from "@/components/WorkspaceDocumentFiles";
 
 type Department = "qiunai" | "deepnight";
 type Document = { is_course?: boolean; id: string; organization?: Department; title: string; category: string; body: string; version: number; updated_at: string };
-type Props = { documents: Document[]; organization: Department | "hr"; loading: boolean; basePath?: string; apiBase?: string };
+type Props = { documents: Document[]; organization: Department | "hr"; loading: boolean; basePath?: string; apiBase?: string; libraryHref?: string };
 type Completion = { document_version: number; completed_at: string };
 type Reader = { key: string; loading: boolean; document: Document | null; completion: Completion | null; error: string };
 const departmentName = (department: Department) => department === "qiunai" ? "秋奈電競" : "深夜不關燈";
@@ -19,7 +19,7 @@ function dateLabel(value: string, withTime = false) {
   return Number.isNaN(date.getTime()) ? "尚無更新時間" : new Intl.DateTimeFormat("zh-TW", { timeZone: "Asia/Taipei", dateStyle: "medium", ...(withTime ? { timeStyle: "short" } as const : {}) }).format(date);
 }
 
-export default function KnowledgeLibrary({ documents, organization, loading, basePath = "/collaboration/knowledge", apiBase = "/api/hr/knowledge" }: Props) {
+export default function KnowledgeLibrary({ documents, organization, loading, basePath = "/collaboration/knowledge", apiBase = "/api/hr/knowledge", libraryHref }: Props) {
   const pathname = usePathname();
   const location = knowledgeCourseLocation(pathname.replace(basePath, "/collaboration/knowledge"));
   const href = (store: Department, courseId: string, lesson: number | null = null) => knowledgeCourseHref(store, courseId, lesson).replace("/collaboration/knowledge", basePath);
@@ -113,7 +113,7 @@ export default function KnowledgeLibrary({ documents, organization, loading, bas
   const missingLesson = lesson != null && lesson > chapters.length;
   const courseUrl = href(location.department, location.id);
   return <section className="hr-course-reader" aria-label="課程閱讀">
-    <div className="hr-course-reader-tools"><Link href={basePath}><ArrowLeft size={17} /> 返回知識庫</Link><button type="button" onClick={() => setRetry((value) => value + 1)} disabled={current?.loading}>重新載入課程</button></div>
+    <div className="hr-course-reader-tools"><Link href={libraryHref || basePath}><ArrowLeft size={17} /> 返回知識庫</Link><button type="button" onClick={() => setRetry((value) => value + 1)} disabled={current?.loading}>重新載入課程</button></div>
     {!current || current.loading ? <div className="eip-collab-panel" role="status">正在讀取課程…</div> : current.error ? <div className="eip-collab-panel"><p className="eip-collab-alert" role="alert">{current.error}</p></div> : course ? <>
       <header className="eip-collab-panel hr-course-heading"><span>{departmentName(location.department)} · {course.category || "一般知識"}</span><h2>{course.title}</h2><p>版本 {course.version} · 更新於 {dateLabel(course.updated_at)} · {chapters.length} 個章節</p></header>
       <div className="hr-course-layout">
