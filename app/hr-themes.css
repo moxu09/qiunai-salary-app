@@ -313,3 +313,107 @@
  .hr-checkout-heading { gap:10px; }
  .hr-theme-root .hr-checkout-heading h2 { font-size:17px; }
 }
+
+/* Complete HR surfaces: readable shared components and consistent brand details. */
+.hr-theme-root {
+  --hr-link:#2d5487; --hr-positive:#176343; --hr-positive-bg:#e6f6ed;
+  --hr-warning:#755012; --hr-warning-bg:#fff0c9; --hr-danger:#942b41; --hr-danger-bg:#fff0f3;
+  --hr-field:#fff; --hr-placeholder:#58677c; --hr-disabled-bg:#e3e7ed; --hr-disabled-text:#435267;
+  --hr-hero-paper:#f5faff; --hr-hero-ink:#263e68; --hr-hero-muted:#435e82;
+}
+.hr-theme-deepnight {
+  --hr-primary:#6b522d; --hr-primary-end:#4d3822; --hr-link:#705123;
+  --hr-hero-paper:#14243c; --hr-hero-ink:#f5dfa5; --hr-hero-muted:#d5deee;
+}
+.hr-theme-solid { --hr-link:var(--hr-primary); --hr-hero-paper:var(--hr-paper); --hr-hero-ink:var(--hr-ink); --hr-hero-muted:var(--hr-muted); }
+.hr-theme-black {
+  --hr-link:#bdd5ff; --hr-positive:#c8f4de; --hr-positive-bg:#153b2c;
+  --hr-warning:#ffe0a0; --hr-warning-bg:#392c13; --hr-danger:#ffe1e6; --hr-danger-bg:#442329;
+  --hr-field:#1c1c1c; --hr-placeholder:#c1c7d1;
+}
+.hr-theme-halloween-2026 { --hr-link:#7b3050; --hr-hero-paper:#260d38; --hr-hero-ink:#ffda9a; --hr-hero-muted:#ffe9cd; }
+.hr-theme-root .hr-unified .hr-theme-banner-copy {
+  padding:20px 22px; border:1px solid var(--hr-border); border-radius:20px;
+  background:var(--hr-hero-paper); color:var(--hr-hero-ink); max-width:54%;
+}
+.hr-theme-root .hr-unified .hr-theme-banner-copy :is(h2,.hr-theme-kicker) { color:var(--hr-hero-ink) !important; }
+.hr-theme-root .hr-unified .hr-theme-banner-copy p { color:var(--hr-hero-muted) !important; }
+.hr-theme-root .hr-unified .hr-page-title { padding:20px; border:1px solid var(--hr-border); border-radius:20px; background:var(--hr-paper); }
+.hr-theme-root .hr-unified .staff-mobile-menu-toggle { color:var(--hr-nav-text) !important; }
+.hr-theme-root .hr-unified :is([class*="text-slate-"],[class~="text-[#80647d]"],[class~="text-[#6b4f71]"]) { color:var(--hr-muted) !important; }
+.hr-theme-root .hr-unified :is([class~="text-slate-800"],[class~="text-slate-900"],[class~="text-[#3f2947]"]) { color:var(--hr-ink) !important; }
+.hr-theme-root .hr-unified :is(.hr-form-grid label,.hr-amount-label,.hr-order-tools label) { color:var(--hr-ink); }
+.hr-theme-root .hr-unified :is(input:not([type="checkbox"]):not([type="radio"]),select,textarea) { background:var(--hr-field) !important; color:var(--hr-ink) !important; opacity:1; }
+.hr-theme-root .hr-unified :is(input,textarea)::placeholder { color:var(--hr-placeholder) !important; opacity:1; }
+.hr-theme-root .hr-unified :is(button,input,select,textarea):disabled { opacity:1 !important; background:var(--hr-disabled-bg) !important; color:var(--hr-disabled-text) !important; -webkit-text-fill-color:var(--hr-disabled-text); }
+.hr-theme-root .hr-unified button:disabled :is(span,strong,small) { color:inherit !important; }
+.hr-theme-root .hr-unified :is(.hr-error,.eip-collab-alert,.eip-messages-error) { color:var(--hr-danger) !important; background:var(--hr-danger-bg) !important; }
+.hr-theme-root .hr-unified :is(.hr-success,.eip-collab-notice) { color:var(--hr-positive) !important; background:var(--hr-positive-bg) !important; }
+.hr-theme-root .hr-unified :is(.eip-collab-status,.eip-collab-status.pending,[class~="bg-amber-50"]) { color:var(--hr-warning) !important; background:var(--hr-warning-bg) !important; }
+.hr-theme-root .hr-unified :is(.eip-collab-status.approved,[class~="bg-emerald-50"]) { color:var(--hr-positive) !important; background:var(--hr-positive-bg) !important; }
+.hr-theme-root .hr-unified :is(.eip-collab-status.rejected,[class~="bg-rose-50"]) { color:var(--hr-danger) !important; background:var(--hr-danger-bg) !important; }
+.hr-theme-root .hr-unified :is([class~="bg-amber-50"],[class~="bg-emerald-50"],[class~="bg-rose-50"]) :is(p,span,strong,small) { color:inherit !important; }
+.hr-theme-root .hr-unified :is([class~="text-rose-500"],[class~="text-rose-600"],[class~="text-rose-700"]) { color:var(--hr-danger) !important; }
+.hr-theme-root .hr-unified :is(a[class*="text-violet-"],.hr-inline) { color:var(--hr-link) !important; }
+.hr-theme-root .hr-unified .hr-theme-option-status { min-height:44px; }
+.hr-theme-root .hr-unified .hr-theme-option.is-selected .hr-theme-option-status { background:var(--hr-primary); color:#fff; border-color:var(--hr-primary); }
+.hr-theme-root .hr-unified .hr-theme-option-description { color:var(--hr-muted); }
+.hr-theme-root .hr-unified .eip-collaboration { color:var(--hr-ink); }
+.hr-theme-root .hr-unified :is(.eip-collab-metrics button,.eip-collab-actions button,.eip-collab-document-list button,.eip-collab-form,.eip-collab-form-actions button) { color:var(--hr-ink); background:var(--hr-paper); border-color:var(--hr-border); }
+.hr-theme-root .hr-unified :is(.eip-collab-document-layout,.eip-collab-panel-head,.eip-collab-row,.eip-collab-event,.eip-collab-request) { border-color:var(--hr-border); }
+.hr-theme-root .hr-unified .eip-collab-panel-head { padding:12px 14px; margin:-5px -5px 12px; border-radius:13px; background:var(--hr-soft); }
+.hr-theme-root .hr-unified :is(.eip-collab-empty,.eip-collab-helper,.eip-collab-panel-head>span,.eip-collab-metrics span,.eip-collab-hero p:last-child,.eip-collab-row small,.eip-collab-tile span,.eip-collab-template small,.eip-collab-event p,.eip-collab-document-list span,.eip-collab-document-list small,.eip-collab-document-body>span,.eip-collab-request small,.eip-collab-request p,.eip-collab-form>p) { color:var(--hr-muted) !important; }
+.hr-theme-root .hr-unified :is(.eip-collab-eyebrow,.eip-collab-date,.eip-collab-event-time,.eip-collab-panel-head button,.eip-collab-tile svg,.eip-collab-metrics svg) { color:var(--hr-link); }
+.hr-theme-root .hr-unified :is(.eip-collab-document-body>div,.eip-collab-document-list strong,.eip-collab-form label) { color:var(--hr-ink); }
+.hr-theme-root .hr-unified :is(.eip-collab-document-list button.is-selected,.eip-collab-document-list button:hover,.eip-collab-tile:hover,.eip-collab-template:hover,.eip-collab-actions button:hover) { background:var(--hr-soft) !important; color:var(--hr-ink); }
+.hr-theme-root .hr-unified .eip-messages { --msg-accent:var(--hr-primary); --msg-soft:var(--hr-soft); --msg-line:var(--hr-border); }
+.hr-theme-root .hr-unified :is(.eip-messages-panel,.eip-messages-contacts,.eip-messages-thread,.eip-messages-compose,.eip-messages-bubble) { color:var(--hr-ink); background:var(--hr-paper) !important; }
+.hr-theme-root .hr-unified .eip-messages-history { background:var(--hr-soft); }
+.hr-theme-root .hr-unified :is(.eip-messages-heading h2,.eip-messages-contact-content strong,.eip-messages-thread-header) { color:var(--hr-ink) !important; }
+.hr-theme-root .hr-unified :is(.eip-messages-heading span:not(.eip-messages-heading-icon),.eip-messages-contact-content small,.eip-messages-contact-meta small,.eip-messages-empty,.eip-messages-placeholder p,.eip-messages-bubble-meta) { color:var(--hr-muted) !important; }
+.hr-theme-root .hr-unified .eip-messages-bubble time { opacity:1; }
+.hr-theme-root .hr-unified .eip-messages-bubble-row.is-mine .eip-messages-bubble { background:var(--hr-primary) !important; color:#fff !important; }
+.hr-theme-root .hr-unified .eip-messages-bubble-row.is-mine :is(p,time,.eip-messages-receipt,.eip-messages-bubble-meta) { color:#fff !important; }
+.hr-theme-root .hr-unified .eip-messages-contact-meta b { background:var(--hr-primary); color:#fff; }
+.hr-theme-root .hr-unified .hr-login-art + .qiunai-card { color:var(--hr-ink); }
+.hr-theme-root .hr-unified.hr-login > div > p { display:table; margin:20px auto 0; padding:9px 15px; border-radius:14px; color:var(--hr-muted) !important; background:var(--hr-paper); }
+@media(max-width:760px) {
+ .hr-theme-root .hr-unified .hr-theme-banner-copy { max-width:none; padding:20px; border:0; border-radius:0; }
+ .hr-theme-root:not(.hr-theme-solid) .hr-unified .hr-theme-banner-copy { background:var(--hr-paper); }
+ .hr-theme-root:not(.hr-theme-solid) .hr-unified .hr-theme-banner-copy :is(h2,.hr-theme-kicker) { color:var(--hr-ink) !important; }
+ .hr-theme-root:not(.hr-theme-solid) .hr-unified .hr-theme-banner-copy p { color:var(--hr-muted) !important; }
+ .hr-theme-root.hr-theme-solid .hr-unified .hr-theme-banner-copy { padding:0; border-radius:0; }
+}
+.hr-theme-root .hr-unified :is(.qiunai-button,.qiunai-soft-button,.staff-portal-link,.staff-mobile-menu-toggle) { transition-property:transform,box-shadow; }
+.hr-theme-root .hr-unified :is(.eip-collab-panel-head button,.eip-messages-avatar,.eip-messages-heading-icon,.eip-messages-heading p) { color:var(--hr-link) !important; }
+.hr-theme-root .hr-unified :is(.hr-online,[class*="text-emerald-"],[class*="text-green-"]) { color:var(--hr-positive) !important; }
+.hr-theme-root .hr-unified :is([class*="text-amber-"],[class*="text-yellow-"]) { color:var(--hr-warning) !important; }
+.hr-theme-root .hr-unified :is([class*="text-rose-"],[class*="text-red-"]) { color:var(--hr-danger) !important; }
+.hr-theme-root .hr-unified :is([class*="text-gray-"],[class*="text-zinc-"],[class*="text-neutral-"],.hr-progress p) { color:var(--hr-muted) !important; }
+.hr-theme-root .hr-unified :is([class*="text-pink-"],[class*="text-violet-"],[class*="text-purple-"],[class*="text-sky-"],[class*="text-blue-"]) { color:var(--hr-link) !important; }
+.hr-theme-root .hr-unified :is(.qiunai-button,button.text-white,.eip-messages-compose button,.eip-messages-launcher) :is(span,strong,small,svg) { color:inherit !important; }
+.hr-theme-root .hr-unified :is([class~="bg-amber-50"],[class~="bg-emerald-50"],[class~="bg-rose-50"]) :is(p,span,strong,small,svg) { color:inherit !important; }
+.hr-theme-root { --hr-control-border:#7b91b2; }
+.hr-theme-deepnight { --hr-control-border:#95805d; }
+.hr-theme-solid { --hr-control-border:#808b9b; }
+.hr-theme-black { --hr-control-border:#808080; }
+.hr-theme-pink { --hr-control-border:#9b728b; }
+.hr-theme-halloween-2026 { --hr-control-border:#a17683; }
+.hr-theme-root .hr-unified [class~="bg-white"] { background:var(--hr-paper) !important; }
+.hr-theme-root .hr-unified :is([class~="bg-violet-50"],[class~="bg-violet-50/60"],[class~="bg-pink-50"],[class~="bg-pink-50/50"],[class~="bg-slate-50"],[class~="bg-sky-50"]) { background:var(--hr-soft) !important; }
+.hr-theme-root .hr-unified :is([class*="border-pink-"],[class*="border-violet-"],[class*="border-slate-"]) { border-color:var(--hr-border) !important; }
+.hr-theme-root .hr-unified :is(input:not([type="checkbox"]):not([type="radio"]),select,textarea,.hr-theme-option-status) { border-color:var(--hr-control-border) !important; }
+.hr-theme-root .hr-unified .hr-theme-option-status { background:var(--hr-soft); color:var(--hr-ink); }
+.hr-theme-root .hr-unified .hr-theme-option.is-selected .hr-theme-option-status { background:var(--hr-primary); color:#fff; }
+.hr-theme-root .hr-unified :is(.qiunai-soft-button,.eip-collab-refresh,button.bg-violet-50):hover:not(:disabled) { background:var(--hr-soft) !important; color:var(--hr-ink) !important; border-color:var(--hr-control-border) !important; box-shadow:inset 0 0 0 1px var(--hr-control-border); }
+.hr-theme-root .hr-unified :is(button,input,select,textarea) { transition-property:transform,box-shadow,border-color; }
+.hr-theme-root .hr-unified.hr-login button[class~="bg-white"] { color:var(--hr-ink) !important; background:var(--hr-soft) !important; }
+.hr-theme-root .hr-unified :is(.eip-collab-status,.eip-collab-document-list span,.eip-collab-document-list small,.eip-collab-document-body>span,.eip-messages-contact-content small,.eip-messages-contact-meta small,.eip-messages-bubble-meta,.eip-messages-heading span:not(.eip-messages-heading-icon)) { font-size:12px; line-height:1.6; }
+.hr-theme-root .hr-unified .hr-theme-kicker { font-size:10px; }
+.hr-theme-root .hr-unified summary { background:var(--hr-soft) !important; color:var(--hr-ink) !important; border-color:var(--hr-control-border); }
+.hr-theme-root .hr-unified :is(thead,th) { background:var(--hr-soft) !important; color:var(--hr-ink) !important; }
+.hr-theme-root .hr-unified :is(td,th) { border-color:var(--hr-border) !important; }
+.hr-theme-root .hr-unified tbody tr:hover { background:var(--hr-soft) !important; }
+.hr-theme-root .hr-unified :is(button.bg-white,button.bg-gray-50,button.bg-zinc-50) { color:var(--hr-ink) !important; background:var(--hr-paper) !important; border-color:var(--hr-control-border) !important; }
+.hr-theme-root .hr-unified :is(button,a,input,select,textarea,summary):focus-visible { outline:3px solid var(--hr-link) !important; outline-offset:3px; }
+.hr-theme-root .hr-unified .staff-portal-nav :is(button,a):focus-visible { outline-color:var(--hr-nav-text) !important; }

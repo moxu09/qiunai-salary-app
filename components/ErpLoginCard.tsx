@@ -211,7 +211,7 @@ export default function ErpLoginCard({
               {pending === "google" ? (
                 <LoaderCircle className="animate-spin" size={18} />
               ) : (
-                <span className="text-base font-black text-[#4285f4]">G</span>
+                <span aria-hidden="true" className="text-base font-black text-[#4285f4]">G</span>
               )}
               使用 Google / Gmail
             </button>
