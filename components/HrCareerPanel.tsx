@@ -8,6 +8,7 @@ type Career = {
   monthlyCreditedSalary: number;
   thisYearSalary: number;
   ranking?: {
+    month?: string;
     rank: number;
     participantCount: number;
     performanceAmount: number;
@@ -78,12 +79,29 @@ export default function HrCareerPanel() {
               </p>
             ) : null}
             {commissionInfo.ranking ? (
-              <p className="hr-note">
-                本月業績排名：第 {commissionInfo.ranking.rank} 名／
-                {commissionInfo.ranking.participantCount} 人 · 業績{" "}
-                {money(commissionInfo.ranking.performanceAmount)} · 客服積分{" "}
-                {commissionInfo.ranking.customerServicePoints}
-              </p>
+              <section className="hr-performance-ranking" aria-label="本月業績排名">
+                <h4>
+                  {commissionInfo.ranking.month
+                    ? `${commissionInfo.ranking.month.replace("-", " 年 ")} 月業績排名`
+                    : "本月業績排名"}
+                </h4>
+                <p className="hr-performance-place">
+                  <span>第 <strong>{commissionInfo.ranking.rank}</strong> 名</span>
+                  <span className="hr-performance-participants">
+                    ／{commissionInfo.ranking.participantCount} 人
+                  </span>
+                </p>
+                <dl className="hr-performance-metrics">
+                  <div>
+                    <dt>本月接單業績</dt>
+                    <dd>{money(commissionInfo.ranking.performanceAmount)}</dd>
+                  </div>
+                  <div>
+                    <dt>客服服務積分</dt>
+                    <dd>{commissionInfo.ranking.customerServicePoints} 點</dd>
+                  </div>
+                </dl>
+              </section>
             ) : null}
           </div>
         ))
