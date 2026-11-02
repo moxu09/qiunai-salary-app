@@ -7,15 +7,15 @@ import WorkspaceDocumentFiles from "@/components/WorkspaceDocumentFiles";
 
 type Section = "workspace" | "calendar" | "documents" | "knowledge" | "workflows";
 type Event = { id: string; title: string; details: string; location: string; starts_at: string; ends_at: string };
-type Document = { id: string; document_type: "document" | "knowledge"; category: string; title: string; body: string; version: number; updated_at: string };
+type Document = { organization?: "qiunai" | "deepnight"; id: string; document_type: "document" | "knowledge"; category: string; title: string; body: string; version: number; updated_at: string };
 type Field = { key: string; label: string; type: "text" | "textarea" | "date" | "choice"; required: boolean; options: string[] };
-type Template = { id: string; name: string; description: string; fields: Field[]; approver_role: "manager" | "owner"; approval_steps?: string[] };
-type Submission = { id: string; template_id: string; status: "pending" | "approved" | "rejected"; created_at: string; decided_at: string | null; decision_note: string | null; form_data: Record<string, string>; approval_steps?: string[]; approval_step_index?: number; first_approved_at?: string | null };
+type Template = { organization?: "qiunai" | "deepnight"; id: string; name: string; description: string; fields: Field[]; approver_role: "manager" | "owner"; approval_steps?: string[] };
+type Submission = { organization?: "qiunai" | "deepnight"; id: string; template_id: string; status: "pending" | "approved" | "rejected"; created_at: string; decided_at: string | null; decision_note: string | null; form_data: Record<string, string>; approval_steps?: string[]; approval_step_index?: number; first_approved_at?: string | null };
 type AuditEntry = { new_status: "pending" | "approved" | "rejected"; actor_discord_id: string; note: string | null; created_at: string; step_index?: number | null };
 type ExistingAnnouncement = { id: string; title: string; created_at: string; requires_signature?: boolean; signature?: { status: string } | null };
 type ExistingRequest = { id: string; request_type: string; status: string; application_date: string };
 type Data = { events: Event[]; documents: Document[]; templates: Template[]; requests: Submission[] };
-type Props = { organization: "qiunai" | "deepnight"; section: Section; employeeName: string; onSelect: (tab: string) => void };
+type Props = { organization: "qiunai" | "deepnight" | "hr"; section: Section; employeeName: string; onSelect: (tab: string) => void };
 const emptyData: Data = { events: [], documents: [], templates: [], requests: [] };
 const time = (value: string) => new Intl.DateTimeFormat("zh-TW", { timeZone: "Asia/Taipei", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(value));
 const statusLabel: Record<string, string> = { pending: "待簽核", approved: "已核准", rejected: "未通過" };
@@ -93,7 +93,7 @@ export default function StaffCollaboration({ organization, section, employeeName
     if (!selectedTemplate) return;
     try {
       setSending(true); setError(""); setNotice("");
-      await authorizedFetch("POST", { kind: "request", templateId: selectedTemplate.id, formData: answers });
+      await authorizedFetch("POST", { kind: "request", templateId: selectedTemplate.id, formData: answers, ...(organization === "hr" ? { organization: selectedTemplate.organization } : {}) });
       setSelectedTemplate(null); setAnswers({});
       setNotice("申請已送出，可在「我的申請」追蹤結果。");
       await refresh();
@@ -103,7 +103,7 @@ export default function StaffCollaboration({ organization, section, employeeName
   async function showRequestHistory(id: string) {
     try {
       setError("");
-      const result = await authorizedFetch("GET", undefined, `workspace?audit=${encodeURIComponent(id)}`);
+      const result = await authorizedFetch("GET", undefined, `workspace?audit=${encodeURIComponent(id)}${organization === "hr" ? `&department=${data.requests.find(item => item.id === id)?.organization || ""}` : ""}`);
       setRequestHistory({ item: result.item, audit: result.audit || [] });
     } catch (caught) { setError(caught instanceof Error ? caught.message : "讀取申請進度失敗"); }
   }
@@ -183,7 +183,7 @@ export default function StaffCollaboration({ organization, section, employeeName
         <label className="eip-collab-search"><Search size={18} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜尋標題、分類或內容" /></label>
         <div className="eip-collab-document-layout">
           <div className="eip-collab-document-list">{filteredDocuments.map((item) => <button key={item.id} className={selectedDocument?.id === item.id ? "is-selected" : ""} onClick={() => setSelectedDocument(item)}><span>{item.category} · v{item.version}</span><strong>{item.title}</strong><small>更新於 {time(item.updated_at)}</small></button>)}{!filteredDocuments.length ? <p className="eip-collab-empty">沒有符合條件的內容。</p> : null}</div>
-          <article className="eip-collab-document-body">{selectedDocument && filteredDocuments.some((item) => item.id === selectedDocument.id) ? <><span>{selectedDocument.category} · 版本 {selectedDocument.version}</span><h3>{selectedDocument.title}</h3><div>{selectedDocument.body}</div><WorkspaceDocumentFiles key={selectedDocument.id} organization={organization} documentId={selectedDocument.id} /></> : <p className="eip-collab-empty">選擇左側文件以閱讀全文。</p>}</article>
+          <article className="eip-collab-document-body">{selectedDocument && filteredDocuments.some((item) => item.id === selectedDocument.id) ? <><span>{selectedDocument.category} · 版本 {selectedDocument.version}</span><h3>{selectedDocument.title}</h3><div>{selectedDocument.body}</div><WorkspaceDocumentFiles key={selectedDocument.id} organization={selectedDocument.organization || (organization === "hr" ? "qiunai" : organization)} documentId={selectedDocument.id} /></> : <p className="eip-collab-empty">選擇左側文件以閱讀全文。</p>}</article>
         </div>
       </div> : null}
       {!loading && section === "workflows" ? <div className="eip-collab-columns">

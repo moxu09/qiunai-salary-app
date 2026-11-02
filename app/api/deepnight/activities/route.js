@@ -1,0 +1,441 @@
+import { NextResponse } from "next/server";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { authorizeErpRequest } from "@/lib/erpAccess";
+import { getAuthUserFromRequest } from "@/lib/salaryWallet";
+
+export const dynamic = "force-dynamic";
+
+import { activityRows, relatedActivityRows } from "@/lib/deepnightActivityData";
+
+const MAX_OPTIONS = 20;
+const clean = (value, max = 5000) =>
+  String(value ?? "")
+    .trim()
+    .slice(0, max);
+
+async function requireAdmin(request) {
+  return authorizeErpRequest(supabaseAdmin, request, "deepnight", "canViewAllAdmin");
+}
+
+function parseOptions(value) {
+  return (Array.isArray(value) ? value : [])
+    .map((item, index) => ({
+      label: clean(item?.label ?? item, 200),
+      note: clean(item?.note, 1000) || null,
+      sort_order: index,
+    }))
+    .filter((item) => item.label)
+    .slice(0, MAX_OPTIONS);
+}
+
+function parseEditedOptions(value) {
+  if (!Array.isArray(value) || value.length > MAX_OPTIONS)
+    throw new Error(`活動選項最多 ${MAX_OPTIONS} 個`);
+  const options = value
+    .map((item, index) => ({
+      id: item?.id ? clean(item.id, 100) : null,
+      label: clean(item?.label, 200),
+      note: clean(item?.note, 1000) || null,
+      sort_order: index,
+    }))
+    .filter((item) => item.label);
+  if (new Set(options.map((item) => item.label)).size !== options.length)
+    throw new Error("活動選項名稱不可重複");
+  if (
+    new Set(options.filter((item) => item.id).map((item) => item.id)).size !==
+    options.filter((item) => item.id).length
+  )
+    throw new Error("活動選項 ID 重複");
+  return options;
+}
+
+async function optionsFor(ids) {
+  if (!ids.length) return [];
+  return relatedActivityRows(
+    supabaseAdmin,
+    "deepnight_activity_options",
+    "activity_id",
+    ids,
+    "*",
+    "sort_order",
+  );
+}
+
+async function employeeEligibility(activity, staff) {
+  const { count, error } = await supabaseAdmin
+    .from("play_orders")
+    .select("id", { count: "exact", head: true })
+    .eq("discord_id", staff.discord_id)
+    .or("is_deleted.eq.false,is_deleted.is.null")
+    .or("completed_at.not.is.null,salary_paid.eq.true,status.in.(已完成,已入帳,completed)");
+  if (error) throw error;
+  const employmentDays = Math.max(
+    0,
+    Math.floor((Date.now() - new Date(staff.created_at).getTime()) / 86400000),
+  );
+  const completedOrders = count || 0;
+  const reasons = [];
+  if (completedOrders < activity.min_completed_orders)
+    reasons.push(`完成訂單需達 ${activity.min_completed_orders} 筆（目前 ${completedOrders} 筆）`);
+  if (employmentDays < activity.min_employment_days)
+    reasons.push(`到職需滿 ${activity.min_employment_days} 天（目前 ${employmentDays} 天）`);
+  return { eligible: reasons.length === 0, reasons, completedOrders, employmentDays };
+}
+
+async function adminList() {
+  const activities = await activityRows(
+    supabaseAdmin.from("deepnight_activities").select("*").order("starts_at", { ascending: false }),
+  );
+  const ids = (activities || []).map((item) => item.id);
+  const [options, responseResult] = await Promise.all([
+    optionsFor(ids),
+    relatedActivityRows(
+      supabaseAdmin,
+      "deepnight_activity_responses",
+      "activity_id",
+      ids,
+      "*",
+      "submitted_at",
+    ).then((data) => ({ data })),
+  ]);
+  if (responseResult.error) throw responseResult.error;
+  const responses = responseResult.data || [];
+  const responseIds = responses.map((item) => item.id);
+  const guests = await relatedActivityRows(
+    supabaseAdmin,
+    "deepnight_activity_guests",
+    "response_id",
+    responseIds,
+    "*",
+    "slot",
+  );
+  return (activities || []).map((activity) => {
+    const activityResponses = responses
+      .filter((item) => item.activity_id === activity.id)
+      .map((item) => ({
+        ...item,
+        guests: (guests || []).filter((guest) => guest.response_id === item.id),
+      }));
+    return {
+      ...activity,
+      options: options.filter((option) => option.activity_id === activity.id),
+      responses: activityResponses,
+      stats: {
+        attending: activityResponses.filter((item) => item.response_status === "attending").length,
+        not_attending: activityResponses.filter((item) => item.response_status === "not_attending")
+          .length,
+        distance: activityResponses.filter((item) => item.response_status === "distance").length,
+      },
+    };
+  });
+}
+
+export async function GET(request) {
+  try {
+    const url = new URL(request.url);
+    if (url.searchParams.get("admin") === "1") {
+      await requireAdmin(request);
+      return NextResponse.json({ ok: true, activities: await adminList() });
+    }
+    const { discordId } = await getAuthUserFromRequest(supabaseAdmin, request);
+    const { data: staff, error: staffError } = await supabaseAdmin
+      .from("players")
+      .select("discord_id,display_name,discord_name,real_name,phone,created_at,is_active")
+      .eq("discord_id", discordId)
+      .maybeSingle();
+    if (staffError) throw staffError;
+    if (!staff || staff.is_active === false) throw new Error("找不到有效員工資料");
+    const activities = await activityRows(
+      supabaseAdmin
+        .from("deepnight_activities")
+        .select("*")
+        .eq("is_published", true)
+        .order("starts_at", { ascending: true }),
+    );
+    const ids = (activities || []).map((item) => item.id);
+    const [options, responseResult] = await Promise.all([
+      optionsFor(ids),
+      relatedActivityRows(
+        supabaseAdmin,
+        "deepnight_activity_responses",
+        "activity_id",
+        ids,
+        "*",
+        "id",
+        discordId,
+      ).then((data) => ({ data })),
+    ]);
+    if (responseResult.error) throw responseResult.error;
+    const responses = responseResult.data || [];
+    const responseIds = responses.map((item) => item.id);
+    const guests = await relatedActivityRows(
+      supabaseAdmin,
+      "deepnight_activity_guests",
+      "response_id",
+      responseIds,
+      "*",
+      "slot",
+    );
+    const result = await Promise.all(
+      (activities || []).map(async (activity) => {
+        const response = responses.find((item) => item.activity_id === activity.id) || null;
+        return {
+          ...activity,
+          options: options.filter((item) => item.activity_id === activity.id),
+          eligibility: await employeeEligibility(activity, staff),
+          response: response
+            ? {
+                ...response,
+                guests: (guests || []).filter((guest) => guest.response_id === response.id),
+              }
+            : null,
+          locked: Date.now() >= new Date(activity.response_deadline).getTime(),
+        };
+      }),
+    );
+    return NextResponse.json({
+      ok: true,
+      activities: result,
+      staff: {
+        nickname: staff.display_name || staff.discord_name,
+        realName: staff.real_name,
+        phone: staff.phone,
+      },
+    });
+  } catch (error) {
+    return NextResponse.json(
+      { ok: false, message: error?.message || "讀取活動失敗" },
+      { status: 400 },
+    );
+  }
+}
+
+export async function POST(request) {
+  try {
+    const access = await requireAdmin(request);
+    const body = await request.json().catch(() => ({}));
+    const title = clean(body.title, 120);
+    const startsAt = new Date(body.startsAt);
+    const latestDeadline = new Date(startsAt.getTime() - 86400000);
+    const requestedDeadline = new Date(body.responseDeadline || latestDeadline);
+    const responseDeadline =
+      requestedDeadline > latestDeadline ? latestDeadline : requestedDeadline;
+    if (!title || Number.isNaN(startsAt.getTime())) throw new Error("請填寫活動名稱與開始時間");
+    if (Number.isNaN(responseDeadline.getTime()) || responseDeadline > startsAt)
+      throw new Error("報名截止時間必須早於活動開始時間");
+    const options = parseOptions(body.options);
+    const { data, error } = await supabaseAdmin
+      .from("deepnight_activities")
+      .insert({
+        title,
+        description: clean(body.description),
+        location: clean(body.location, 300) || null,
+        starts_at: startsAt.toISOString(),
+        response_deadline: responseDeadline.toISOString(),
+        min_completed_orders: Math.max(0, Math.floor(Number(body.minCompletedOrders) || 0)),
+        min_employment_days: Math.max(0, Math.floor(Number(body.minEmploymentDays) || 0)),
+        eligibility_note: clean(body.eligibilityNote, 1000) || null,
+        participant_note: clean(body.participantNote, 2000) || null,
+        allow_not_attending: body.allowNotAttending !== false,
+        allow_distance: body.allowDistance !== false,
+        is_published: body.isPublished !== false,
+        created_by: access.discordId,
+      })
+      .select("*")
+      .single();
+    if (error) throw error;
+    if (options.length) {
+      const { error: optionError } = await supabaseAdmin
+        .from("deepnight_activity_options")
+        .insert(options.map((item) => ({ ...item, activity_id: data.id })));
+      if (optionError) {
+        await supabaseAdmin.from("deepnight_activities").delete().eq("id", data.id);
+        throw optionError;
+      }
+    }
+    return NextResponse.json({ ok: true, activity: data });
+  } catch (error) {
+    return NextResponse.json(
+      { ok: false, message: error?.message || "發布活動失敗" },
+      { status: 400 },
+    );
+  }
+}
+
+export async function PATCH(request) {
+  try {
+    const body = await request.json().catch(() => ({}));
+    if (body.action === "respond") {
+      const { discordId } = await getAuthUserFromRequest(supabaseAdmin, request);
+      const activityId = clean(body.activityId, 100);
+      const status = clean(body.status, 30);
+      if (!["attending", "not_attending", "distance"].includes(status))
+        throw new Error("請選擇參與狀態");
+      const { data: activity, error } = await supabaseAdmin
+        .from("deepnight_activities")
+        .select("*")
+        .eq("id", activityId)
+        .eq("is_published", true)
+        .maybeSingle();
+      if (error) throw error;
+      if (!activity) throw new Error("找不到活動");
+      if (status === "not_attending" && !activity.allow_not_attending)
+        throw new Error("此活動已關閉「不參與」選項");
+      if (status === "distance" && !activity.allow_distance)
+        throw new Error("此活動已關閉「因地區無法參與」選項");
+      if (Date.now() >= new Date(activity.response_deadline).getTime())
+        throw new Error("活動報名已截止，開始前 24 小時不能再修改");
+      const { data: staff, error: staffError } = await supabaseAdmin
+        .from("players")
+        .select("discord_id,display_name,discord_name,real_name,phone,created_at,is_active")
+        .eq("discord_id", discordId)
+        .maybeSingle();
+      if (staffError) throw staffError;
+      if (!staff || staff.is_active === false) throw new Error("找不到有效員工資料");
+      const eligibility = await employeeEligibility(activity, staff);
+      if (status === "attending" && !eligibility.eligible)
+        throw new Error(`你目前不符合參與門檻：${eligibility.reasons.join("、")}`);
+      const guests = status === "attending" ? (Array.isArray(body.guests) ? body.guests : []) : [];
+      const { data: response, error: responseError } = await supabaseAdmin.rpc(
+        "submit_deepnight_activity_response",
+        {
+          p_activity_id: activityId,
+          p_discord_id: discordId,
+          p_status: status,
+          p_option_id: status === "attending" ? body.optionId || null : null,
+          p_guests: guests,
+        },
+      );
+      if (responseError) throw responseError;
+      return NextResponse.json({ ok: true, response });
+    }
+    await requireAdmin(request);
+    const id = clean(body.id, 100);
+    if (!id) throw new Error("缺少活動 ID");
+    if (body.action === "publish") {
+      const { error } = await supabaseAdmin
+        .from("deepnight_activities")
+        .update({ is_published: Boolean(body.isPublished), updated_at: new Date().toISOString() })
+        .eq("id", id);
+      if (error) throw error;
+      return NextResponse.json({ ok: true });
+    }
+    if (body.action === "edit") {
+      const { data: activity, error: activityError } = await supabaseAdmin
+        .from("deepnight_activities")
+        .select("id")
+        .eq("id", id)
+        .maybeSingle();
+      if (activityError) throw activityError;
+      if (!activity) throw new Error("找不到活動");
+      const title = clean(body.title, 120);
+      const startsAt = new Date(body.startsAt);
+      if (!title || Number.isNaN(startsAt.getTime())) throw new Error("請填寫活動名稱與開始時間");
+      const latestDeadline = new Date(startsAt.getTime() - 86400000);
+      const requestedDeadline = new Date(body.responseDeadline || latestDeadline);
+      const responseDeadline =
+        requestedDeadline > latestDeadline ? latestDeadline : requestedDeadline;
+      if (Number.isNaN(responseDeadline.getTime())) throw new Error("回覆截止時間不正確");
+      const options = parseEditedOptions(body.options);
+      const { data: existingOptions, error: optionsError } = await supabaseAdmin
+        .from("deepnight_activity_options")
+        .select("id,label,note,sort_order")
+        .eq("activity_id", id);
+      if (optionsError) throw optionsError;
+      const existingIds = new Set((existingOptions || []).map((item) => item.id));
+      if (options.some((item) => item.id && !existingIds.has(item.id)))
+        throw new Error("活動選項不屬於此活動");
+      const retainedIds = new Set(options.map((item) => item.id).filter(Boolean));
+      const removedIds = (existingOptions || [])
+        .filter((item) => !retainedIds.has(item.id))
+        .map((item) => item.id);
+      if (removedIds.length) {
+        const { count, error: responseError } = await supabaseAdmin
+          .from("deepnight_activity_responses")
+          .select("id", { count: "exact", head: true })
+          .eq("activity_id", id)
+          .in("selected_option_id", removedIds);
+        if (responseError) throw responseError;
+        if (count) throw new Error("已有員工選擇的活動選項不能刪除，請保留該選項");
+      }
+      if (removedIds.length) {
+        const { error } = await supabaseAdmin
+          .from("deepnight_activity_options")
+          .delete()
+          .eq("activity_id", id)
+          .in("id", removedIds);
+        if (error) throw error;
+      }
+      for (const option of options.filter((item) => item.id)) {
+        const original = existingOptions.find((item) => item.id === option.id);
+        if (
+          original.label === option.label &&
+          original.note === option.note &&
+          original.sort_order === option.sort_order
+        )
+          continue;
+        const { error } = await supabaseAdmin
+          .from("deepnight_activity_options")
+          .update({ label: option.label, note: option.note, sort_order: option.sort_order })
+          .eq("activity_id", id)
+          .eq("id", option.id);
+        if (error) throw error;
+      }
+      const additions = options
+        .filter((item) => !item.id)
+        .map(({ label, note, sort_order }) => ({ activity_id: id, label, note, sort_order }));
+      if (additions.length) {
+        const { error } = await supabaseAdmin.from("deepnight_activity_options").insert(additions);
+        if (error) throw error;
+      }
+      const { error: updateError } = await supabaseAdmin
+        .from("deepnight_activities")
+        .update({
+          title,
+          description: clean(body.description),
+          location: clean(body.location, 300) || null,
+          starts_at: startsAt.toISOString(),
+          response_deadline: responseDeadline.toISOString(),
+          min_completed_orders: Math.max(0, Math.floor(Number(body.minCompletedOrders) || 0)),
+          min_employment_days: Math.max(0, Math.floor(Number(body.minEmploymentDays) || 0)),
+          eligibility_note: clean(body.eligibilityNote, 1000) || null,
+          participant_note: clean(body.participantNote, 2000) || null,
+          allow_not_attending: body.allowNotAttending !== false,
+          allow_distance: body.allowDistance !== false,
+          is_published: body.isPublished !== false,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", id);
+      if (updateError) throw updateError;
+      return NextResponse.json({ ok: true });
+    }
+    throw new Error("活動操作不正確");
+  } catch (error) {
+    return NextResponse.json(
+      { ok: false, message: error?.message || "更新活動失敗" },
+      { status: 400 },
+    );
+  }
+}
+
+export async function DELETE(request) {
+  try {
+    await requireAdmin(request);
+    const body = await request.json().catch(() => ({}));
+    const id = clean(body.id, 100);
+    const { count, error: countError } = await supabaseAdmin
+      .from("deepnight_activity_responses")
+      .select("id", { count: "exact", head: true })
+      .eq("activity_id", id);
+    if (countError) throw countError;
+    if (count) throw new Error("活動已有員工回覆，請改為停止發布以保留紀錄");
+    const { error } = await supabaseAdmin.from("deepnight_activities").delete().eq("id", id);
+    if (error) throw error;
+    return NextResponse.json({ ok: true });
+  } catch (error) {
+    return NextResponse.json(
+      { ok: false, message: error?.message || "刪除活動失敗" },
+      { status: 400 },
+    );
+  }
+}

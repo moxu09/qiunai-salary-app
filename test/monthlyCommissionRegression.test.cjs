@@ -65,9 +65,11 @@ test('查詢失敗不得當零業績', async () => {
   await assert.rejects(getMonthlyOrderAmount(db, 'staff', '2026-10-21'), /database unavailable/);
 });
 test('員工進度不得回到歷史累積或被最後一筆打賞抽成覆蓋；人工新增與審核也讀上月業績', () => {
-  const staff = fs.readFileSync(path.join(root, 'app/staff/page.tsx'), 'utf8');
+  const staff = fs.readFileSync(path.join(root, 'components/HrCareerPanel.tsx'), 'utf8');
   assert.match(staff, /current=\{commissionInfo.monthlyCreditedSalary\}/);
   assert.doesNotMatch(staff, /latestOrderWithRate|function is85ActiveThisMonth|commissionInfo.totalOrderAmount/);
+  const careerApi = fs.readFileSync(path.join(root, 'app/api/hr/career/route.js'), 'utf8');
+  assert.match(careerApi, /getMonthlyOrderAmount\(supabaseAdmin,\s*discordId,\s*now,\s*-1\)/);
   const admin = fs.readFileSync(path.join(root, 'app/admin/salary/page.tsx'), 'utf8');
   assert.match(admin, /const defaultRate = await getStaffSalaryRate/);
   assert.match(admin, /const regularRate = await getStaffSalaryRate/);

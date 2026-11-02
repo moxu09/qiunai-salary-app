@@ -23,7 +23,7 @@ type DirectMessage = {
 };
 
 type Props = {
-  organization: "qiunai" | "deepnight";
+  organization: "qiunai" | "deepnight" | "hr";
   myDiscordId: string;
   open: boolean;
   onOpenChange: Dispatch<SetStateAction<boolean>>;

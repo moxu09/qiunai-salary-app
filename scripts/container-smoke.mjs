@@ -18,7 +18,7 @@ for (let attempt = 0; attempt < 30; attempt += 1) {
 }
 assert.ok(ready, "容器未能啟動員工頁面");
 
-for (const path of ["/staff", "/admin/activities"]) {
+for (const path of ["/staff", "/personal/data", "/order/order.details", "/order/reward.details", "/admin/activities"]) {
   const response = await read(path);
   assert.equal(response.status, 200, `${path} 載入失敗`);
   const html = await response.text();
@@ -37,6 +37,9 @@ for (const path of ["/staff", "/admin/activities"]) {
 }
 
 for (const path of [
+  "/api/hr/session",
+  "/api/hr/wallet",
+  "/api/hr/orders?month=2026-11",
   "/api/qiunai/activities?admin=1",
   "/api/qiunai/activities/3df7cc5b-7dbb-4c72-8d42-9d338429ea0f/export",
 ]) {

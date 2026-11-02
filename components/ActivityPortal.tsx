@@ -40,14 +40,14 @@ async function authToken() {
   return data.session.access_token;
 }
 
-export default function ActivityPortal() {
+export default function ActivityPortal({ organization = "qiunai" }: { organization?: "qiunai" | "deepnight" }) {
   const [activities, setActivities] = useState<Activity[]>([]);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await fetch("/api/qiunai/activities", {
+      const response = await fetch(`/api/${organization}/activities`, {
         headers: { Authorization: `Bearer ${await authToken()}` },
         cache: "no-store",
       });
@@ -59,11 +59,11 @@ export default function ActivityPortal() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [organization]);
   const loadEvent = useEffectEvent(load);
   useEffect(() => {
     void Promise.resolve().then(loadEvent);
-  }, []);
+  }, [organization]);
 
   if (loading)
     return (
@@ -81,13 +81,13 @@ export default function ActivityPortal() {
   return (
     <div className="space-y-5">
       {activities.map((activity) => (
-        <ActivityForm key={activity.id} activity={activity} onSaved={load} />
+        <ActivityForm key={activity.id} activity={activity} organization={organization} onSaved={load} />
       ))}
     </div>
   );
 }
 
-function ActivityForm({ activity, onSaved }: { activity: Activity; onSaved: () => Promise<void> }) {
+function ActivityForm({ activity, onSaved, organization }: { activity: Activity; onSaved: () => Promise<void>; organization: "qiunai" | "deepnight" }) {
   const existing = activity.response;
   const [status, setStatus] = useState(existing?.response_status || "");
   const [optionIds, setOptionIds] = useState<string[]>(existing?.selected_option_ids?.length
@@ -129,7 +129,7 @@ function ActivityForm({ activity, onSaved }: { activity: Activity; onSaved: () =
       return alert("親友姓名與電話都必須填寫");
     setBusy(true);
     try {
-      const response = await fetch("/api/qiunai/activities", {
+      const response = await fetch(`/api/${organization}/activities`, {
         method: "PATCH",
         headers: {
           Authorization: `Bearer ${await authToken()}`,
@@ -140,6 +140,7 @@ function ActivityForm({ activity, onSaved }: { activity: Activity; onSaved: () =
           activityId: activity.id,
           status,
           optionIds: status === "attending" ? optionIds : [],
+          optionId: status === "attending" ? optionIds[0] || null : null,
           guests: status === "attending" ? guests : [],
         }),
       });

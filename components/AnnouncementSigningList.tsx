@@ -5,6 +5,7 @@ import { CheckCircle2, ExternalLink, FileSignature, Loader2, RotateCcw, ShieldCh
 import { supabase } from "@/lib/supabase";
 
 export type StaffAnnouncement = {
+  organization?: "qiunai" | "deepnight";
   id: string;
   title: string;
   content: string;
@@ -35,7 +36,8 @@ function SignaturePad({ onChange }: { onChange: (value: string) => void }) {
 }
 
 export default function AnnouncementSigningList({ announcements, apiPath, onComplete }: { announcements: StaffAnnouncement[]; apiPath: string; onComplete: () => Promise<void> | void }) {
-  const signingApi = apiPath.replace(/\/hr(?:\?.*)?$/, "/announcement-signing");
+  const fallbackSigningApi = apiPath.replace(/\/hr(?:\?.*)?$/, "/announcement-signing");
+  const signingFor = (item: StaffAnnouncement) => item.organization ? `/api/${item.organization}/announcement-signing` : fallbackSigningApi;
   const [selected, setSelected] = useState<StaffAnnouncement | null>(null);
   const [documentUrl, setDocumentUrl] = useState("");
   const [ready, setReady] = useState(false);
@@ -48,25 +50,25 @@ export default function AnnouncementSigningList({ announcements, apiPath, onComp
   const [pollBusy, setPollBusy] = useState("");
 
   useEffect(() => { if (!selected) return; const timer = window.setTimeout(() => setReady(true), 3000); return () => window.clearTimeout(timer); }, [selected]);
-  async function token() { const { data } = await supabase.auth.getSession(); if (!data.session) throw new Error("請重新登入 EIP"); return data.session.access_token; }
+  async function token() { const { data } = await supabase.auth.getSession(); if (!data.session) throw new Error("請重新登入 HR"); return data.session.access_token; }
   async function open(item: StaffAnnouncement) {
     setBusy(true); setError(""); setReady(false); setSelected(item); setDocumentUrl(""); setConfirmed(false); setSignature("");
     setStage(item.signature?.read_confirmed_at && item.signature.status !== "signed" ? "sign" : "review");
-    try { const auth = await token(); const response = await fetch(`${signingApi}?announcementId=${encodeURIComponent(item.id)}`, { headers: { Authorization: `Bearer ${auth}` }, cache: "no-store" }); const payload = await response.json().catch(() => ({})); if (!response.ok || !payload.document?.url) throw new Error(payload.message || "開啟公告文件失敗"); setDocumentUrl(payload.document.url); }
+    try { const auth = await token(); const response = await fetch(`${signingFor(item)}?announcementId=${encodeURIComponent(item.id)}`, { headers: { Authorization: `Bearer ${auth}` }, cache: "no-store" }); const payload = await response.json().catch(() => ({})); if (!response.ok || !payload.document?.url) throw new Error(payload.message || "開啟公告文件失敗"); setDocumentUrl(payload.document.url); }
     catch (cause) { setError(cause instanceof Error ? cause.message : "開啟公告文件失敗"); }
     finally { setBusy(false); }
   }
   async function confirmRead() {
     if (!selected || !ready || !confirmed) return;
     setBusy(true); setError("");
-    try { const auth = await token(); const response = await fetch(signingApi, { method: "PATCH", headers: { Authorization: `Bearer ${auth}`, "Content-Type": "application/json" }, body: JSON.stringify({ announcementId: selected.id }) }); const payload = await response.json().catch(() => ({})); if (!response.ok) throw new Error(payload.message || "儲存閱讀確認失敗"); setStage("sign"); }
+    try { const auth = await token(); const response = await fetch(signingFor(selected), { method: "PATCH", headers: { Authorization: `Bearer ${auth}`, "Content-Type": "application/json" }, body: JSON.stringify({ announcementId: selected.id }) }); const payload = await response.json().catch(() => ({})); if (!response.ok) throw new Error(payload.message || "儲存閱讀確認失敗"); setStage("sign"); }
     catch (cause) { setError(cause instanceof Error ? cause.message : "儲存閱讀確認失敗"); }
     finally { setBusy(false); }
   }
   async function submit() {
     if (!selected || !signature) return;
     setBusy(true); setError("");
-    try { const auth = await token(); const response = await fetch(signingApi, { method: "POST", headers: { Authorization: `Bearer ${auth}`, "Content-Type": "application/json" }, body: JSON.stringify({ announcementId: selected.id, signatureDataUrl: signature }) }); const payload = await response.json().catch(() => ({})); if (!response.ok) throw new Error(payload.message || "完成公告簽署失敗"); setSelected(null); await onComplete(); alert("公告文件簽署完成，PDF 已存入 EIP 員工檔案區"); }
+    try { const auth = await token(); const response = await fetch(signingFor(selected), { method: "POST", headers: { Authorization: `Bearer ${auth}`, "Content-Type": "application/json" }, body: JSON.stringify({ announcementId: selected.id, signatureDataUrl: signature }) }); const payload = await response.json().catch(() => ({})); if (!response.ok) throw new Error(payload.message || "完成公告簽署失敗"); setSelected(null); await onComplete(); alert("公告文件簽署完成，PDF 已存入 HR 員工檔案區"); }
     catch (cause) { setError(cause instanceof Error ? cause.message : "完成公告簽署失敗"); }
     finally { setBusy(false); }
   }
@@ -84,7 +86,7 @@ export default function AnnouncementSigningList({ announcements, apiPath, onComp
     setPollBusy(item.id);
     try {
       const auth = await token();
-      const response = await fetch("/api/qiunai/poll-vote", { method: "POST", headers: { Authorization: `Bearer ${auth}`, "Content-Type": "application/json" }, body: JSON.stringify({ announcementId: item.id, optionIds }) });
+      const response = await fetch(`/api/${item.organization || "qiunai"}/poll-vote`, { method: "POST", headers: { Authorization: `Bearer ${auth}`, "Content-Type": "application/json" }, body: JSON.stringify({ announcementId: item.id, optionIds }) });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload.message || "投票失敗");
       await onComplete();

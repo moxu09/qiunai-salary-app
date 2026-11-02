@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { hrTabForPath } from "@/lib/hrRoutes.mjs";
 import { supabase } from "@/lib/supabase";
 
 export default function AuthCallbackPage() {
@@ -63,7 +64,7 @@ function CallbackInner() {
           ? requestedNext
           : requestedNext === "/admin"
             ? "/admin"
-            : "/staff";
+            : hrTabForPath(requestedNext) ? requestedNext : "/collaboration/workspace";
         const mode = searchParams.get("mode") || "";
         const method = searchParams.get("method") || "discord";
         const token = data.session.access_token;

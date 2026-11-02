@@ -1,0 +1,29 @@
+# 秋奈 × 深夜員工 HR
+
+員工入口為 `https://hr.wearestilllhere.com`，主管入口為 `https://eip.wearestilllhere.com`。
+
+員工頁面依已驗證的 Discord 身分讀取在職部門，沒有部門切換模式。姓名、電話、生日、性別及銀行資料共用；部門顯示名稱、頭像、官網介紹、備註、邀請網址、填單區 ID、可接服務及抽成資格各自保留。兩店 Logo 固定同尺寸，未隸屬的店家反灰。
+
+協作資料、公告、人事申請和員工訊息在同一畫面讀取，保留來源。訂單選單按在職部門列出兩組並導向同一頁內的部門區塊。活動位於協作選單，各店活動資格與回覆獨立。行政與福利表單內選擇申請部門；簽核表格標示來源，沿用各店的審核流程。
+
+`lib/hrRoutes.mjs` 定義所有選單的實際路徑，含 `/personal/data`、`/order/order.details` 和 `/order/reward.details`。`/staff` 保留為相容轉址。登入時保留合法的原目的頁。
+
+## 金額與資料界線
+
+合併提領依兩店可提領餘額比例分配，整數差額歸最後一個在職部門。分開輸入時，各部門可個別填額或填 0。不搬移歷史訂單、錢包、資格、報單頻道或簽核歸屬。合併銀行申請總額高於 1,000；分開申請時每個有申請的部門各高於 1,000。手續費依該部門既有規則計算，核准與匯款仍由各部門處理。
+
+`hr_request_withdrawal_atomic` 在同一筆 PostgreSQL 交易內建立兩家申請或轉入本人的 ASD，並使用與既有 ASD 函式相同的部門鎖。批次識別碼防止重試重複入帳；瀏覽器角色不能直接執行這些函式。`hr_guard_salary_reservation` 也對舊入口的新申請序列化並檢查餘額，避免新舊入口同時超額預約。
+
+共用個資與部門專屬設定使用不同的交易函式；共用儲存不修改暱稱、官網或頻道設定。秋奈 `allowed_services` 保留 JSONB 的服務名稱，深夜保留原本的 text[] 服務 key，不互相轉換。
+
+## 部署
+
+沿用既有私人 GHCR 容器及 Railway 服務；建置前確認 package 為 private，以固定 digest 部署。套用 `20261102000100_unified_hr.sql` 及 `20261102000200_hr_profile_services.sql`。在同一個 Supabase Auth 專案允許兩個新網域的登入回跳，保留其他既有入口。
+
+主管網域由 `proxy.ts` 導向既有主管系統，根路徑使用原本 `/admin-login`，其他頁面、API 及資產保留路徑。主管應用程式本身不變。這個網域應掛在 HR 容器的同一個 Railway 服務。
+
+深夜既有部署缺少協作及活動端點，因此 HR 容器保留原本按部門過濾的協作 handler 及深夜活動 handler；其他深夜 API 沿用既有服務。所有服務仍驗證登入及各自權限。現有安裝版 App 的原入口維持相容，這次不重包安裝檔。
+
+## 驗證
+
+`npm test`、TypeScript 與正式建置。`scripts/container-smoke.mjs` 檢查指定頁面、資產及未登入保護。`supabase/tests/hr_atomic_withdrawal.sql` 與 `hr_profile_isolation.sql` 使用獨立測試員工並完整回滾，不更動真實員工金額。銀行提領期間另以交易內的固定時鐘版本測試後回滾。

@@ -15,7 +15,7 @@ type Theme = "deepnight" | "qiunai";
 
 type ErpLoginCardProps = {
   organization: Theme;
-  nextPath?: "/staff" | "/admin";
+  nextPath?: string;
   admin?: boolean;
 };
 
@@ -30,15 +30,15 @@ const CONTENT = {
     badge: "DeepNight EIP",
     title: "深夜不關燈 EIP",
     description:
-      "登入後會依你的 EIP 權限顯示薪資、訂單、簽核與管理功能。",
+      "登入後整合顯示你所屬部門的個人資料、薪資、訂單與簽核。",
     copyright: "© 深夜不關燈 We Are Still Here",
   },
   qiunai: {
-    badge: "Qiunai Esports EIP",
-    title: "秋奈電競 EIP",
+    badge: "WE ARE STILL HERE HR",
+    title: "秋奈 × 深夜 HR",
     description:
-      "登入後會依你的 EIP 權限顯示薪資、訂單、簽核與管理功能。",
-    copyright: "© 秋奈電競 Qiunai Esports",
+      "登入後整合顯示你所屬部門的個人資料、薪資、訂單與簽核。",
+    copyright: "© 秋奈電競 × 深夜不關燈 We Are Still Here",
   },
 } as const;
 

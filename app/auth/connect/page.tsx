@@ -2,6 +2,7 @@
 
 import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
+import { hrTabForPath } from "@/lib/hrRoutes.mjs";
 import ErpAuthLinkManager from "@/components/ErpAuthLinkManager";
 
 export default function AuthConnectPage() {
@@ -14,7 +15,8 @@ export default function AuthConnectPage() {
 
 function ConnectContent() {
   const searchParams = useSearchParams();
-  const nextPath = searchParams.get("next") === "/admin" ? "/admin" : "/staff";
+  const requestedNext=searchParams.get("next")||"";
+  const nextPath = requestedNext === "/admin" ? "/admin" : hrTabForPath(requestedNext) ? requestedNext : "/collaboration/workspace";
 
   return (
     <main className="qiunai-page flex min-h-screen items-center justify-center px-4 py-10">
