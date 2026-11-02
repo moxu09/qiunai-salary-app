@@ -53,7 +53,7 @@ export default function StaffInstallerDownloads() {
       <p className="mt-2 text-sm text-[#80647d]">選擇與裝置相符的版本。檔案為 ZIP，下載後先解壓縮再開啟。</p>
       <div className="mt-5 grid gap-3 md:grid-cols-2">
         {installers.map((installer) => (
-          <div key={installer.platform} className="flex items-center gap-4 rounded-2xl border border-pink-100 bg-pink-50/50 p-4">
+          <div key={installer.platform} className="hr-download-card flex items-center gap-4 rounded-2xl border border-pink-100 bg-pink-50/50 p-4">
             <div className="rounded-xl bg-white p-3 text-pink-500">
               {installer.mobile ? <Smartphone size={22} /> : <MonitorDown size={22} />}
             </div>

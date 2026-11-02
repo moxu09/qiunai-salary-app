@@ -21,6 +21,8 @@ import {
   WalletCards,
   CalendarHeart,
   LayoutDashboard,
+  Menu,
+  X,
   CalendarDays,
   BookOpenText,
   type LucideIcon,
@@ -122,6 +124,7 @@ export default function StaffPortalNav({
   showDeviceAudit = false,
   brand,
 }: StaffPortalNavProps) {
+  const [mobileOpen, setMobileOpen] = useState(false);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(groups.map((group) => [group.title, true])),
   );
@@ -134,14 +137,31 @@ export default function StaffPortalNav({
   }
 
   return (
-    <aside className="staff-portal-nav">
+    <aside className={`staff-portal-nav${mobileOpen ? " is-mobile-open" : ""}`}>
       <div className="staff-portal-brand">
         <p className="staff-portal-eyebrow">HR｜員工端</p>
         {brand || <p className="staff-portal-company">{company}</p>}
         <p className="staff-portal-name">{employeeName}</p>
       </div>
 
-      <nav className="staff-portal-menu">
+      <button
+        type="button"
+        className="staff-mobile-menu-toggle"
+        aria-label={mobileOpen ? "收合功能選單" : "展開功能選單"}
+        aria-expanded={mobileOpen}
+        aria-controls="staff-portal-menu"
+        onClick={() => {
+          if (!mobileOpen)
+            setOpenGroups(Object.fromEntries(groups.map((group) => [group.title, false])));
+          setMobileOpen((current) => !current);
+        }}
+      >
+        {mobileOpen ? <X size={19} /> : <Menu size={19} />}
+        <span>功能選單</span>
+        <ChevronDown size={17} className="staff-mobile-menu-chevron" />
+      </button>
+
+      <nav id="staff-portal-menu" className="staff-portal-menu" aria-label="員工功能選單">
         {[
           ...groups,
           ...(showDeviceAudit
@@ -183,6 +203,7 @@ export default function StaffPortalNav({
                         href={HR_ROUTES[tab]}
                         onClick={(event) => {
                           event.preventDefault();
+                          setMobileOpen(false);
                           onSelect(tab);
                           window.scrollTo({ top: 0, behavior: "smooth" });
                         }}
