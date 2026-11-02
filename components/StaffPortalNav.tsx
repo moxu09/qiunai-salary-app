@@ -61,7 +61,6 @@ const groups: ReadonlyArray<PortalGroup> = [
     icon: MessageSquareText,
     items: [
       ["workspace", "工作台", LayoutDashboard],
-      ["messages", "員工訊息", MessageSquareText],
       ["calendar", "團隊日程", CalendarDays],
       ["documents", "共享文件", FileText],
       ["knowledge", "知識庫", BookOpenText],
