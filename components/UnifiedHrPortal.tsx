@@ -5,7 +5,6 @@ import { usePathname, useRouter } from "next/navigation";
 import { LogOut, RefreshCw, WalletCards, Save, UserRound } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { HR_DEPARTMENTS, HR_ROUTES, hrTabForPath, allocateWithdrawal } from "@/lib/hrRoutes.mjs";
-import { serviceOptionsFor } from "@/lib/hrServiceOptions";
 import HrCareerPanel from "@/components/HrCareerPanel";
 import StaffPortalNav, { type PortalTab } from "@/components/StaffPortalNav";
 import StaffCollaboration from "@/components/StaffCollaboration";
@@ -26,7 +25,6 @@ type Staff = Record<string, unknown> & {
   discord_name?: string;
   avatar_url?: string;
   is_online?: boolean;
-  allowed_services?: string[];
 };
 type Department = { key: DepartmentKey; staff: Staff };
 type Session = { discordId: string; departments: Department[] };
@@ -208,14 +206,14 @@ export default function UnifiedHrPortal() {
   }
   if (loading)
     return (
-      <main className="qiunai-page hr-loading">
+      <main className="qiunai-page hr-loading hr-unified">
         <RefreshCw className="animate-spin" />
         正在整合員工資料…
       </main>
     );
   if (error || !session)
     return (
-      <main className="qiunai-page hr-loading">
+      <main className="qiunai-page hr-loading hr-unified">
         <Card title="無法進入員工 HR">
           <Notice>{error || "讀取員工資料失敗"}</Notice>
           <button className="qiunai-button" onClick={() => void init()}>
@@ -419,14 +417,14 @@ function ProfilePanel({ session, onSaved }: { session: Session; onSaved: () => P
           </button>
         </form>
       </Card>
-      <DepartmentServices departments={session.departments} />
+      <DepartmentStatus departments={session.departments} />
       <Card title="登入方式與帳號連結">
         <ErpAuthLinkManager organization={session.departments[0].key} mode="profile" embedded />
       </Card>
     </>
   );
 }
-function DepartmentServices({ departments }: { departments: Department[] }) {
+function DepartmentStatus({ departments }: { departments: Department[] }) {
   const [error, setError] = useState("");
   const [staff, setStaff] = useState(departments);
   const [busy, setBusy] = useState<string | null>(null);
@@ -466,7 +464,6 @@ function DepartmentServices({ departments }: { departments: Department[] }) {
               {busy === d.key ? "更新中…" : d.staff.is_online ? "切換為下線" : "切換為上線"}
             </button>
             <DepartmentProfileEditor department={d} />
-            <ServiceEditor department={d} />
           </div>
         ))}
       </div>
@@ -998,91 +995,6 @@ function OrdersPanel({ tab, departments }: { tab: PortalTab; departments: Depart
         })
       ) : null}
     </>
-  );
-}
-
-function ServiceEditor({ department }: { department: Department }) {
-  const [keys, setKeys] = useState<string[]>([]);
-  const [error, setError] = useState("");
-  const [loaded, setLoaded] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [notice, setNotice] = useState("");
-  async function load() {
-    if (loaded) return;
-    try {
-      const result = await hrFetch(`/api/hr/services?department=${department.key}`);
-      setKeys(result.keys);
-      setLoaded(true);
-      setError("");
-    } catch (caught) {
-      setError(errorText(caught));
-    }
-  }
-  async function save() {
-    setBusy(true);
-    setError("");
-    setNotice("");
-    try {
-      await hrFetch("/api/hr/services", {
-        method: "PATCH",
-        body: JSON.stringify({ department: department.key, keys }),
-      });
-      setNotice("可接服務已儲存");
-    } catch (caught) {
-      setError(errorText(caught));
-    } finally {
-      setBusy(false);
-    }
-  }
-  return (
-    <details
-      className="hr-service-editor"
-      onToggle={(event) => {
-        if (event.currentTarget.open) void load();
-      }}
-    >
-      <summary>管理可接遊戲與服務</summary>
-      {error ? (
-        <Notice>
-          {error}
-          <button onClick={() => void load()}>重試</button>
-        </Notice>
-      ) : null}
-      {notice ? (
-        <p role="status" className="hr-success">
-          {notice}
-        </p>
-      ) : null}
-      {loaded ? (
-        <>
-          <div className="hr-service-options">
-            {serviceOptionsFor(department.key).map((option) => (
-              <label key={option.key}>
-                <input
-                  type="checkbox"
-                  checked={keys.includes(option.key)}
-                  onChange={(event) =>
-                    setKeys((old) =>
-                      event.target.checked
-                        ? [...old, option.key]
-                        : old.filter((key) => key !== option.key),
-                    )
-                  }
-                />
-                <span>
-                  {option.group}｜{option.name}
-                </span>
-              </label>
-            ))}
-          </div>
-          <button className="qiunai-button hr-submit" onClick={() => void save()} disabled={busy}>
-            {busy ? "儲存中…" : "儲存此部門的可接服務"}
-          </button>
-        </>
-      ) : (
-        <p className="hr-note">讀取服務項目中…</p>
-      )}
-    </details>
   );
 }
 

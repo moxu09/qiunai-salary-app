@@ -120,7 +120,7 @@ export default function ErpLoginCard({
     <main
       className={
         isQiunai
-          ? "qiunai-page flex min-h-screen items-center justify-center px-4 py-10"
+          ? "qiunai-page hr-unified flex min-h-screen items-center justify-center px-4 py-10"
           : "flex min-h-screen items-center justify-center bg-[#eef7fd] px-4 py-10 text-slate-900"
       }
     >
