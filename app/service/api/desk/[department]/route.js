@@ -10,7 +10,7 @@ export async function GET(request,context){try{
  return Response.json({ok:true,notes:notes.data,tracking:tracking.data,broadcasts:broadcasts.data},{headers:{'Cache-Control':'no-store',Vary:'Authorization'}});
 }catch(error){return deskError(error);}}
 export async function POST(request,context){try{
- const {department}=await context.params,actor=await manualActor(request,department);const raw=await request.text();if(raw.length>12000)throw Object.assign(Error('備註內容太長'),{status:400});let input;try{input=JSON.parse(raw);}catch{throw Object.assign(Error('工作資料不正確'),{status:400});}
+ const {department}=await context.params,actor=await manualActor(request,department);const raw=await request.text();if(raw.length>64000)throw Object.assign(Error('備註內容太長'),{status:400});let input;try{input=JSON.parse(raw);}catch{throw Object.assign(Error('工作資料不正確'),{status:400});}
  if(!input||Object.keys(input).some(key=>!['id','version','action','record'].includes(key))||!['save','archive','restore'].includes(input.action)||input.id&&(!/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(input.id)||!Number.isSafeInteger(input.version)||input.version<1))throw Object.assign(Error('工作資料不正確'),{status:400});
  let data={};if(input.action==='save'){
   if(input.record&&Object.keys(input.record).some(key=>!['kind','label','body','priority','customerId','url'].includes(key)))throw Object.assign(Error('工作資料含有無法使用的欄位'),{status:400});

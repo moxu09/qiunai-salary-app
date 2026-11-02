@@ -15,7 +15,7 @@ export async function GET(request){try{
  let items=data;
  if(kind==='price'){
   const paths=data.filter(row=>row.storage_path?.startsWith(`${department}/manual/`)).map(row=>row.storage_path);
-  let signed=[];if(paths.length){const result=await supabaseAdmin.storage.from(ADMIN_FILE_BUCKET).createSignedUrls(paths,120);if(result.error)throw result.error;signed=result.data;}
+  let signed=[];if(paths.length){const result=await supabaseAdmin.storage.from(ADMIN_FILE_BUCKET).createSignedUrls(paths,120);if(result.error)throw Error('Price image signing failed');signed=result.data;}
   items=data.map(({storage_path,...entry})=>({...entry,imageUrl:signed.find(file=>file.path===storage_path)?.signedUrl||null}));
  }
  return Response.json({ok:true,department,items,serverTime:now},{headers:{'Cache-Control':'no-store',Vary:'Authorization'}});
