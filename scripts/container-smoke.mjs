@@ -52,19 +52,34 @@ const logo = await read("/employment/deepnight-logo.png");
 assert.equal(logo.status, 200, "缺少公開圖片");
 // Exercise the actual HTTP authority through Next's production server. Its
 // internal NextRequest hostname can differ when running behind Railway's edge.
-const supervisor = await new Promise((resolve, reject) => {
-  const address = new URL("/", origin);
-  const client = address.protocol === "https:" ? https : http;
-  const request = client.get(address, { headers: { Host: "eip.wearestilllhere.com" } }, (response) => {
-    let body = "";
-    response.setEncoding("utf8");
-    response.on("data", (chunk) => { body += chunk; });
-    response.on("end", () => resolve({ status: response.statusCode, body }));
+async function readHost(hostname, path) {
+  return new Promise((resolve, reject) => {
+    const address = new URL(path, origin);
+    const client = address.protocol === "https:" ? https : http;
+    const request = client.get(address, { headers: { Host: hostname } }, (response) => {
+      let body = "";
+      response.setEncoding("utf8");
+      response.on("data", (chunk) => { body += chunk; });
+      response.on("end", () => resolve({ status: response.statusCode, body, location: response.headers.location }));
+    });
+    request.setTimeout(15000, () => request.destroy(Error("網域驗證逾時")));
+    request.on("error", reject);
   });
-  request.setTimeout(15000, () => request.destroy(Error("主管網域驗證逾時")));
-  request.on("error", reject);
-});
+}
+const supervisor = await readHost("eip.wearestilllhere.com", "/");
 assert.equal(supervisor.status, 200, "主管網域入口載入失敗");
 assert.ok(supervisor.body.includes("<title>深夜不關燈 EIP</title>"), "主管網域必須顯示既有主管應用程式");
 console.log("主管 HTTP 網域已導向既有後台登入頁。");
+for (const [path, target] of [
+  ["/staff", "/collaboration/workspace"],
+  ["/", "/"],
+  ["/order/order.details?month=2026-11", "/order/order.details?month=2026-11"],
+]) {
+  const legacy = await readHost("qiunai.wearestilllhere.com", path);
+  assert.equal(legacy.status, 308, "舊秋奈員工入口應永久轉至 HR");
+  assert.equal(legacy.location, `https://hr.wearestilllhere.com${target}`, "舊入口轉址目的地不正確");
+}
+const legacyApi = await readHost("qiunai.wearestilllhere.com", "/api/hr/session");
+assert.ok([400, 401, 403].includes(legacyApi.status), "舊網域 API 必須保留登入保護，不能轉址");
+console.log("舊秋奈員工頁已永久轉至 HR，API 保留原本驗證。");
 console.log(`容器驗證完成${revision ? `，版本 ${revision}` : ""}；未進行資料庫寫入、扣款或通知。`);

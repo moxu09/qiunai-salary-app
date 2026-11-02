@@ -6,7 +6,7 @@
 
 協作資料、公告、人事申請和員工訊息在同一畫面讀取，保留來源。側邊欄僅有一個「訂單」分類，各種明細各列一次；點進明細頁後，同時顯示所屬部門的訂單區塊。活動位於協作選單，各店活動資格與回覆獨立。行政與福利表單內選擇申請部門；簽核表格標示來源，沿用各店的審核流程。
 
-`lib/hrRoutes.mjs` 定義所有選單的實際路徑，含 `/personal/data`、`/order/order.details` 和 `/order/reward.details`。`/staff` 保留為相容轉址。登入時保留合法的原目的頁。
+`lib/hrRoutes.mjs` 定義所有選單的實際路徑，含 `/personal/data`、`/order/order.details` 和 `/order/reward.details`。舊 `qiunai.wearestilllhere.com/staff` 以 308 永久轉至 `hr.wearestilllhere.com/collaboration/workspace`；舊網域首頁及其餘員工頁也轉至 HR 對應頁面，不再提供舊網域員工介面。API、主管路徑與合約簽署連結沿用原本路由。HR 的 `/staff` 保留為站內相容轉址。登入時保留合法的原目的頁。
 
 ## 金額與資料界線
 
@@ -22,7 +22,7 @@
 
 主管網域由 `proxy.ts` 導向既有主管系統，根路徑使用原本 `/admin-login`，其他頁面、API 及資產保留路徑。主管應用程式本身不變。這個網域應掛在 HR 容器的同一個 Railway 服務。
 
-深夜既有部署缺少協作及活動端點，因此 HR 容器保留原本按部門過濾的協作 handler 及深夜活動 handler；其他深夜 API 沿用既有服務。所有服務仍驗證登入及各自權限。現有安裝版 App 的原入口維持相容，這次不重包安裝檔。
+深夜既有部署缺少協作及活動端點，因此 HR 容器保留原本按部門過濾的協作 handler 及深夜活動 handler；其他深夜 API 沿用既有服務。所有服務仍驗證登入及各自權限。現有安裝包仍可下載，舊秋奈員工入口跟隨上述轉址；這次不重包安裝檔。
 
 ## 驗證
 
