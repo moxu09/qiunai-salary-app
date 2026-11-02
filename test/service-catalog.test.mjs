@@ -1,0 +1,13 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import {runInNewContext} from 'node:vm';
+const actor='123456789012345678';
+function fixture(organization='deepnight'){
+ const calls=[];
+ const source=readFileSync(new URL('../app/service/api/catalog/route.js',import.meta.url),'utf8').replace(/^import .*\n/gm,'').replaceAll('export ','');
+ const context={Response,Request,URL,SERVICE_STORES:{deepnight:{staff:'players',guild:'1501836172199202856'},qiunai:{staff:'qiunai_staff',guild:'1513174069087047731'}},serviceAuth:async()=>({discordId:actor,departments:[{key:organization}]}),serviceFail:error=>Response.json({ok:false},{status:error.status||503}),privateCourseCatalog:async()=>[],allRows:async(factory)=>{const query=factory();return [{discord_id:actor,display_name:'本店員工',salary_channel_id:'223456789012345678'},{discord_id:'323456789012345678',display_name:'舊版填單區員工',salary_channel_id:null,report_channel_id:'423456789012345678'}];},supabaseAdmin:{from(table){const query={select(columns){calls.push([table,'select',columns]);return this;},eq(...args){calls.push([table,'eq',...args]);return this;},or(){return this;},order(){return this;},then(resolve){resolve({data:[],error:null});}};return query;}}};
+ runInNewContext(source+'\nthis.handle=GET;',context);return {handle:context.handle,calls};
+}
+test('DeepNight directory retains legacy report_channel_id without reading another store',async()=>{const f=fixture();const response=await f.handle(new Request('http://localhost/service/api/catalog?department=deepnight'));assert.equal(response.status,200);const data=await response.json();assert.equal(data.staffDirectory.length,2);assert.equal(data.staffDirectory[1].url,'https://discord.com/channels/1501836172199202856/423456789012345678');assert.ok(f.calls.some(([table,method,columns])=>table==='players'&&method==='select'&&columns.includes('report_channel_id')));assert.ok(!f.calls.some(([table])=>table==='qiunai_staff'));});
+test('Qiunai uses its own salary-channel schema; unauthorized department requests read no catalog rows',async()=>{const f=fixture('qiunai');const response=await f.handle(new Request('http://localhost/service/api/catalog?department=qiunai'));const data=await response.json();assert.equal(data.staffDirectory.length,1);assert.equal(data.staffDirectory[0].url,'https://discord.com/channels/1513174069087047731/223456789012345678');assert.ok(f.calls.filter(([table])=>table==='qiunai_staff').every(([,method,columns])=>method!=='select'||!columns.includes('report_channel_id')));const denied=fixture('deepnight');assert.equal((await denied.handle(new Request('http://localhost/service/api/catalog?department=qiunai'))).status,403);assert.equal(denied.calls.length,0);});
