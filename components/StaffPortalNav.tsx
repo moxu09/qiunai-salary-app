@@ -11,6 +11,7 @@ import {
   Coins,
   Cpu,
   FolderDown,
+  Palette,
   FileText,
   Gift,
   HandCoins,
@@ -49,7 +50,8 @@ export type PortalTab =
   | "approval-leave"
   | "approval-suspension"
   | "activities"
-  | "downloads";
+  | "downloads"
+  | "appearance";
 
 type PortalGroup = {
   title: string;
@@ -103,7 +105,7 @@ const groups: ReadonlyArray<PortalGroup> = [
   {
     title: "資源",
     icon: FolderDown,
-    items: [["downloads", "App 下載", FolderDown]],
+    items: [["downloads", "App 下載", FolderDown], ["appearance", "外觀主題", Palette]],
   },
 ];
 

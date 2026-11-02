@@ -20,7 +20,7 @@ for (let attempt = 0; attempt < 30; attempt += 1) {
 }
 assert.ok(ready, "容器未能啟動員工頁面");
 
-for (const path of ["/staff", "/personal/data", "/order/order.details", "/order/reward.details", "/admin/activities"]) {
+for (const path of ["/staff", "/personal/data", "/order/order.details", "/order/reward.details", "/resources/appearance", "/admin/activities"]) {
   const response = await read(path);
   assert.equal(response.status, 200, `${path} 載入失敗`);
   const html = await response.text();
@@ -48,8 +48,11 @@ for (const path of [
   const response = await read(path);
   assert.ok([400, 401, 403].includes(response.status), "未登入的管理 API 應拒絕存取");
 }
-const logo = await read("/employment/deepnight-logo.png");
-assert.equal(logo.status, 200, "缺少公開圖片");
+for (const path of ["/employment/deepnight-logo.png", "/brand/xiaonai.png", "/brand/deepnight-gold.png"]) {
+  const image = await read(path);
+  assert.equal(image.status, 200, `品牌圖片載入失敗：${path}`);
+  assert.ok(image.headers.get("content-type")?.startsWith("image/"), `品牌圖片格式錯誤：${path}`);
+}
 // Exercise the actual HTTP authority through Next's production server. Its
 // internal NextRequest hostname can differ when running behind Railway's edge.
 async function readHost(hostname, path) {

@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { LogOut, RefreshCw, WalletCards, Save, UserRound } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { HR_DEPARTMENTS, HR_ROUTES, hrTabForPath, allocateWithdrawal } from "@/lib/hrRoutes.mjs";
+import { HrThemeBanner, HrAppearancePanel } from "@/components/HrThemeProvider";
 import HrCareerPanel from "@/components/HrCareerPanel";
 import StaffPortalNav, { type PortalTab } from "@/components/StaffPortalNav";
 import StaffCollaboration from "@/components/StaffCollaboration";
@@ -269,6 +270,8 @@ export default function UnifiedHrPortal() {
             showDeviceAudit={canAudit}
           />
           <div className="staff-main-column min-w-0">
+            <HrThemeBanner />
+            {activeTab === "appearance" ? <HrAppearancePanel /> : null}
             {collaboration ? (
               <StaffCollaboration
                 organization="hr"

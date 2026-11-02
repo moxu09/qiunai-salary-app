@@ -33,3 +33,7 @@
 ## 驗證
 
 `npm test`、TypeScript 與正式建置。`scripts/container-smoke.mjs` 檢查指定頁面、資產及未登入保護。`supabase/tests/hr_atomic_withdrawal.sql` 與 `hr_profile_isolation.sql` 使用獨立測試員工並完整回滾，不更動真實員工金額。銀行提領期間另以交易內的固定時鐘版本測試後回滾。
+
+## 外觀主題
+
+員工可在「資源 → 外觀主題」（`/resources/appearance`）切換秋奈或深夜外觀。秋奈使用既有小奈角色、雲朵及奶油藍；深夜使用官方金色 Logo、午夜藍及星空月光。背景、導覽、工作台橫幅、內容卡片、按鈕及登入頁一起套用。選擇記在目前瀏覽器，切換不會篩選部門或改變權限、個人資料與餘額。主管端維持原本介面。

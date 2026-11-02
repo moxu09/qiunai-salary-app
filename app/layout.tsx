@@ -1,6 +1,8 @@
 import { Geist, Geist_Mono } from "next/font/google";
 import AppLanguageProvider from "@/components/AppLanguageProvider";
+import HrThemeProvider from "@/components/HrThemeProvider";
 import "./globals.css";
+import "./hr-themes.css";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -31,7 +33,7 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        {children}
+        <HrThemeProvider>{children}</HrThemeProvider>
         <AppLanguageProvider />
       </body>
     </html>

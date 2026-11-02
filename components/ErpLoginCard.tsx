@@ -9,6 +9,7 @@ import {
   MessageCircle,
   ShieldCheck,
 } from "lucide-react";
+import { HrThemeArtwork } from "@/components/HrThemeProvider";
 import { supabase } from "@/lib/supabase";
 
 type Theme = "deepnight" | "qiunai";
@@ -120,37 +121,13 @@ export default function ErpLoginCard({
     <main
       className={
         isQiunai
-          ? "qiunai-page hr-unified flex min-h-screen items-center justify-center px-4 py-10"
+          ? "qiunai-page hr-unified hr-login flex min-h-screen items-center justify-center px-4 py-10"
           : "flex min-h-screen items-center justify-center bg-[#eef7fd] px-4 py-10 text-slate-900"
       }
     >
-      {isQiunai ? (
-        <>
-          <div className="qiunai-glow left-[-80px] top-[-80px] h-64 w-64 bg-pink-300" />
-          <div className="qiunai-glow right-[-70px] top-24 h-72 w-72 bg-purple-300" />
-          <div className="qiunai-glow bottom-[-90px] left-1/2 h-72 w-72 -translate-x-1/2 bg-rose-200" />
-        </>
-      ) : null}
-
       <div className="relative z-10 w-full max-w-lg">
-        <div className="mb-5 flex justify-center">
-          <div
-            className={
-              isQiunai
-                ? "qiunai-card flex h-20 w-20 items-center justify-center rounded-[28px]"
-                : "flex h-20 w-20 items-center justify-center rounded-[28px] border border-sky-100 bg-white shadow-sm shadow-sky-100"
-            }
-          >
-            <div
-              className={
-                isQiunai
-                  ? "flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-pink-300 via-fuchsia-300 to-violet-300 text-white shadow-lg"
-                  : "flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-sky-300 via-sky-400 to-blue-500 text-white shadow-md shadow-sky-200"
-              }
-            >
-              {admin ? <ShieldCheck size={30} /> : <Gamepad2 size={30} />}
-            </div>
-          </div>
+        <div className="hr-login-art">
+          {admin ? <ShieldCheck size={40} /> : isQiunai ? <HrThemeArtwork /> : <Gamepad2 size={40} />}
         </div>
 
         <div
