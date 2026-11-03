@@ -71,7 +71,7 @@ export default function ServiceDashboard({department,items,staff,templateCount}:
     </div>
    </div>
    <img className="svc-hero-art" src={`/service/assets/brand/${department==='qiunai'?'qiunai-cloud-room.png':'deepnight-lounge.png'}`} alt="" loading="eager"/>
-   {department==='qiunai'?<img className="svc-mascot" src="/service/assets/brand/xiaonai.png" alt="" width={150} height={150}/>:<span className="svc-night-stars" aria-hidden="true">✦</span>}
+   {department==='deepnight' && <span className="svc-night-stars" aria-hidden="true">✦</span>}
   </section>
 
   <nav className="svc-shortcut-grid" aria-label="常用操作">
