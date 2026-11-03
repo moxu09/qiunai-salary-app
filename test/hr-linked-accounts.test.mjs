@@ -97,3 +97,21 @@ test("integer allocation does not assign money to zero-balance sources or exceed
   assert.deepEqual(linkedWithdrawalPlan([wallet], { qiunai: 4 }).map(({amount}) => amount), [2,1,1]);
   assert.throws(() => linkedWithdrawalPlan([wallet], { qiunai: 6 }), /超過/);
 });
+
+test("bank excludes ineligible accounts and can skip tiny shares without blocking the primary", () => {
+  const source = (owner, available, extras = {}) => ({
+    owner, available, serviceFee: 0, pendingBank: false, bankReady: true, ...extras,
+  });
+  const wallet = { key: "qiunai", sources: [
+    source(primary, 50000),
+    source(alt, 300, { serviceFee: 15 }),
+    source(other, 5000, { bankReady: false }),
+  ] };
+  assert.deepEqual(linkedWithdrawalPlan([wallet], { qiunai: 2000 }, "bank").map(({owner, amount}) => [owner, amount]), [[primary, 2000]]);
+  assert.deepEqual(linkedWithdrawalPlan([wallet], { qiunai: 50200 }, "bank").map(({amount}) => amount), [49901, 299]);
+  wallet.sources[1].pendingBank = true;
+  assert.throws(() => linkedWithdrawalPlan([wallet], { qiunai: 50200 }, "bank"), /超過/);
+  assert.ok(linkedWithdrawalPlan([wallet], { qiunai: 50200 }, "asd").some(({owner}) => owner === other));
+  const tight = { key: "qiunai", sources: [source(primary, 1000), source(alt, 200, {serviceFee:15})] };
+  assert.deepEqual(linkedWithdrawalPlan([tight], {qiunai: 1010}, "bank").map(({amount}) => amount), [842,168]);
+});

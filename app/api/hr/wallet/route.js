@@ -1,6 +1,6 @@
 import { hrAuth, hrFail } from "@/lib/hrServer";
 import { hrLinkedWallets } from "@/lib/hrAccounts";
-import { linkedWithdrawalPlan, withdrawalSourceAmounts } from "@/lib/hrLinkedWallet.mjs";
+import { linkedWithdrawalPlan, withdrawalBalances, withdrawalSourceAmounts } from "@/lib/hrLinkedWallet.mjs";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { allocateWithdrawal, canonicalJson } from "@/lib/hrRoutes.mjs";
 export const dynamic = "force-dynamic";
@@ -46,9 +46,7 @@ export async function POST(request) {
       return Response.json({ ok: true, result: existing.data.result, duplicate: true });
     }
     const summaries = await hrLinkedWallets(auth, request);
-    const balances = Object.fromEntries(
-      summaries.map((d) => [d.key, Number(d.wallet.totals.available)]),
-    );
+    const balances = withdrawalBalances(summaries, body.destination);
     let amounts =
       body.mode === "combined" ? allocateWithdrawal(Number(body.total), balances) : body.amounts;
     if (
@@ -71,7 +69,7 @@ export async function POST(request) {
     )
       throw Error("銀行提領金額必須高於 1,000 元");
     if (total < 1) throw Error("請輸入申請金額");
-    const plan = linkedWithdrawalPlan(summaries, amounts);
+    const plan = linkedWithdrawalPlan(summaries, amounts, body.destination);
     const sources = withdrawalSourceAmounts(plan, body.destination);
     if (canonicalJson(sources) !== canonicalJson(body.sources))
       throw Error("可提領金額或小號綁定已變更，請重新讀取再送出");

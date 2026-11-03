@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react
 import { usePathname, useRouter } from "next/navigation";
 import { LogOut, RefreshCw, WalletCards, Save, UserRound, LockKeyhole } from "lucide-react";
 import { supabase } from "@/lib/supabase";
-import { linkedWithdrawalPlan, withdrawalSourceAmounts } from "@/lib/hrLinkedWallet.mjs";
+import { linkedWithdrawalPlan, withdrawalBalances, withdrawalSourceAmounts } from "@/lib/hrLinkedWallet.mjs";
 import { HR_DEPARTMENTS, HR_ROUTES, hrTabForPath, allocateWithdrawal } from "@/lib/hrRoutes.mjs";
 import { HrThemeBanner, HrAppearancePanel, HrThemeDecorations } from "@/components/HrThemeProvider";
 import HrCareerPanel from "@/components/HrCareerPanel";
@@ -64,7 +64,7 @@ type Wallet = {
 };
 type WalletSource = { owner: string; available: number; serviceFee: number; pendingBank: boolean; bankReady: boolean };
 type WalletDepartment = { key: DepartmentKey; wallet: Wallet; sources: WalletSource[] };
-type WithdrawalSource = Omit<WalletSource, "available"> & { department: DepartmentKey; amount: number };
+type WithdrawalSource = Pick<WalletSource, "owner" | "serviceFee"> & { department: DepartmentKey; amount: number };
 type AccountLink = { primary_id: string; alternate_id: string; verified_at: string | null };
 type Order = {
   id: string;
@@ -611,15 +611,15 @@ export function WalletPanel({ departments, primary }: { departments: Department[
   );
   const deposited = wallets.reduce((sum, d) => sum + Number(d.wallet.totals.deposited), 0);
   const pending = wallets.reduce((sum, d) => sum + Number(d.wallet.totals.pendingWithdrawn), 0);
-  const balances = Object.fromEntries(
-    wallets.map((d) => [d.key, Number(d.wallet.totals.available)]),
-  );
+  const balances: Record<string, number> = withdrawalBalances(wallets, destination);
+  const amountLimit = Object.values(balances).reduce((sum, balance) => sum + balance, 0);
   let allocations: Record<string, number> = {};
   let validation = "";
+  let plan: WithdrawalSource[] = [];
   try {
     allocations =
       mode === "combined"
-        ? allocateWithdrawal(amount.trim() === "" ? available : Number(amount), balances)
+        ? allocateWithdrawal(amount.trim() === "" ? amountLimit : Number(amount), balances)
         : Object.fromEntries(
             wallets.map((d) => [d.key, separate[d.key]?.trim() ? Number(separate[d.key]) : 0]),
           );
@@ -632,18 +632,18 @@ export function WalletPanel({ departments, primary }: { departments: Department[
       )
     )
       validation = "請輸入可提領範圍內的整數金額";
+    if (!validation) plan = linkedWithdrawalPlan(wallets, allocations, destination);
   } catch (caught) {
     validation = errorText(caught);
   }
   const total = Object.values(allocations).reduce((sum, n) => sum + n, 0);
-  const plan: WithdrawalSource[] = validation ? [] : linkedWithdrawalPlan(wallets, allocations);
   const fees = destination === "bank" ? plan.reduce((sum, source) => sum + source.serviceFee, 0) : 0;
   const windowOpen = wallets
     .filter((d) => (allocations[d.key] || 0) > 0)
     .every((d) => d.wallet.withdrawWindow.isOpen);
-  const pendingBank = plan.some((source) => source.pendingBank);
-  const missingBank = plan.some((source) => !source.bankReady);
-  const invalidFee = plan.some((source) => source.amount <= source.serviceFee);
+  const bankSources = wallets.flatMap((d) => d.sources).filter((source) => source.available >= 1);
+  const pendingBank = bankSources.some((source) => source.pendingBank);
+  const missingBank = bankSources.some((source) => !source.bankReady);
   const canSubmit =
     !loading &&
     !busy &&
@@ -652,7 +652,6 @@ export function WalletPanel({ departments, primary }: { departments: Department[
     total > 0 &&
     (destination === "asd" ||
       (windowOpen &&
-        !pendingBank && !missingBank && !invalidFee &&
         total > 1000 &&
         (mode !== "separate" || Object.values(allocations).every((n) => n === 0 || n > 1000))));
   async function submit() {
@@ -790,8 +789,8 @@ export function WalletPanel({ departments, primary }: { departments: Department[
               type="number"
               min="1"
               step="1"
-              max={available}
-              placeholder={`留空申請全部 ${money(available)}`}
+              max={amountLimit}
+              placeholder={`留空申請全部 ${money(amountLimit)}`}
               value={amount}
               disabled={busy}
               onChange={(e) => setAmount(e.target.value)}
@@ -840,9 +839,8 @@ export function WalletPanel({ departments, primary }: { departments: Department[
         {destination === "bank" ? (
           <p className="hr-note">
             {wallets[0]?.wallet.withdrawWindow.note}{" "}
-            {pendingBank ? "所選帳號目前已有銀行提領待審，請等待結果。" : ""}{" "}
-            {missingBank ? "有來源帳號尚未填寫銀行資料，請用該帳號登入補填。" : ""}
-            {invalidFee ? "有來源帳號分配金額不足扣除手續費。" : ""}
+            {pendingBank ? "已有銀行提領待審的帳號暫不列入分配。" : ""}{" "}
+            {missingBank ? "未填銀行資料的帳號暫不列入分配，可用該帳號登入補填。" : ""}
             {mode === "separate"
               ? "分開提領時，各部門申請金額須高於 1,000 元。"
               : "合併提領總額須高於 1,000 元。"}
