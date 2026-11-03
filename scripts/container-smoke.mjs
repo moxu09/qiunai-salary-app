@@ -107,6 +107,11 @@ for(const path of ["/api/qiunai/workspace?admin=1","/api/deepnight/workspace?adm
  assert.equal(workspace.status,401,path);
  assert.equal(JSON.parse(workspace.body).ok,false);
 }
+const adminEntry = await readHost("eip.wearestilllhere.com", "/admin");
+assert.equal(adminEntry.status, 200);
+assert.match(adminEntry.body, /正在確認兩店後台權限/);
+const anonymousAdminEntry = await readHost("eip.wearestilllhere.com", "/api/eip-admin-entry");
+assert.equal(anonymousAdminEntry.status, 401);
 const supervisor = await readHost("eip.wearestilllhere.com", "/");
 assert.equal(supervisor.status, 200, "主管網域入口載入失敗");
 assert.ok(supervisor.body.includes("<title>深夜不關燈 EIP</title>"), "主管網域必須顯示既有主管應用程式");
