@@ -3,8 +3,8 @@ import {ArrowUpRight,Clock3,Plus,RefreshCw} from 'lucide-react';
 import {useEffect,useMemo,useState} from 'react';
 import {serviceRequest} from './client';
 
-type HandoverLink={channelId:string;url:string;messageUrl:string|null};
-type HandoverMessage={id:string;createdAt:string;slotStart:string;author:string;content:string;sourceUrl:string;links:HandoverLink[];attachments:{name:string;url:string}[]};
+type HandoverLink={channelId:string;name?:string|null;url:string;messageUrl:string|null};
+type HandoverMessage={id:string;createdAt:string;slotStart:string;author:string;content:string;displayContent?:string;sourceUrl:string;links:HandoverLink[];attachments:{name:string;url:string}[]};
 type HandoverPage={messages:HandoverMessage[];nextBefore:string|null};
 const stamp=(value:string)=>new Intl.DateTimeFormat('zh-TW',{timeZone:'Asia/Taipei',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(new Date(value));
 const merge=(current:HandoverMessage[],incoming:HandoverMessage[])=>[...new Map([...current,...incoming].map(item=>[item.id,item])).values()].sort((a,b)=>Date.parse(b.createdAt)-Date.parse(a.createdAt));
@@ -51,9 +51,9 @@ export default function ServiceHandover({api,activeUrls,onTracked}:{api:string;a
   {!loading&&!groups.length?<p className="svc-empty">目前沒有可顯示的交班內容。</p>:null}
   {groups.map(([slot,entries],index)=><details className="svc-handover-slot" key={slot} open={index<2}><summary>{stamp(slot)} ～ {stamp(new Date(Date.parse(slot)+3*60*60*1000).toISOString())} <span>（{entries.length} 則）</span></summary><div className="svc-handover-grid">{entries.map(message=><article className="svc-panel svc-handover-card" key={message.id}>
    <div className="svc-handover-meta"><strong>{message.author}</strong><time dateTime={message.createdAt}>{stamp(message.createdAt)}</time><a href={message.sourceUrl} target="_blank" rel="noreferrer">查看交班原文 <ArrowUpRight size={14}/></a></div>
-   {message.content?<p className="svc-handover-body">{message.content}</p>:null}
+   {message.content?<p className="svc-handover-body">{message.displayContent ?? message.content}</p>:null}
    {message.attachments.length?<div className="svc-inline-links">{message.attachments.map(file=><a key={file.url} href={file.url} target="_blank" rel="noreferrer">附件：{file.name} <ArrowUpRight size={14}/></a>)}</div>:null}
-   {message.links.length?<div className="svc-handover-links">{message.links.map(link=><div key={link.url} className="svc-handover-link"><a href={link.messageUrl||link.url} target="_blank" rel="noreferrer">頻道 …{link.channelId.slice(-6)} <ArrowUpRight size={14}/></a><button type="button" className="svc-secondary" disabled={activeUrls.has(link.url)||Boolean(busyUrl)} onClick={()=>void track(message,link)}><Plus size={14}/>{activeUrls.has(link.url)?'已追蹤':busyUrl===link.url?'加入中…':'加入追蹤'}</button></div>)}</div>:null}
+   {message.links.length?<div className="svc-handover-links">{message.links.map(link=><div key={link.url} className="svc-handover-link"><a href={link.messageUrl||link.url} target="_blank" rel="noreferrer">{link.name ? `#${link.name}` : `頻道 …${link.channelId.slice(-6)}`} <ArrowUpRight size={14}/></a><button type="button" className="svc-secondary" disabled={activeUrls.has(link.url)||Boolean(busyUrl)} onClick={()=>void track(message,link)}><Plus size={14}/>{activeUrls.has(link.url)?'已追蹤':busyUrl===link.url?'加入中…':'加入追蹤'}</button></div>)}</div>:null}
   </article>)}</div></details>)}
   {nextBefore?<button type="button" className="svc-secondary" disabled={moreBusy} onClick={()=>void older()}>{moreBusy?'讀取中…':'載入較早交班'}</button>:null}
  </section>;
