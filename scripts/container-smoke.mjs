@@ -54,6 +54,7 @@ for (const path of [
   "/api/hr/knowledge/qiunai/11111111-1111-4111-8111-111111111111",
   "/api/hr/themes",
   "/api/hr/wallet",
+  "/api/hr/accounts",
   "/api/hr/orders?month=2026-11",
   "/api/qiunai/activities?admin=1",
   "/api/qiunai/activities/3df7cc5b-7dbb-4c72-8d42-9d338429ea0f/export",

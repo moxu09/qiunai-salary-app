@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react
 import { usePathname, useRouter } from "next/navigation";
 import { LogOut, RefreshCw, WalletCards, Save, UserRound, LockKeyhole } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { linkedWithdrawalPlan, withdrawalSourceAmounts } from "@/lib/hrLinkedWallet.mjs";
 import { HR_DEPARTMENTS, HR_ROUTES, hrTabForPath, allocateWithdrawal } from "@/lib/hrRoutes.mjs";
 import { HrThemeBanner, HrAppearancePanel, HrThemeDecorations } from "@/components/HrThemeProvider";
 import HrCareerPanel from "@/components/HrCareerPanel";
@@ -31,6 +32,7 @@ type Department = { key: DepartmentKey; staff: Staff };
 type Session = { discordId: string; departments: Department[] };
 type Entry = {
   id: string;
+  discord_id?: string;
   amount: number;
   source_label: string;
   settlement_date: string;
@@ -38,6 +40,7 @@ type Entry = {
 };
 type Withdrawal = {
   id: string;
+  discord_id?: string;
   amount: number;
   status: string;
   requested_at: string;
@@ -59,9 +62,13 @@ type Wallet = {
     pendingWithdrawn: number;
   }>;
 };
-type WalletDepartment = { key: DepartmentKey; wallet: Wallet };
+type WalletSource = { owner: string; available: number; serviceFee: number; pendingBank: boolean; bankReady: boolean };
+type WalletDepartment = { key: DepartmentKey; wallet: Wallet; sources: WalletSource[] };
+type WithdrawalSource = Omit<WalletSource, "available"> & { department: DepartmentKey; amount: number };
+type AccountLink = { primary_id: string; alternate_id: string; verified_at: string | null };
 type Order = {
   id: string;
+  discord_id?: string;
   order_id?: string;
   order_no?: string;
   service_name?: string;
@@ -80,6 +87,7 @@ type Order = {
 };
 type Bonus = {
   id: string;
+  discord_id?: string;
   title?: string;
   bonus_type?: string;
   description?: string;
@@ -89,6 +97,8 @@ type Bonus = {
 };
 type OrderDepartment = { key: DepartmentKey; orders: Order[]; bonuses: Bonus[] };
 const money = (n: unknown) => `$${Number(n || 0).toLocaleString("zh-TW")}`;
+const accountOf = (owner: string | undefined, primary: string) =>
+  !owner || owner === primary ? "主帳號" : `小號 · ${owner.slice(-6)}`;
 const nameOf = (key: string) => HR_DEPARTMENTS.find((d) => d.key === key)?.name || key;
 const errorText = (error: unknown) =>
   error instanceof Error ? error.message : "讀取失敗，請稍後重試";
@@ -157,6 +167,7 @@ export default function UnifiedHrPortal() {
   const pathname = usePathname();
   const activeTab = (hrTabForPath(pathname) || "workspace") as PortalTab;
   const authPath = activeTab === "knowledge" ? HR_ROUTES.knowledge : pathname;
+  const [accountRevision, setAccountRevision] = useState(0);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -286,7 +297,8 @@ export default function UnifiedHrPortal() {
             ) : null}
             {activeTab === "profile" ? (
               <>
-                <WalletPanel departments={session.departments} />
+                <WalletPanel key={`${session.discordId}:${accountRevision}`} departments={session.departments} primary={session.discordId} />
+                <AccountLinksPanel key={session.discordId} primary={session.discordId} onChanged={() => setAccountRevision((value) => value + 1)} />
                 <HrCareerPanel />
                 <ProfilePanel session={session} onSaved={init} />
               </>
@@ -303,7 +315,7 @@ export default function UnifiedHrPortal() {
               />
             ) : null}
             {["orders", "tips", "bonuses", "deductions"].includes(activeTab) ? (
-              <OrdersPanel tab={activeTab} departments={session.departments} />
+              <OrdersPanel tab={activeTab} primary={session.discordId} />
             ) : null}
             {activeTab === "activities" ? (
               <>
@@ -476,7 +488,98 @@ function DepartmentStatus({ departments }: { departments: Department[] }) {
     </Card>
   );
 }
-export function WalletPanel({ departments }: { departments: Department[] }) {
+function AccountLinksPanel({ primary, onChanged }: { primary: string; onChanged: () => void }) {
+  const [links, setLinks] = useState<AccountLink[]>([]);
+  const [target, setTarget] = useState("");
+  const [busy, setBusy] = useState(true);
+  const [notice, setNotice] = useState("");
+  const [error, setError] = useState("");
+  const load = useCallback(async () => {
+    const data = await hrFetch("/api/hr/accounts");
+    setLinks(data.links);
+  }, []);
+  useEffect(() => {
+    let current = true;
+    void hrFetch("/api/hr/accounts").then(
+      (data) => { if (current) setLinks(data.links); },
+      (caught) => { if (current) setError(errorText(caught)); },
+    ).finally(() => { if (current) setBusy(false); });
+    return () => { current = false; };
+  }, []);
+  const outgoing = links.filter((link) => link.primary_id === primary);
+  const incoming = links.filter((link) => link.alternate_id === primary);
+  const linkedAsAlternate = incoming.some((link) => link.verified_at);
+  async function update(action: "request" | "confirm" | "remove", otherId: string) {
+    if (action === "confirm" && !window.confirm(
+      `確定 ${otherId} 是你本人的主帳號？綁定後，該帳號可以查看這個帳號的訂單、打賞、薪資與提領紀錄，也能代為申請提領或轉入 ASD。`,
+    )) return;
+    if (action === "remove" && !window.confirm("確定取消這筆綁定或申請？已入帳與已送出的提領紀錄會保留。")) return;
+    setBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      await hrFetch("/api/hr/accounts", { method: "POST", body: JSON.stringify({ action, otherId }) });
+      if (action === "request") setTarget("");
+      setNotice(action === "request" ? "已送出。請在 24 小時內用小號登入 HR，在這裡確認。"
+        : action === "confirm" ? "綁定成功。請用主帳號登入 HR 查看合併紀錄。"
+        : "已取消綁定或申請。");
+      onChanged();
+      await load();
+    } catch (caught) {
+      setError(errorText(caught));
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <Card title="Discord 小號管理" id="linked-accounts">
+      <p className="hr-note">你的 Discord ID：{primary}。每個主帳號最多綁定兩組小號，確認後會合併訂單、打賞和薪資錢包。</p>
+      {incoming.map((link) => (
+        <div key={link.primary_id} className="hr-department-summary">
+          <div>
+            <strong>{link.verified_at ? "已綁定的主帳號" : "收到小號綁定申請"}</strong>
+            <span>{link.primary_id}</span>
+            {!link.verified_at ? (
+              <button className="qiunai-button" disabled={busy} onClick={() => void update("confirm", link.primary_id)}>
+                確認是我的主帳號
+              </button>
+            ) : null}
+            <button className="qiunai-soft-button" disabled={busy} onClick={() => void update("remove", link.primary_id)}>
+              {link.verified_at ? "解除綁定" : "拒絕"}
+            </button>
+          </div>
+        </div>
+      ))}
+      {outgoing.map((link) => (
+        <div key={link.alternate_id} className="hr-department-summary">
+          <div>
+            <strong>{link.alternate_id}</strong>
+            <span>{link.verified_at ? "已綁定" : "等待小號登入確認"}</span>
+            <button className="qiunai-soft-button" disabled={busy} onClick={() => void update("remove", link.alternate_id)}>
+              {link.verified_at ? "解除綁定" : "取消申請"}
+            </button>
+          </div>
+        </div>
+      ))}
+      {!linkedAsAlternate && outgoing.length < 2 ? (
+        <form className="hr-wallet-form" onSubmit={(event) => { event.preventDefault(); void update("request", target.trim()); }}>
+          <label className="hr-amount-label">
+            小號 Discord ID（{outgoing.length} / 2）
+            <input required inputMode="numeric" autoComplete="off" pattern="[0-9]{17,20}" maxLength={20}
+              value={target} onChange={(event) => setTarget(event.target.value.trim())} disabled={busy} />
+          </label>
+          <button type="submit" className="qiunai-button hr-submit" disabled={busy || !/^[0-9]{17,20}$/.test(target) || target === primary}>
+            送出綁定申請
+          </button>
+        </form>
+      ) : null}
+      {notice ? <p role="status" className="hr-success">{notice}</p> : null}
+      {error ? <Notice>{error}</Notice> : null}
+    </Card>
+  );
+}
+
+export function WalletPanel({ departments, primary }: { departments: Department[]; primary: string }) {
   const [wallets, setWallets] = useState<WalletDepartment[]>([]);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -518,7 +621,7 @@ export function WalletPanel({ departments }: { departments: Department[] }) {
       mode === "combined"
         ? allocateWithdrawal(amount.trim() === "" ? available : Number(amount), balances)
         : Object.fromEntries(
-            departments.map((d) => [d.key, separate[d.key]?.trim() ? Number(separate[d.key]) : 0]),
+            wallets.map((d) => [d.key, separate[d.key]?.trim() ? Number(separate[d.key]) : 0]),
           );
     if (
       Object.entries(allocations).some(
@@ -533,22 +636,14 @@ export function WalletPanel({ departments }: { departments: Department[] }) {
     validation = errorText(caught);
   }
   const total = Object.values(allocations).reduce((sum, n) => sum + n, 0);
-  const fees = wallets.reduce(
-    (sum, d) =>
-      sum +
-      ((allocations[d.key] || 0) > 0 && destination === "bank"
-        ? Number(d.wallet.withdrawPolicy.nextServiceFee)
-        : 0),
-    0,
-  );
+  const plan: WithdrawalSource[] = validation ? [] : linkedWithdrawalPlan(wallets, allocations);
+  const fees = destination === "bank" ? plan.reduce((sum, source) => sum + source.serviceFee, 0) : 0;
   const windowOpen = wallets
     .filter((d) => (allocations[d.key] || 0) > 0)
     .every((d) => d.wallet.withdrawWindow.isOpen);
-  const pendingBank = wallets
-    .filter((d) => (allocations[d.key] || 0) > 0)
-    .some((d) =>
-      d.wallet.requests.some((r) => r.status === "pending" && (r.destination || "bank") === "bank"),
-    );
+  const pendingBank = plan.some((source) => source.pendingBank);
+  const missingBank = plan.some((source) => !source.bankReady);
+  const invalidFee = plan.some((source) => source.amount <= source.serviceFee);
   const canSubmit =
     !loading &&
     !busy &&
@@ -557,21 +652,18 @@ export function WalletPanel({ departments }: { departments: Department[] }) {
     total > 0 &&
     (destination === "asd" ||
       (windowOpen &&
-        !pendingBank &&
+        !pendingBank && !missingBank && !invalidFee &&
         total > 1000 &&
         (mode !== "separate" || Object.values(allocations).every((n) => n === 0 || n > 1000))));
   async function submit() {
     if (!canSubmit) return;
-    const summary = wallets
-      .filter((d) => (allocations[d.key] || 0) > 0)
-      .map(
-        (d) =>
-          `${nameOf(d.key)}：${money(allocations[d.key])}，手續費 ${money(destination === "bank" ? d.wallet.withdrawPolicy.nextServiceFee : 0)}`,
-      )
-      .join("\n");
+    const summary = plan
+      .map((source) =>
+        `${nameOf(source.department)}・${accountOf(source.owner, primary)}：${money(source.amount)}${destination === "bank" ? `，手續費 ${money(source.serviceFee)}` : ""}`,
+      ).join("\n");
     if (
       !window.confirm(
-        `${destination === "bank" ? "確認送出銀行提領申請？" : "確認轉入你本人的 ASD 錢包？"}\n${summary}\n合計 ${money(total)}，${destination === "bank" ? "預計實領" : "轉入"} ${money(total - fees)}`,
+        `${destination === "bank" ? "確認送出銀行提領申請？" : "確認轉入各來源帳號的 ASD 錢包？"}\n${summary}\n合計 ${money(total)}，${destination === "bank" ? "預計實領" : "轉入"} ${money(total - fees)}`,
       )
     )
       return;
@@ -583,9 +675,10 @@ export function WalletPanel({ departments }: { departments: Department[] }) {
       destination,
       total: mode === "combined" ? total : null,
       amounts: mode === "separate" ? allocations : null,
+      sources: withdrawalSourceAmounts(plan, destination),
     };
     const serialized = JSON.stringify(payload);
-    const storageKey = `hr-withdrawal:${departments[0].staff.discord_id}`;
+    const storageKey = `hr-withdrawal:${primary}`;
     let saved = retry;
     try {
       saved = JSON.parse(sessionStorage.getItem(storageKey) || "null") || retry;
@@ -609,7 +702,7 @@ export function WalletPanel({ departments }: { departments: Department[] }) {
       setNotice(
         destination === "bank"
           ? "提領申請已一併送出，各部門分別簽核。"
-          : "已一併轉入你本人的 ASD 錢包。",
+          : "已轉入各來源帳號的 ASD 錢包。",
       );
       await load();
     } catch (caught) {
@@ -648,6 +741,9 @@ export function WalletPanel({ departments }: { departments: Department[] }) {
           </div>
         ))}
       </div>
+      {wallets.some((d) => d.sources.some((source) => source.owner !== primary)) ? (
+        <p className="hr-note">已合併小號餘額。銀行提領沿用各來源帳號的銀行資料；轉入 ASD 會入到各來源帳號。</p>
+      ) : null}
       {loading ? <p className="hr-note">同步錢包中…</p> : null}
       {error ? (
         <Notice>
@@ -683,7 +779,7 @@ export function WalletPanel({ departments }: { departments: Department[] }) {
               onChange={(e) => setDestination(e.target.value as typeof destination)}
             >
               <option value="bank">銀行提領</option>
-              <option value="asd">轉入本人 ASD 錢包</option>
+              <option value="asd">轉入 ASD 錢包</option>
             </select>
           </label>
         </div>
@@ -700,11 +796,11 @@ export function WalletPanel({ departments }: { departments: Department[] }) {
               disabled={busy}
               onChange={(e) => setAmount(e.target.value)}
             />
-            <small>依兩家店可提領餘額比例分配，整數差額分配至最後一個部門。</small>
+            <small>依兩家店可提領餘額比例分配，各部門內再按帳號餘額分配。</small>
           </label>
         ) : (
           <div className="hr-form-grid">
-            {departments.map((d) => (
+            {wallets.map((d) => (
               <label key={d.key}>
                 {nameOf(d.key)}申請金額
                 <input
@@ -725,18 +821,13 @@ export function WalletPanel({ departments }: { departments: Department[] }) {
           <p className="hr-note">{validation}</p>
         ) : (
           <div className="hr-allocation">
-            {wallets
-              .filter((d) => (allocations[d.key] || 0) > 0)
-              .map((d) => (
-                <p key={d.key}>
-                  <span>{nameOf(d.key)}</span>
-                  <strong>{money(allocations[d.key])}</strong>
-                  <small>
-                    手續費{" "}
-                    {money(destination === "bank" ? d.wallet.withdrawPolicy.nextServiceFee : 0)}
-                  </small>
-                </p>
-              ))}
+            {plan.map((source) => (
+              <p key={`${source.department}:${source.owner}`}>
+                <span>{nameOf(source.department)} · {accountOf(source.owner, primary)}</span>
+                <strong>{money(source.amount)}</strong>
+                <small>{destination === "bank" ? `手續費 ${money(source.serviceFee)}` : "轉入此帳號的 ASD"}</small>
+              </p>
+            ))}
             <p>
               <span>合計</span>
               <strong>{money(total)}</strong>
@@ -749,7 +840,9 @@ export function WalletPanel({ departments }: { departments: Department[] }) {
         {destination === "bank" ? (
           <p className="hr-note">
             {wallets[0]?.wallet.withdrawWindow.note}{" "}
-            {pendingBank ? "所選部門目前已有銀行提領待審，請等待結果。" : ""}{" "}
+            {pendingBank ? "所選帳號目前已有銀行提領待審，請等待結果。" : ""}{" "}
+            {missingBank ? "有來源帳號尚未填寫銀行資料，請用該帳號登入補填。" : ""}
+            {invalidFee ? "有來源帳號分配金額不足扣除手續費。" : ""}
             {mode === "separate"
               ? "分開提領時，各部門申請金額須高於 1,000 元。"
               : "合併提領總額須高於 1,000 元。"}
@@ -761,7 +854,7 @@ export function WalletPanel({ departments }: { departments: Department[] }) {
           onClick={() => void submit()}
         >
           {!canSubmit && !busy ? <LockKeyhole size={18} /> : <WalletCards size={18} />}
-          {busy ? "處理中…" : loading ? "同步錢包中…" : destination === "bank" && !windowOpen ? "尚未開放提領" : destination === "bank" ? "送出提領申請" : "轉入本人 ASD 錢包"}
+          {busy ? "處理中…" : loading ? "同步錢包中…" : destination === "bank" && !windowOpen ? "尚未開放提領" : destination === "bank" ? "送出提領申請" : "轉入 ASD 錢包"}
         </button>
       </div>
       <WithdrawalStatements departments={departments} />
@@ -784,7 +877,7 @@ export function WalletPanel({ departments }: { departments: Department[] }) {
               {requests.map((r) => (
                 <tr key={`${r.key}-${r.id}`}>
                   <td>{formatTaipeiDateTime(r.requested_at)}</td>
-                  <td>{nameOf(r.key)}</td>
+                  <td>{nameOf(r.key)} · {accountOf(r.discord_id, primary)}</td>
                   <td>{r.destination === "asd" ? "ASD" : "銀行"}</td>
                   <td>{money(r.amount)}</td>
                   <td>{money(r.service_fee)}</td>
@@ -821,7 +914,7 @@ export function WalletPanel({ departments }: { departments: Department[] }) {
               {entries.slice(0, 120).map((e) => (
                 <tr key={`${e.key}-${e.id}`}>
                   <td>{e.settlement_date}</td>
-                  <td>{nameOf(e.key)}</td>
+                  <td>{nameOf(e.key)} · {accountOf(e.discord_id, primary)}</td>
                   <td>{e.source_label}</td>
                   <td>{money(e.amount)}</td>
                 </tr>
@@ -834,7 +927,7 @@ export function WalletPanel({ departments }: { departments: Department[] }) {
     </Card>
   );
 }
-function OrdersPanel({ tab, departments }: { tab: PortalTab; departments: Department[] }) {
+function OrdersPanel({ tab, primary }: { tab: PortalTab; primary: string }) {
   const [month, setMonth] = useState(getTaipeiMonthInput());
   const [data, setData] = useState<OrderDepartment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -866,7 +959,7 @@ function OrdersPanel({ tab, departments }: { tab: PortalTab; departments: Depart
     <>
       <div className="hr-page-title">
         <h1>{title}</h1>
-        <p>同時顯示所有所屬部門，各筆紀錄保留原部門。</p>
+        <p>按部門顯示主帳號及已綁定小號的紀錄。</p>
         <div className="hr-order-tools">
           <label>
             查詢月份
@@ -889,8 +982,8 @@ function OrdersPanel({ tab, departments }: { tab: PortalTab; departments: Depart
       {loading ? (
         <p className="hr-note">讀取訂單中…</p>
       ) : !error ? (
-        departments.map((department) => {
-          const source = data.find((d) => d.key === department.key);
+        data.map((source) => {
+          const department = source;
           const orders = (source?.orders || []).filter((o) => {
             const tip =
               o.order_type === "打賞" || String(o.service_name || o.service || "").includes("打賞");
@@ -945,7 +1038,7 @@ function OrdersPanel({ tab, departments }: { tab: PortalTab; departments: Depart
                       {bonuses.map((b) => (
                         <tr key={b.id}>
                           <td>{formatTaipeiDateTime(b.created_at)}</td>
-                          <td>{b.title || b.bonus_type || "—"}</td>
+                          <td>{b.title || b.bonus_type || "—"}<small>{accountOf(b.discord_id, primary)}</small></td>
                           <td>{b.note || b.description || "—"}</td>
                           <td>{money(b.amount)}</td>
                         </tr>
@@ -971,7 +1064,7 @@ function OrdersPanel({ tab, departments }: { tab: PortalTab; departments: Depart
                       {orders.map((o) => (
                         <tr key={o.id}>
                           <td>{formatTaipeiDateTime(o.order_finished_at || o.created_at)}</td>
-                          <td>{o.order_id || o.order_no || o.id}</td>
+                          <td>{o.order_id || o.order_no || o.id}<small>{accountOf(o.discord_id, primary)}</small></td>
                           <td>{o.customer_name || "—"}</td>
                           <td>{o.service_name || o.service || "—"}</td>
                           <td>{money(o.order_amount)}</td>
