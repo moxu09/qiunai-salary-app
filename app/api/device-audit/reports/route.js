@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
+import { DEEPNIGHT_BACKEND_ORIGIN } from "@/lib/hrHostRouting.mjs";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const CENTRAL_ERP_URL =
-  process.env.CENTRAL_ERP_URL || "https://salary.wearestilllhere.com";
+  process.env.CENTRAL_ERP_URL || DEEPNIGHT_BACKEND_ORIGIN;
 
 export async function GET(request) {
   const authorization = request.headers.get("authorization") || "";

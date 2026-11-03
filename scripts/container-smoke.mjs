@@ -120,6 +120,9 @@ for (const [path, target] of [
   assert.equal(legacy.status, 308, "舊秋奈員工入口應永久轉至 HR");
   assert.equal(legacy.location, `https://hr.wearestilllhere.com${target}`, "舊入口轉址目的地不正確");
 }
+const oldSupervisor = await readHost("qiunai.wearestilllhere.com", "/admin/payroll?embedded=1");
+assert.equal(oldSupervisor.status, 308);
+assert.equal(oldSupervisor.location, "https://eip.wearestilllhere.com/admin/department/qiunai/payroll");
 const legacyApi = await readHost("qiunai.wearestilllhere.com", "/api/hr/session");
 assert.ok([400, 401, 403].includes(legacyApi.status), "舊網域 API 必須保留登入保護，不能轉址");
 console.log("舊秋奈員工頁已永久轉至 HR，API 保留原本驗證。");

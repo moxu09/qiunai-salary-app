@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { legacyEmployeeTarget, supervisorTarget } from "@/lib/hrHostRouting.mjs";
+import { legacyEmployeeTarget, legacyQiunaiSupervisorTarget, supervisorTarget } from "@/lib/hrHostRouting.mjs";
 
 // Existing supervisor routes proxy upstream; the service namespace stays local.
 export function proxy(request: NextRequest) {
@@ -10,6 +10,12 @@ export function proxy(request: NextRequest) {
     request.nextUrl.search,
   );
   if (employeeTarget) return NextResponse.redirect(employeeTarget, 308);
+  const legacySupervisor = legacyQiunaiSupervisorTarget(
+    hostname,
+    request.nextUrl.pathname,
+    request.nextUrl.search,
+  );
+  if (legacySupervisor) return NextResponse.redirect(legacySupervisor, 308);
   const target = supervisorTarget(
     hostname,
     request.nextUrl.pathname,
