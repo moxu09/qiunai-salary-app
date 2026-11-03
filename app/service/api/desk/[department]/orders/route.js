@@ -44,7 +44,7 @@ export async function GET(request, context) {
       if (!name) continue;
       channels.delete(order.channel_id);
       options.push({
-        label: name,
+        label: name.slice(0, 100).replace(/[\uD800-\uDBFF]$/, ''),
         orderNo: order.order_no ? String(order.order_no) : '',
         url: `https://discord.com/channels/${guild}/${order.channel_id}`,
       });
