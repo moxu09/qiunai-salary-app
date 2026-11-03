@@ -99,7 +99,7 @@ type PayrollRow = {
 
 type WithdrawRequest = {
   id: string;
-  payout_bank?: { bank_name: string; bank_account: string } | null;
+  payout_bank?: { bank_name: string; bank_account: string; bank_holder: string | null } | null;
   discord_id: string;
   staff_name?: string | null;
   amount: number | string;
@@ -945,7 +945,7 @@ export default function AdminPayrollPage() {
                         <div className="mt-2 space-y-0.5 text-xs font-semibold text-zinc-300">
                           <div>{request.payout_bank ? "主帳號銀行" : "銀行"}：{request.payout_bank?.bank_name ?? (requestStaff?.bank_name || "未填寫")}</div>
                           <div>帳號：{request.payout_bank?.bank_account ?? (requestStaff?.bank_account || "未填寫")}</div>
-                          <div>戶名：{requestStaff?.real_name || "未填寫"}</div>
+                          <div>戶名：{(request.payout_bank ? request.payout_bank.bank_holder : requestStaff?.real_name) || "未填寫"}</div>
                         </div>
                       </td>
                       <td className="px-4 py-3 font-bold text-violet-200">
@@ -1165,7 +1165,7 @@ export default function AdminPayrollPage() {
                           <div className="mt-2 space-y-0.5 text-xs font-semibold text-zinc-300">
                             <div>{request.payout_bank ? "主帳號銀行" : "銀行"}：{request.payout_bank?.bank_name ?? (requestStaff?.bank_name || "未填寫")}</div>
                             <div>帳號：{request.payout_bank?.bank_account ?? (requestStaff?.bank_account || "未填寫")}</div>
-                            <div>戶名：{requestStaff?.real_name || "未填寫"}</div>
+                            <div>戶名：{(request.payout_bank ? request.payout_bank.bank_holder : requestStaff?.real_name) || "未填寫"}</div>
                           </div>
                         </td>
                         <td className="px-4 py-3 font-bold text-violet-200">

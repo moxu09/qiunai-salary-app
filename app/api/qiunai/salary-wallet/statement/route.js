@@ -92,7 +92,7 @@ export async function GET(request) {
         supabaseAdmin
           .from("salary_withdraw_requests")
           .select(
-            "id, amount, service_fee, payout_amount, destination, status, reject_reason, request_note, requested_at, reviewed_at"
+            "id, amount, service_fee, payout_amount, destination, status, reject_reason, request_note, requested_at, reviewed_at, linked_payout:hr_bank_payout_details(request_id)"
           )
           .eq("app_key", "qiunai")
           .eq("discord_id", discordId)
@@ -112,7 +112,8 @@ export async function GET(request) {
       throw new Error("讀取提領紀錄失敗");
     }
 
-    const requests = data || [];
+    const hasLinkedPayout = (data || []).some((row) => row.linked_payout);
+    const requests = (data || []).map(({ linked_payout: _linkedPayout, ...row }) => row);
     const summary = summarize(requests);
 
     if (range.format !== "pdf") {
@@ -133,8 +134,8 @@ export async function GET(request) {
           staff?.real_name ||
           staff?.discord_name ||
           discordId,
-        bankName: staff?.bank_name,
-        bankAccount: staff?.bank_account,
+        bankName: hasLinkedPayout ? "含主帳號收款，依各筆申請" : staff?.bank_name,
+        bankAccount: hasLinkedPayout ? null : staff?.bank_account,
       },
       from: range.from,
       to: range.to,

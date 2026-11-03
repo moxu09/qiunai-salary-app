@@ -12,7 +12,7 @@ async function fixture(t) {
   t.after(() => db.close());
   await db.exec(`
     create role anon;create role authenticated;create role service_role bypassrls;
-    create table qiunai_staff(discord_id text primary key, is_active boolean, display_name text, bank_name text, bank_account text);
+    create table qiunai_staff(discord_id text primary key, is_active boolean, display_name text, bank_name text, bank_account text,real_name text);
     create table players (like qiunai_staff including all);
     create table users(user_id text primary key,coins integer);
     create table wallet_logs(user_id text,type text,amount integer,balance integer,note text);
@@ -21,11 +21,11 @@ async function fixture(t) {
       staff_name text,amount numeric,service_fee integer,welfare_fee integer,payout_amount integer,status text,
       destination text, request_note text,reviewed_by text,reviewed_at timestamptz,updated_at timestamptz,
       requested_at timestamptz not null default now());
-    insert into qiunai_staff values ('${primary}',true,'primary','bank','000'),('${alt}',true,'alt','bank','001');
-    insert into players values ('${alt}',true,'alt','bank','001');
+    insert into qiunai_staff values ('${primary}',true,'primary','bank','000','Main Holder'),('${alt}',true,'alt','bank','001','Alt Holder');
+    insert into players values ('${alt}',true,'alt','bank','001','Alt Holder');
     insert into salary_wallet_entries(app_key,discord_id,amount) values ('qiunai','${primary}',2000),('qiunai','${alt}',600),('deepnight','${alt}',500);
   `);
-  for (const path of ["salary_to_asd.sql", "migrations/20261102000100_unified_hr.sql", "migrations/20261103001000_hr_linked_accounts.sql", "migrations/20261103001100_hr_linked_bank_payout.sql"]) {
+  for (const path of ["salary_to_asd.sql", "migrations/20261102000100_unified_hr.sql", "migrations/20261103001000_hr_linked_accounts.sql", "migrations/20261103001100_hr_linked_bank_payout.sql", "migrations/20261103001200_hr_linked_bank_holder.sql"]) {
     const sql = await readFile(new URL("../supabase/" + path, import.meta.url), "utf8");
     // Pin the bank window for deterministic tests. Other SQL runs as published.
     await db.exec(sql.replace("v_local timestamp:=now() at time zone 'Asia/Taipei'", "v_local timestamp:='2026-11-10 12:00:00'"));
@@ -87,8 +87,8 @@ test("bank applies the minimum per department, preserving source account and rol
   await db.query("update qiunai_staff set bank_name=null,bank_account=null where discord_id=$1", [alt]);
   await submit(db, 3, "bank", [["qiunai", primary, 600], ["qiunai", alt, 600]], "separate");
   await db.query("update qiunai_staff set bank_account='new-primary' where discord_id=$1", [primary]);
-  assert.deepEqual((await db.query("select primary_discord_id, bank_account from hr_bank_payout_details")).rows,
-    [{ primary_discord_id: primary, bank_account: "000" }, { primary_discord_id: primary, bank_account: "000" }]);
+  assert.deepEqual((await db.query("select primary_discord_id, bank_account, bank_holder from hr_bank_payout_details")).rows,
+    [{ primary_discord_id: primary, bank_account: "000", bank_holder: "Main Holder" }, { primary_discord_id: primary, bank_account: "000", bank_holder: "Main Holder" }]);
   assert.deepEqual((await db.query("select discord_id,amount::integer from salary_withdraw_requests order by discord_id")).rows,
     [{discord_id:primary,amount:600},{discord_id:alt,amount:600}]);
   await assert.rejects(submit(db, 4, "bank", [["qiunai", primary, 1200]]), /等待審核/);
@@ -126,7 +126,7 @@ test("alternate login inherits the primary bank and stale owner quotes cannot su
   await change(db, alt, primary, "confirm");
   await db.query("update qiunai_staff set bank_account=null where discord_id=$1", [primary]);
   await assert.rejects(submit(db, 11, "bank", [["qiunai", alt, 600], ["deepnight", alt, 500]], "combined", alt), /主帳號填寫/);
-  await db.query("insert into players values ($1,true,'main','other store bank','123')", [primary]);
+  await db.query("insert into players values ($1,true,'main','other store bank','123','Main Holder')", [primary]);
   await submit(db, 11, "bank", [["qiunai", alt, 600], ["deepnight", alt, 500]], "combined", alt);
   assert.deepEqual((await db.query("select distinct primary_discord_id,bank_account from hr_bank_payout_details")).rows,
     [{primary_discord_id:primary,bank_account:"123"}]);
