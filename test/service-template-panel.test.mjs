@@ -22,6 +22,48 @@ test('six-field wizard saves first page, requires a button before next modal, an
 test('expired drafts and templates updated while a modal is open cannot generate stale content',async()=>{for(const stale of ['expiry','version']){const f=fixture();const first=f.interaction('svc:template');await f.panel.handleInteraction(first);if(stale==='expiry')f.advance();else f.state.template.version=2;const event=f.interaction(first.calls[0][1].custom_id,{fields:{getTextInputValue:()=> '內容'}});await f.panel.handleInteraction(event);assert.ok(event.calls.every(([,data])=>!data.files));assert.match(event.calls.at(-1)[1].content,stale==='expiry'?/過期/:/更新/);}});
 test('panel creation uses its stored message across restarts and concurrent ensure calls',async()=>{const f=fixture();const [one,two]=await Promise.all([f.panel.ensurePanel(),f.panel.ensurePanel()]);assert.equal(one,two);assert.equal(f.state.sends,1);await f.panel.ensurePanel();assert.equal(f.state.sends,1);assert.equal(f.state.edits,1);assert.equal(f.state.registry.message_id,one);});
 
+test('a shared select resets after its modal opens and two concurrent selections keep both menus reset',async()=>{
+ const f=fixture();
+ const panelId=await f.panel.ensurePanel();
+ const panel=f.state.messages.get(panelId);
+ const original=structuredClone(panel.components[0].components[0]);
+ panel.components.push({type:1,components:[{...original,custom_id:'svc:template:1'}]});
+ const editPayloads=[];
+ const completed=[];
+ const message={
+  author:panel.author,
+  embeds:panel.embeds,
+  async fetch(){
+   return {...message,components:panel.components.map(row=>({toJSON:()=>structuredClone(row)}))};
+  },
+  async edit(payload){
+   assert.ok(completed.length>editPayloads.length);
+   editPayloads.push(payload);
+   panel.components=payload.components;
+  },
+ };
+ const select=(customId,user)=>{
+  const interaction=f.interaction(customId,{user:{id:user},message,isStringSelectMenu:()=>true});
+  interaction.showModal=async data=>{completed.push(data);interaction.replied=true;};
+  return interaction;
+ };
+ await Promise.all([
+  f.panel.handleInteraction(select(original.custom_id,actor)),
+  f.panel.handleInteraction(select('svc:template:1',other)),
+ ]);
+ assert.equal(completed.length,2);
+ assert.equal(editPayloads.length,2);
+ const [first,second]=panel.components.map(row=>row.components[0]);
+ assert.match(first.custom_id,/^svc:template:0:reset:/);
+ assert.match(second.custom_id,/^svc:template:1:reset:/);
+ assert.equal(first.placeholder,original.placeholder);
+ assert.ok(first.options.every(option=>option.default===false));
+ await f.panel.handleInteraction(select(first.custom_id,actor));
+ assert.equal(completed.length,3);
+ assert.notEqual(panel.components[0].components[0].custom_id,first.custom_id);
+ assert.equal(f.state.sends,1);
+});
+
 test('cancelled second-page modals can reopen and abandoned first pages do not exhaust the per-user limit',async()=>{const f=fixture();let latest;for(let i=0;i<8;i++){latest=f.interaction('svc:template');await f.panel.handleInteraction(latest);assert.equal(latest.calls[0][0],'modal');}const submit=f.interaction(latest.calls[0][1].custom_id,{fields:{getTextInputValue:()=> '已填'}});await f.panel.handleInteraction(submit);const id=submit.calls[1][1].components[0].components[0].custom_id;for(let i=0;i<2;i++){const next=f.interaction(id);await f.panel.handleInteraction(next);assert.equal(next.calls[0][0],'modal');}});
 
 test('one existing panel directly lists shop gifts and templates, and chosen gift names need no typing',async()=>{
