@@ -87,7 +87,8 @@ html:has(.common-workspace-shell), body:has(.common-workspace-shell) {
   min-height: 44px;
   padding: 11px 22px;
   border-left: 3px solid transparent;
-  border-radius: 0;
+  border-radius: 0 !important;
+  font-size: .82rem;
   line-height: 1.45;
   white-space: normal;
   overflow-wrap: anywhere;
@@ -109,9 +110,10 @@ html:has(.common-workspace-shell), body:has(.common-workspace-shell) {
   width: 100%;
   min-width: 0;
   max-width: 1280px;
-  padding: 0 0 24px;
+  padding: 0 0 24px !important;
   overflow: visible;
   overflow-wrap: anywhere;
+  color: #1f2f3f !important;
 }
 .workspace-store-picker {
   display: flex;
@@ -170,6 +172,10 @@ html:has(.common-workspace-shell), body:has(.common-workspace-shell) {
 .common-workspace-shell .eip-collab-panel {
   border-color: #e0f2fe;
   box-shadow: 0 1px 2px #e0f2fe;
+  color: #1f2f3f;
+}
+.common-workspace-shell .eip-collab-panel:not(.course-admin-list) {
+  overflow: visible;
 }
 .eip-admin-workspace :is(button, label, fieldset, .eip-collab-panel-head > *, .eip-admin-overview-row > span, .eip-collab-row > *, .eip-collab-admin-item > *, .eip-workspace-file-list > div > *) {
   min-width: 0;
@@ -192,6 +198,7 @@ html:has(.common-workspace-shell), body:has(.common-workspace-shell) {
 .eip-admin-workspace .eip-admin-workspace-tabs button {
   max-width: 100%;
   min-height: 44px;
+  border-radius: 12px !important;
   text-align: left;
 }
 .eip-admin-workspace .eip-admin-overview-stats {
