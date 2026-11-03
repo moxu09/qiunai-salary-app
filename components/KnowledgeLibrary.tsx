@@ -6,13 +6,15 @@ import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, ArrowRight, BookOpenText, ChevronLeft, ChevronRight, Search } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { attachmentsForLesson, knowledgeCourseHref, knowledgeCourseLocation, knowledgeSummary } from "@/lib/knowledgeCourses.mjs";
+import InlineReferences from '@/components/InlineReferences';
+import { referenceMap } from '@/lib/inlineReferences.mjs';
 import WorkspaceDocumentFiles from "@/components/WorkspaceDocumentFiles";
 import CourseLearning,{type LearningProgress} from '@/components/CourseLearning';
 import {courseChapters} from '@/lib/courseRules.mjs';
 
 type Department = "qiunai" | "deepnight";
-type Document = { is_course?: boolean; managed?:boolean; chapters?:{id:string;title:string;body:string}[];requirements?:React.ComponentProps<typeof CourseLearning>['requirements'];quiz?:React.ComponentProps<typeof CourseLearning>['quiz']; id: string; organization?: Department; title: string; category: string; body: string; version: number; updated_at: string };
-type Props = { documents: Document[]; organization: Department | "hr"; loading: boolean; basePath?: string; apiBase?: string; libraryHref?: string };
+type Document = { references?: {label:string;url:string}[]; is_course?: boolean; managed?:boolean; chapters?:{id:string;title:string;body:string}[];requirements?:React.ComponentProps<typeof CourseLearning>['requirements'];quiz?:React.ComponentProps<typeof CourseLearning>['quiz']; id: string; organization?: Department; title: string; category: string; body: string; version: number; updated_at: string };
+type Props = { documents: Document[]; organization: Department | "hr"; loading: boolean; basePath?: string; apiBase?: string; libraryHref?: string; relatedLinks?: {label:string;url:string}[] };
 type Completion = { document_version: number; completed_at: string };
 type Reader = { key: string; loading: boolean; document: Document | null; completion: Completion | null; progress?:LearningProgress|null; error: string };
 const departmentName = (department: Department) => department === "qiunai" ? "秋奈電競" : "深夜不關燈";
@@ -21,7 +23,7 @@ function dateLabel(value: string, withTime = false) {
   return Number.isNaN(date.getTime()) ? "尚無更新時間" : new Intl.DateTimeFormat("zh-TW", { timeZone: "Asia/Taipei", dateStyle: "medium", ...(withTime ? { timeStyle: "short" } as const : {}) }).format(date);
 }
 
-export default function KnowledgeLibrary({ documents, organization, loading, basePath = "/collaboration/knowledge", apiBase = "/api/hr/knowledge", libraryHref }: Props) {
+export default function KnowledgeLibrary({ documents, organization, loading, basePath = "/collaboration/knowledge", apiBase = "/api/hr/knowledge", libraryHref, relatedLinks = [] }: Props) {
   const pathname = usePathname();
   const router = useRouter();
   const location = knowledgeCourseLocation(pathname.replace(basePath, "/collaboration/knowledge"));
@@ -115,6 +117,21 @@ export default function KnowledgeLibrary({ documents, organization, loading, bas
   const lesson = location.lesson ?? 1;
   const missingLesson = location.lesson != null && lesson > chapters.length;
   const courseUrl = href(location.department, location.id);
+  const lessonUrl = (number: number) => number >= 1 && number <= chapters.length
+    ? href(location.department, location.id, number) : undefined;
+  const chapterLinks = chapters.filter(chapter => chapter.number !== lesson).flatMap(chapter => {
+    const url = href(location.department, location.id, chapter.number);
+    const name = chapter.title.split(/[：:]/)[0];
+    return [`「${chapter.title}」`, `「${name}」`, chapter.title].map(label => ({ label, url }));
+  });
+  const adjacentLinks = [
+    { number: lesson - 1, labels: ['上一章', '上一節', '上一課'] },
+    { number: lesson + 1, labels: ['下一章', '下一節', '下一課'] },
+  ].flatMap(({ number, labels }) => {
+    const url = lessonUrl(number);
+    return url ? labels.map(label => ({ label, url })) : [];
+  });
+  const references = referenceMap(relatedLinks, course?.references || [], [...chapterLinks, ...adjacentLinks]);
   return <section className="hr-course-reader" aria-label="課程閱讀">
     <div className="hr-course-reader-tools"><Link href={libraryHref || basePath}><ArrowLeft size={17} /> 返回知識庫</Link><button type="button" onClick={() => setRetry((value) => value + 1)} disabled={current?.loading}>重新載入課程</button></div>
     {!current || current.loading ? <div className="eip-collab-panel" role="status">正在讀取課程…</div> : current.error ? <div className="eip-collab-panel"><p className="eip-collab-alert" role="alert">{current.error}</p></div> : course ? <>
@@ -128,7 +145,8 @@ export default function KnowledgeLibrary({ documents, organization, loading, bas
         </label> : null}
         <article className="eip-collab-panel hr-course-content">
           {missingLesson ? <><h3>找不到此章節</h3><p>課程可能已更新，請從目錄重新選擇章節。</p><Link href={courseUrl}>返回第一章</Link></> : <>
-            {chapters.filter(chapter=>chapter.number===lesson).map(chapter=><section className="hr-course-chapter" key={chapter.id}><span>第 {chapter.number} 章／共 {chapters.length} 章</span><h3>{chapter.title}</h3><div className="hr-course-text">{chapter.body || "本章節尚無內文。"}</div></section>)}
+            {chapters.filter(chapter=>chapter.number===lesson).map(chapter=><section className="hr-course-chapter" key={chapter.id}><span>第 {chapter.number} 章／共 {chapters.length} 章</span><h3>{chapter.title}</h3><div className="hr-course-text"><InlineReferences text={chapter.body || "本章節尚無內文。"} references={references}
+                resolveNumber={(number, unit) => ['章','節','节','課','课'].includes(unit) && number !== lesson ? lessonUrl(number) : undefined} /></div></section>)}
             {!chapters.length ? <p className="hr-course-note">課程內容請參閱下方附件。</p> : null}
             <WorkspaceDocumentFiles key={`${location.department}:${course.id}:${course.version}`} organization={location.department} documentId={course.id}
               apiPath={course.is_course ? `${apiBase}/${location.department}/${course.id}/files` : undefined}

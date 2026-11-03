@@ -43,3 +43,30 @@
    shell the enclosing sidebar owns positioning, so links remain clickable. */
 .common-workspace-shell .admin-portal-sidebar>.admin-portal-nav{position:static;inset:auto;width:100%;height:auto;max-height:none;overflow:visible;box-shadow:none;background:transparent!important}
 @media(max-width:1023px){.common-workspace-shell .admin-portal-sidebar>.admin-portal-nav{width:max-content}}
+
+.inline-reference,
+.svc-workspace a.inline-reference {
+  color: var(--hr-link, var(--svc-accent, #175eaa));
+  text-decoration: underline;
+  text-underline-offset: .19em;
+  overflow-wrap: anywhere;
+}
+.course-link-editor {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--hr-border, #b9c7db);
+  border-radius: 10px;
+}
+.svc-step-check {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
+}
+.svc-step-check input {
+  flex: none;
+}
+.svc-step[id] {
+  scroll-margin-top: 18px;
+}

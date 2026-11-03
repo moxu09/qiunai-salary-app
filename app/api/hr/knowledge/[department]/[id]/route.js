@@ -1,3 +1,4 @@
+import { loadCourseReferences } from '@/lib/service/referenceChannels';
 import { authorizeCourseReader } from '@/lib/courseAccess';
 import { loadKnowledgeCourse, loadCourseCompletion, loadCourseProgress, completePrivateCourse, learnCourse } from "@/lib/service/courses";
 import { createKnowledgeCourseHandler, createKnowledgeCompletionHandler, createKnowledgeProgressHandler } from "@/lib/knowledgeCourseHandler.mjs";
@@ -18,6 +19,7 @@ export const GET = createKnowledgeCourseHandler({
   loadPublished: loadKnowledgeCourse,
   loadCompletion: loadCourseCompletion,
   loadProgress: loadCourseProgress,
+  loadReferences: loadCourseReferences,
 });
 export const PATCH=createKnowledgeProgressHandler({authorize,learn:learnCourse});
 export const POST = createKnowledgeCompletionHandler({

@@ -1,3 +1,4 @@
+import { loadReferenceChannels } from '@/lib/service/referenceChannels';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { courseManager, courseFailure, requireCourseAudience } from '@/lib/courseAccess';
 import { validateCourse, CourseError } from '@/lib/courseRules.mjs';
@@ -10,13 +11,14 @@ async function checked(query){const {data,error}=await query;if(error)throw erro
 export async function GET(request,context){
  try{
   const {department}=await context.params;await courseManager(request,department);
-  const [documents,links,staff,reviews]=await Promise.all([
+  const [documents,links,staff,reviews,channels]=await Promise.all([
    checked(supabaseAdmin.from('eip_workspace_documents').select('id,title,category,body,version,updated_at,is_published').eq('organization_code',department).eq('document_type','knowledge').order('updated_at',{ascending:false}).limit(500)),
    checked(supabaseAdmin.from('service_course_links').select('*').eq('organization_code',department)),
    allRows(()=>supabaseAdmin.from(SERVICE_STORES[department].staff).select('discord_id,discord_name,display_name').or('is_active.is.null,is_active.eq.true').order('discord_id')),
    allRows(()=>supabaseAdmin.from('course_learning_progress').select('document_id,discord_id,document_version,read_chapters,study_seconds,quiz_score,review_status,review_note,reviewed_at').eq('organization_code',department).order('document_id').order('discord_id').order('document_version')),
+   loadReferenceChannels(department).catch(() => []),
   ]);
-  return Response.json({ok:true,courses:documents.filter(document=>links.some(link=>link.document_id===document.id)).map(document=>({...document,settings:links.find(link=>link.document_id===document.id)||null})),staff:staff.map(person=>({id:person.discord_id,name:person.display_name||person.discord_name||person.discord_id})),reviews},{headers:{'Cache-Control':'no-store',Vary:'Authorization'}});
+  return Response.json({ok:true,courses:documents.filter(document=>links.some(link=>link.document_id===document.id)).map(document=>({...document,settings:links.find(link=>link.document_id===document.id)||null})),staff:staff.map(person=>({id:person.discord_id,name:person.display_name||person.discord_name||person.discord_id})),reviews,channels},{headers:{'Cache-Control':'no-store',Vary:'Authorization'}});
  }catch(error){return courseFailure(error);}
 }
 export async function POST(request,context){

@@ -95,7 +95,7 @@ test("the actual HR API uses scoped course loading with authenticated identity a
   const globals={Response,Error,createKnowledgeCourseHandler,createKnowledgeCompletionHandler,createKnowledgeProgressHandler,
    authorizeCourseReader:async()=>{if(expired)throw Error("登入已失效，請重新登入");return {discordId:"123456789012345678",departments:[{key:"qiunai"}]};},
    loadKnowledgeCourse:async(department,documentId,actor)=>{calls.push([department,documentId,actor.discordId]);return row;},
-   loadCourseCompletion:async(...args)=>{calls.push(args);return null;},loadCourseProgress:async()=>null,learnCourse:async()=>{},completePrivateCourse:async()=>{throw Error('not called');}};
+   loadCourseCompletion:async(...args)=>{calls.push(args);return null;},loadCourseProgress:async()=>null,loadCourseReferences:async()=>[],learnCourse:async()=>{},completePrivateCourse:async()=>{throw Error('not called');}};
   runInNewContext(source+"\nthis.handler=GET;",globals);
   assert.equal((await globals.handler(request(""),context())).status,401);
   assert.equal((await globals.handler(request(),context())).status,200);
