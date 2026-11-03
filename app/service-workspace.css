@@ -46,3 +46,7 @@ main.service-console.svc-workspace.service-store-deepnight{--svc-accent:#4b3b75;
 @media(max-width:760px){.svc-workspace .svc-rail{display:none}}
 .svc-workspace .svc-template-options button[aria-pressed=true]{background:#fff;border-width:2px;font-weight:850}
 @media(min-width:761px) and (max-width:1060px){.svc-template-columns{grid-template-columns:minmax(0,1fr)}}
+/* Global page styles hide horizontal overflow. Clip instead so the service
+   rail's sticky position follows the viewport, not a non-scrolling ancestor. */
+html:has(.svc-workspace),body:has(.svc-workspace){overflow-x:clip;overflow-y:visible}
+main.service-console.svc-workspace{overflow-x:clip;overflow-y:visible}
