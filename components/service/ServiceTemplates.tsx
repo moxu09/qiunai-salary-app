@@ -4,7 +4,7 @@ import {useEffect,useRef,useState} from 'react';
 import {normalizeSearch} from '@/lib/serviceManual.mjs';
 import {copyText,safeHref,saveFile,serviceRequest} from './client';
 import {storeName,type Department,type Template} from './types';
-type Gift={key:string;name:string;price:number;unit:string};
+type Gift={key:string;name:string;price:number;unit:string;broadcast?:{description:string;emoji?:string}};
 type GiftCatalog={regular:Gift[];heart:Gift[]|null};
 
 export default function ServiceTemplates({department,templates,initial}:{department:Department;templates:Template[];initial?:string|null}){
@@ -37,8 +37,36 @@ export default function ServiceTemplates({department,templates,initial}:{departm
  return <section className="svc-page"><div className="svc-page-heading"><span className="svc-kicker"><FileText size={17}/> RESPONSE TEMPLATES</span><h1>套模板</h1><p>挑選情境、填入欄位，再複製 {storeName(department)} 專用的文字。</p></div><div className="svc-template-columns"><aside className="svc-panel svc-template-list"><div className="svc-section-title"><h2>模板庫</h2><span className="svc-badge">{shown.length} 份</span></div><label className="svc-search-input"><Search size={17}/><input value={query} onChange={event=>{setQuery(event.target.value);setPage(0);}} aria-label="搜尋模板" placeholder="搜尋播報、派單或登記"/></label><select aria-label="模板分類" value={category} onChange={event=>{setCategory(event.target.value);setPage(0);}}><option value="all">全部分類</option>{Array.from(new Set(templates.map(item=>item.category))).map(value=><option key={value}>{value}</option>)}</select><div className="svc-template-options">{visible.map(item=><button type="button" key={item.id} aria-pressed={template?.id===item.id} onClick={()=>choose(item.id)}><small>{item.category}</small><strong>{item.title}</strong></button>)}{!shown.length?<p className="svc-muted">沒有符合條件的模板。</p>:null}</div>{pages>1?<nav className="svc-template-pagination" aria-label="模板分頁"><button type="button" className="svc-secondary" aria-label="上一頁模板" disabled={currentPage===0} onClick={()=>setPage(currentPage-1)}><ChevronLeft size={17}/></button><span>第 {currentPage+1}／{pages} 頁</span><button type="button" className="svc-secondary" aria-label="下一頁模板" disabled={currentPage>=pages-1} onClick={()=>setPage(currentPage+1)}><ChevronRight size={17}/></button></nav>:null}</aside><article className="svc-panel svc-template-editor" ref={editor}>{template?<><span className="svc-badge">{storeName(department)} · {template.category}</span><h2>{template.title}</h2><p className="svc-muted">{template.description}</p>{template.destination_label?<p>建議貼至：{safeHref(template.destination_url)?<a href={template.destination_url} target="_blank" rel="noreferrer">{template.destination_label}</a>:template.destination_label}</p>:null}{giftKind&&!giftOptions?.length?<p className="svc-muted">{giftFailed||giftOptions===null?'暫時無法讀取本店禮物清單，可先手動填寫。':giftOptions?'本店沒有獨立的心動禮物清單，請填寫實際品項。':'正在讀取本店禮物清單…'}</p>:null}<form className="svc-form" onSubmit={event=>{event.preventDefault();void render();}}>{template.fields.map(field=><label key={field.key}>{field.label}{field.required?' *':''}{giftKind&&field.label===giftLabel&&giftOptions?.length?<>
  <select required={field.required} value={giftChoice} aria-label={giftLabel} onChange={event=>{
   const key=event.target.value;
+  const gift=giftOptions.find(item=>item.key===key);
+  if(department==='deepnight'&&giftKind==='regular'&&gift){
+   const special=templates.find(item=>item.slug===`gift-broadcast-${key.replaceAll('_','-')}`);
+   if(special){
+    const people=Object.fromEntries(special.fields.flatMap(input=>{
+     const previous=template.fields.find(current=>current.label===input.label);
+     return previous&&values[previous.key]?[[input.key,values[previous.key]]]:[];
+    }));
+    choose(special.id);setValues(people);return;
+   }
+  }
   setGiftChoice(key);
-  setValues(prior=>({...prior,[field.key]:giftOptions.find(gift=>gift.key===key)?.name||''}));
+  setValues(prior=>{
+   const broadcast=department==='qiunai'&&giftKind==='regular'?gift?.broadcast:undefined;
+   const emojiField=template.fields.find(input=>input.label==='禮物的表情符號');
+   const next={...prior,[field.key]:[gift?.name,!emojiField&&broadcast?.emoji].filter(Boolean).join(' ')};
+   if(department==='qiunai'&&giftKind==='regular'){
+    const copy=template.fields.find(input=>input.label==='禮物的文案');
+    if(copy)next[copy.key]=broadcast?.description||'';
+    if(emojiField)next[emojiField.key]=broadcast?.emoji||'';
+   }
+   if(department==='deepnight'&&giftKind==='regular'){
+    for(const input of template.fields){
+     if(input.label==='禮物單價')next[input.key]=gift?String(gift.price):'';
+     if(input.label==='禮物組數'&&gift&&!next[input.key])next[input.key]='1';
+     if(input.label==='祝福人數（含送禮人）'&&gift&&!next[input.key])next[input.key]='兩';
+    }
+   }
+   return next;
+  });
   generation.current++;setOutput('');setNotice('');setError('');
  }}>
   <option value="">選擇本店現有禮物</option>
