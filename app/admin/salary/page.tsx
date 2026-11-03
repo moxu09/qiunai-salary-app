@@ -114,6 +114,7 @@ export default function AdminSalaryPage() {
   const [bonusList, setBonusList] = useState<BonusItem[]>([]);
   const [deletingBonusId, setDeletingBonusId] = useState<string | null>(null);
   const [staffList, setStaffList] = useState<Staff[]>([]);
+  const [commissionKeyword, setCommissionKeyword] = useState("");
   const [editingOrder, setEditingOrder] = useState<SalaryOrder | null>(null);
   const [selectedDetailDiscordId, setSelectedDetailDiscordId] = useState("");
   const [filterStaffId, setFilterStaffId] = useState("all");
@@ -1251,8 +1252,31 @@ export default function AdminSalaryPage() {
               80%、85%、90% 或主管津貼 95%。
             </p>
 
+            <div className="mt-4 flex items-center gap-2 rounded-2xl border border-pink-100 bg-pink-50 px-3 py-2">
+              <Search size={17} className="shrink-0 text-pink-500" />
+              <input
+                value={commissionKeyword}
+                onChange={(event) => setCommissionKeyword(event.target.value)}
+                placeholder="搜尋員工名稱或 Discord ID"
+                aria-label="搜尋員工抽成檔位"
+                className="min-w-0 flex-1 border-none bg-transparent p-0 text-sm outline-none focus:shadow-none"
+              />
+            </div>
+
             <div className="mt-5 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {staffList.map((staff) => (
+              {staffList.filter((staff) => {
+                const query = commissionKeyword.trim().toLowerCase();
+                const tierLabels: Record<string, string> = {
+                  auto: "自動判定",
+                  rate_80: "80% 一般陪陪",
+                  rate_85: "85% 進階陪陪",
+                  rate_90: "90% 年度高階",
+                  manager_95: "95% 主管津貼",
+                };
+                const tierLabel = tierLabels[staff.commission_tier || "auto"] || "";
+                return !query || [staff.display_name, staff.real_name, staff.discord_name, staff.discord_id, tierLabel]
+                  .filter(Boolean).join(" ").toLowerCase().includes(query);
+              }).map((staff) => (
                 <div
                   key={staff.id}
                   className="rounded-2xl border border-pink-100 bg-pink-50 p-4"
@@ -2216,7 +2240,7 @@ async function getStaffSalaryRate(
     previousYearSalary += (data || []).reduce((sum, row) => sum + Number(row.staff_salary || 0), 0);
     if ((data || []).length < 1000) break;
   }
-  let rate = previousYearSalary >= 100000 ? 90 :
+  const rate = previousYearSalary >= 100000 ? 90 :
     await getMonthlyOrderAmount(supabase, staff.discord_id, at, -1) >= 10000 ? 85 : 80;
   const { data: activity, error } = await supabase.from("salary_activity_commission_settings")
     .select("activity_rate").eq("app_key", "qiunai").lte("starts_at", at).gt("ends_at", at).maybeSingle();
