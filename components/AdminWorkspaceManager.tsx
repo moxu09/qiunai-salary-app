@@ -230,7 +230,14 @@ export default function AdminWorkspaceManager({ organization }: { organization: 
   const totalPages = Math.max(1, Math.ceil(requestPagination.total / requestPagination.pageSize));
   const upcomingEvents = data.events.filter((item) => Boolean(item.is_published) && new Date(String(item.ends_at)).getTime() >= observedAt);
   return <main className="eip-admin-workspace">
-    <div className="eip-collab-hero"><div><p className="eip-collab-eyebrow">TEAM OPERATIONS</p><h1>協作工作台</h1><p>從待辦簽核到日程、文件和流程設定，前後台同步處理。</p></div><button className="eip-collab-refresh" onClick={() => void refresh()}>重新整理</button></div>
+    <header className="eip-collab-hero">
+      <div>
+        <p className="eip-collab-eyebrow">{organization === "qiunai" ? "秋奈電競" : "深夜不關燈"} EIP</p>
+        <h1>協作工作台</h1>
+        <p>處理簽核、團隊日程、知識庫與課程。</p>
+      </div>
+      <button type="button" className="eip-collab-refresh" onClick={() => void refresh()}>重新整理</button>
+    </header>
     {error && section !== 'course' ? <p className="eip-collab-alert" role="alert">{error}</p> : null}
     {notice ? <p className="eip-collab-notice" role="status">{notice}</p> : null}
     <nav className="eip-admin-workspace-tabs" aria-label="協作功能">

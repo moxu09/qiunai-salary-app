@@ -48,6 +48,8 @@ html:has(.common-workspace-shell), body:has(.common-workspace-shell) {
   height: auto;
   overflow: visible;
   background: #17202d;
+  border-right: 1px solid #ffffff1a;
+  box-shadow: 8px 0 22px #0f172a14;
   color: #fff;
 }
 .workspace-rail-content {
@@ -65,32 +67,38 @@ html:has(.common-workspace-shell), body:has(.common-workspace-shell) {
 }
 .common-workspace-shell .admin-portal-brand {
   display: block;
-  padding: 15px 18px;
+  padding: 24px 22px 20px;
+  border-bottom: 1px solid #ffffff1a;
+  border-radius: 0;
   color: #fff;
 }
-.common-workspace-shell .workspace-navigation .admin-portal-nav {
-  position: static;
-  inset: auto;
+.common-workspace-shell .admin-portal-brand p:first-child {
+  color: #9fb3c8;
+}
+.common-workspace-shell .workspace-nav {
   display: flex;
   flex-direction: column;
   width: 100%;
   min-width: 0;
-  height: auto;
-  max-height: none;
-  overflow: visible;
-  padding: 6px 10px 12px;
-  box-shadow: none;
-  background: transparent !important;
+  padding: 12px 0 28px;
 }
 .common-workspace-shell .admin-portal-link {
   width: 100%;
-  padding: 8px 10px;
+  min-height: 44px;
+  padding: 11px 22px;
+  border-left: 3px solid transparent;
+  border-radius: 0;
   line-height: 1.45;
   white-space: normal;
   overflow-wrap: anywhere;
   color: #d8e4ef !important;
 }
+.common-workspace-shell .admin-portal-link:hover {
+  background: #ffffff14;
+  color: #fff !important;
+}
 .common-workspace-shell .admin-portal-link.is-active {
+  border-left-color: #58b9ef;
   background: #243b53 !important;
   color: #fff !important;
 }
@@ -100,9 +108,68 @@ html:has(.common-workspace-shell), body:has(.common-workspace-shell) {
 .common-workspace-shell .eip-admin-workspace {
   width: 100%;
   min-width: 0;
-  padding-inline: 0;
+  max-width: 1280px;
+  padding: 0 0 24px;
   overflow: visible;
   overflow-wrap: anywhere;
+}
+.workspace-store-picker {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  max-width: 1280px;
+  margin: 0 auto 14px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #475569;
+}
+.workspace-store-picker a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 38px;
+  padding: 7px 14px;
+  border: 1px solid #bae6fd;
+  border-radius: 12px;
+  background: #fff;
+  color: #075985;
+}
+.workspace-store-picker a[aria-current="page"] {
+  border-color: #0369a1;
+  background: #0369a1;
+  color: #fff;
+}
+.common-workspace-shell .eip-collab-hero {
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  padding: 20px 24px;
+  border-color: #e0f2fe;
+  border-radius: 30px;
+  background: #fff;
+  box-shadow: 0 1px 2px #e0f2fe;
+}
+.common-workspace-shell .eip-collab-hero > div {
+  min-width: 0;
+}
+.common-workspace-shell .eip-collab-hero h1 {
+  margin: 4px 0 8px;
+  font-size: clamp(24px, 2.5vw, 30px);
+  color: #0f172a;
+}
+.common-workspace-shell .eip-collab-eyebrow {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: normal;
+  color: #0369a1;
+}
+.common-workspace-shell .eip-collab-hero p:last-child {
+  font-size: 14px;
+  color: #475569;
+}
+.common-workspace-shell .eip-collab-panel {
+  border-color: #e0f2fe;
+  box-shadow: 0 1px 2px #e0f2fe;
 }
 .eip-admin-workspace :is(button, label, fieldset, .eip-collab-panel-head > *, .eip-admin-overview-row > span, .eip-collab-row > *, .eip-collab-admin-item > *, .eip-workspace-file-list > div > *) {
   min-width: 0;
@@ -137,6 +204,41 @@ html:has(.common-workspace-shell), body:has(.common-workspace-shell) {
   grid-template-columns: minmax(0, 90px) minmax(0, 1fr);
   gap: 8px;
 }
+/* Remove automatic minimum track widths throughout the nested course form. */
+.eip-admin-workspace .course-admin :is(.course-admin-list, .course-admin-form, fieldset, .course-chapter-editor, .course-staff-picker, .course-link-editor, .course-review-list article, label) {
+  grid-template-columns: minmax(0, 1fr);
+}
+.eip-admin-workspace .course-admin :is(strong, small, span, p, legend, a, button) {
+  min-width: 0;
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.eip-admin-workspace .course-admin :is(input:not([type=checkbox]), select, textarea) {
+  width: 100%;
+  min-height: 42px;
+  padding: 9px 11px;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  background: #fff;
+  color: #0f172a;
+}
+.eip-admin-workspace .course-admin textarea {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  resize: vertical;
+}
+.eip-admin-workspace .course-admin-list {
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+.eip-admin-workspace .course-admin button {
+  border-radius: 12px !important;
+}
+.eip-admin-workspace .course-admin-list > button {
+  grid-template-columns: minmax(0, 1fr);
+  padding: 12px 14px;
+}
 @container (max-width: 730px) {
   .eip-admin-workspace :is(.eip-collab-columns, .course-admin-layout) {
     grid-template-columns: minmax(0, 1fr);
@@ -163,7 +265,7 @@ html:has(.common-workspace-shell), body:has(.common-workspace-shell) {
     color: #fff;
     text-align: left;
   }
-  .common-workspace-shell .workspace-navigation .admin-portal-nav {
+  .common-workspace-shell .workspace-nav {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(min(100%, 132px), 1fr));
   }

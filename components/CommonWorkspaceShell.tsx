@@ -123,13 +123,6 @@ export default function CommonWorkspaceShell({ children }: { children: React.Rea
       (auditOnly && link.href === deviceAuditHref),
   );
   const owner = access?.discordId === ERP_OWNER_DISCORD_ID;
-  if (owner) {
-    links.push({
-      href: "/admin/finance-erp-installers",
-      label: "財務 ERP 安裝包",
-      icon: FolderDown,
-    });
-  }
   const company =
     currentOrganization === "qiunai" ? "秋奈電競" : "深夜不關燈";
   const [notificationCounts, setNotificationCounts] = useState(
@@ -238,11 +231,7 @@ export default function CommonWorkspaceShell({ children }: { children: React.Rea
               </div>
             ) : null}
 
-            {owner ? <div className="mx-3 mb-3 flex flex-wrap gap-2 px-2 text-xs font-bold text-slate-200" aria-label="切換協作店家">
-              <a href="/admin/workspace" aria-current={currentOrganization === "deepnight" ? "page" : undefined}>深夜協作</a>
-              <a href="/admin/department/qiunai/workspace" aria-current={currentOrganization === "qiunai" ? "page" : undefined}>秋奈協作</a>
-            </div> : null}
-            <nav className="admin-portal-nav" aria-label="EIP 後台導覽">
+            <nav className="workspace-nav" aria-label="EIP 後台導覽">
               {links.map(({ href, label, icon: Icon }) => {
                 const active =
                   pathname === href || pathname.startsWith(`${href}/`);
@@ -280,6 +269,13 @@ export default function CommonWorkspaceShell({ children }: { children: React.Rea
         </div>
       </aside>
       <div className="admin-portal-content min-w-0">
+        {owner && (
+          <nav className="workspace-store-picker" aria-label="協作店別">
+            <span>協作店別</span>
+            <a href="/admin/workspace" aria-current={currentOrganization === "deepnight" ? "page" : undefined}>深夜不關燈</a>
+            <a href="/admin/department/qiunai/workspace" aria-current={currentOrganization === "qiunai" ? "page" : undefined}>秋奈電競</a>
+          </nav>
+        )}
         {children}
       </div>
     </div>
