@@ -114,25 +114,6 @@ export default function HrCareerPanel() {
           const ranking = selectedRankingMonth === rankingMonths[0]
             ? commissionInfo.ranking
             : historicalRankings?.[commissionInfo.key];
-          const isQiunai = commissionInfo.key === "qiunai";
-          const commissionProgress = (
-            <>
-              <Progress
-                title={
-                  isQiunai
-                    ? "本月一般訂單＋打賞｜85% 進度"
-                    : "累計訂單｜85% 進度"
-                }
-                current={commissionInfo.monthlyCreditedSalary}
-                target={10000}
-              />
-              <Progress
-                title="今年薪資｜90% 進度"
-                current={commissionInfo.thisYearSalary}
-                target={100000}
-              />
-            </>
-          );
           return (
           <div className="hr-career-department" key={commissionInfo.key}>
             <h3>
@@ -140,16 +121,26 @@ export default function HrCareerPanel() {
               {commissionInfo.currentRate}%
             </h3>
             <p className="hr-note">{commissionInfo.currentLabel}</p>
-            {isQiunai ? (
-              <details className="hr-commission-details">
-                <summary>抽成檔位與升級進度</summary>
-                {commissionProgress}
-                <p className="hr-note">
-                  85% 依當月一般訂單＋打賞金額判定，滿 10,000 元後隔月生效一個月；90%
-                  依今年薪資進度，達標後隔年生效一年。2027年將會有新制度改革。
-                </p>
-              </details>
-            ) : commissionProgress}
+            <Progress
+              title={
+                commissionInfo.key === "qiunai"
+                  ? "本月一般訂單＋打賞｜85% 進度"
+                  : "累計訂單｜85% 進度"
+              }
+              current={commissionInfo.monthlyCreditedSalary}
+              target={10000}
+            />
+            <Progress
+              title="今年薪資｜90% 進度"
+              current={commissionInfo.thisYearSalary}
+              target={100000}
+            />
+            {commissionInfo.key === "qiunai" ? (
+              <p className="hr-note">
+                85% 依當月一般訂單＋打賞金額判定，滿 10,000 元後隔月生效一個月；90%
+                依今年薪資進度，達標後隔年生效一年。2027年將會有新制度改革。
+              </p>
+            ) : null}
             {rankingLoading ? (
               <p className="hr-note">正在讀取 {selectedRankingMonth.replace("-", " 年 ")} 月排名…</p>
             ) : ranking ? (

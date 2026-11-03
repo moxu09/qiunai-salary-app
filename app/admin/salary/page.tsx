@@ -1184,8 +1184,10 @@ export default function AdminSalaryPage() {
             ) : null}
           </div>
 
-          <div className="salary-commission-panel rounded-[28px] border border-pink-100 bg-white p-5 shadow-sm shadow-pink-100">
-            <h2 className="text-lg font-black text-[#3f2947]">員工抽成檔位</h2>
+          <details className="salary-commission-panel rounded-[28px] border border-pink-100 bg-white p-5 shadow-sm shadow-pink-100">
+            <summary className="cursor-pointer text-lg font-black text-[#3f2947]">
+              員工抽成檔位
+            </summary>
 
             <p className="mt-2 text-sm text-[#80647d]">
               九月前系統預設 90%，但後台手動設定會優先套用。九月後可設定
@@ -1252,7 +1254,7 @@ export default function AdminSalaryPage() {
                 </div>
               ))}
             </div>
-          </div>
+          </details>
 
           <div className="salary-order-form rounded-[28px] border border-pink-100 bg-white p-5 shadow-sm shadow-pink-100">
             <div className="flex items-center gap-2">
