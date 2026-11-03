@@ -26,8 +26,6 @@ import WorkReportReviewPanel, {
 import {
   dateTimeInputToTaipeiIso,
   formatTaipeiDateTime,
-  getPreviousTaipeiMonthEndInput,
-  getPreviousTaipeiMonthStartInput,
   getTaipeiDateTimeInput,
   getTaipeiMonthStartInput,
 } from "@/lib/taipeiTime";
@@ -148,13 +146,6 @@ export default function AdminSalaryPage() {
     amount: "",
     note: "",
     created_at: getNowInput(),
-  });
-
-  const [payForm, setPayForm] = useState({
-    discord_id: "all",
-    start: getPreviousMonthStartInput(),
-    end: getPreviousMonthEndInput(),
-    paid_at: getNowInput(),
   });
 
   const loadAllEffect = useEffectEvent(loadAll);
@@ -606,7 +597,7 @@ export default function AdminSalaryPage() {
   }
 
   async function markPaid(order: SalaryOrder) {
-    const paidAt = toIso(payForm.paid_at) || new Date().toISOString();
+    const paidAt = new Date().toISOString();
 
     const ok = confirm(
       `確定要將「${
@@ -631,57 +622,6 @@ export default function AdminSalaryPage() {
     }
 
     alert("已標記為已入帳");
-    await loadAll();
-  }
-
-  async function markRangePaid() {
-    const startIso = toIso(payForm.start);
-    const endIso = toIso(payForm.end);
-    const paidAt = toIso(payForm.paid_at) || new Date().toISOString();
-
-    if (!startIso || !endIso) {
-      alert("請選擇入帳時間段");
-      return;
-    }
-
-    const targetText =
-      payForm.discord_id === "all"
-        ? "全部員工"
-        : getStaffNameByDiscordId(payForm.discord_id);
-
-    const ok = confirm(
-      `確定要將「${targetText}」在此時間段內的訂單標記為已入帳嗎？\n\n` +
-        `訂單開始：${payForm.start}\n` +
-        `訂單結束：${payForm.end}\n` +
-        `入帳時間：${payForm.paid_at}`
-    );
-
-    if (!ok) return;
-
-    let query = supabase
-      .from("qiunai_salary_orders")
-      .update({
-        status: "已入帳",
-        paid_at: paidAt,
-      })
-      .or("is_deleted.eq.false,is_deleted.is.null")
-      .gte("order_finished_at", startIso)
-      .lte("order_finished_at", endIso)
-      .neq("status", "已入帳");
-
-    if (payForm.discord_id !== "all") {
-      query = query.eq("discord_id", payForm.discord_id);
-    }
-
-    const { error } = await query;
-
-    if (error) {
-      console.error("批次發薪失敗:", error);
-      alert("批次發薪失敗");
-      return;
-    }
-
-    alert("已完成批次發薪");
     await loadAll();
   }
 
@@ -1594,74 +1534,6 @@ export default function AdminSalaryPage() {
             </div>
           </div>
 
-          <div className="salary-pay-panel rounded-[28px] border border-pink-100 bg-white p-5 shadow-sm shadow-pink-100">
-            <h2 className="text-lg font-black text-[#3f2947]">發薪管理</h2>
-
-            <p className="mt-2 text-sm text-[#80647d]">
-              預設為上個月整個月，可自行調整時間段。
-            </p>
-
-            <div className="mt-5 grid gap-4 md:grid-cols-2">
-              <label className="block">
-                <span className="text-sm text-[#6f526d]">發薪對象</span>
-
-                <select
-                  value={payForm.discord_id}
-                  onChange={(e) =>
-                    setPayForm((prev) => ({
-                      ...prev,
-                      discord_id: e.target.value,
-                    }))
-                  }
-                  className="mt-2 w-full rounded-xl border border-pink-100 bg-pink-50 px-4 py-3 text-[#3f2947] outline-none"
-                >
-                  <option value="all">全部員工</option>
-
-                  {staffList.map((staff) => (
-                    <option key={staff.id} value={staff.discord_id}>
-                      {getDisplayStaffName(staff)}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <Input
-                label="訂單開始時間"
-                type="datetime-local"
-                value={payForm.start}
-                onChange={(value) =>
-                  setPayForm((prev) => ({ ...prev, start: value }))
-                }
-              />
-
-              <Input
-                label="訂單結束時間"
-                type="datetime-local"
-                value={payForm.end}
-                onChange={(value) =>
-                  setPayForm((prev) => ({ ...prev, end: value }))
-                }
-              />
-
-              <Input
-                label="入帳時間"
-                type="datetime-local"
-                value={payForm.paid_at}
-                onChange={(value) =>
-                  setPayForm((prev) => ({ ...prev, paid_at: value }))
-                }
-              />
-
-              <button
-                onClick={markRangePaid}
-                className="flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 py-3 font-semibold hover:bg-emerald-400 md:col-span-2"
-              >
-                <CheckCircle2 size={18} />
-                批次標記已入帳
-              </button>
-            </div>
-          </div>
-
           <div className="salary-orders-table overflow-x-auto rounded-[28px] border border-pink-100 bg-white shadow-sm shadow-pink-100">
             {loading ? (
               <div className="p-8 text-center text-[#80647d]">載入中...</div>
@@ -2259,14 +2131,6 @@ function getNowInput() {
 
 function getMonthStartInput() {
   return `${getTaipeiMonthStartInput()}T00:00`;
-}
-
-function getPreviousMonthStartInput() {
-  return `${getPreviousTaipeiMonthStartInput()}T00:00`;
-}
-
-function getPreviousMonthEndInput() {
-  return getPreviousTaipeiMonthEndInput();
 }
 
 function toIso(value: string) {

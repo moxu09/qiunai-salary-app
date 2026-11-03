@@ -551,11 +551,6 @@ textarea {
   order: 4;
 }
 
-.qiunai-admin-shell .salary-pay-panel {
-  grid-column: 2;
-  order: 4;
-}
-
 .qiunai-admin-shell .salary-orders-table {
   grid-column: 1 / -1;
   order: 5;
@@ -616,11 +611,6 @@ textarea {
   .qiunai-admin-shell .salary-deduction-form {
     grid-column: 2;
     grid-row: 5;
-  }
-
-  .qiunai-admin-shell .salary-pay-panel {
-    grid-column: 2;
-    grid-row: 6;
   }
 
   .qiunai-admin-shell .salary-orders-table {
