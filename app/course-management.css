@@ -22,3 +22,19 @@
 .service-console .course-check input[type=radio]{min-height:20px!important;padding:0!important}.service-console .course-quiz fieldset{background:#fff;color:#243348}
 .course-admin .course-attachment-row{display:flex;flex-wrap:wrap}.course-admin .course-attachment-row>button:first-child{flex:1;min-width:0;background:#edf2fb;color:#243348}.course-admin .course-attachment-row>button:last-child{background:#fff2f2;color:#8d263c;border-color:#d6a4ad}
 @media(max-width:820px){.course-admin-layout{grid-template-columns:minmax(0,1fr)}.course-admin-list{max-height:280px}.course-admin fieldset,.course-quiz fieldset{padding:12px}.course-admin-form{padding:16px!important}.course-editor-actions{gap:6px}.course-save-actions>*{width:100%;text-align:center}.course-admin .eip-collab-panel-head{flex-wrap:wrap;gap:12px}.course-admin-workspace .service-header h1{font-size:24px}.course-admin-workspace .eip-admin-workspace-tabs>button{flex:1 1 130px}}
+
+/* Keep the course reader in the page's normal scroll flow. */
+.hr-course-reader .hr-course-layout{grid-template-columns:minmax(0,1fr);gap:14px}
+.hr-course-select{display:grid;grid-template-columns:auto minmax(0,1fr);gap:12px;align-items:center;font-weight:800}
+.hr-course-select select{width:100%;min-width:0;min-height:44px;padding:9px 12px;border:1px solid var(--hr-border,#aebfd4);border-radius:10px;background:var(--hr-paper,#fff);color:var(--hr-ink,#243348)}
+.course-inline-attachment{display:grid;gap:8px;margin:8px 0 16px;min-width:0}
+.course-inline-attachment figure{margin:0;min-width:0;background:var(--hr-soft,#f2f5fc);border-radius:12px;padding:8px}
+.course-inline-attachment img{display:block;margin-inline:auto;max-width:100%;height:auto;object-fit:contain;border-radius:8px}
+.course-inline-attachment>button{width:100%}
+.workspace-knowledge-tabs{margin-top:-10px}
+.common-workspace-shell .admin-portal-content{width:100%;padding:22px clamp(14px,2.2vw,34px) 40px}
+.common-workspace-shell .admin-portal-sidebar{background:#17202d!important}
+.common-workspace-shell .admin-portal-brand{display:block;color:#fff!important}
+.common-workspace-shell .admin-portal-link{color:#d8e4ef!important}
+.common-workspace-shell .admin-portal-link.is-active{background:#243b53!important;color:#fff!important;border-left-color:#58b9ef}
+@media(max-width:600px){.hr-course-select{grid-template-columns:minmax(0,1fr);gap:5px}}

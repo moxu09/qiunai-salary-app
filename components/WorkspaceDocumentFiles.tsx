@@ -1,16 +1,19 @@
 "use client";
+/* eslint-disable @next/next/no-img-element -- private signed attachment URLs must not be sent to the public image optimizer */
 
 import { useCallback, useEffect, useState } from "react";
 import { Download, FileUp, Paperclip } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
-type WorkspaceFile = { path: string; name: string; size: number; createdAt: string };
+type WorkspaceFile = { path: string; name: string; size: number; createdAt: string; previewUrl?: string | null };
 type Props = {
   organization: "qiunai" | "deepnight";
   documentId: string;
   admin?: boolean;
   apiPath?: string;
   allowRemove?:boolean;
+  inlineImages?:boolean;
+  filterFiles?:(files:WorkspaceFile[])=>WorkspaceFile[];
   onChanged?:(version?:number)=>void;
 };
 
@@ -18,7 +21,8 @@ const fileSize = (bytes: number) => bytes >= 1024 * 1024
   ? `${(bytes / 1024 / 1024).toFixed(1)} MB`
   : `${Math.max(1, Math.ceil(bytes / 1024))} KB`;
 
-export default function WorkspaceDocumentFiles({ organization, documentId, admin = false, apiPath,allowRemove=false,onChanged }: Props) {
+export default function WorkspaceDocumentFiles({ organization, documentId, admin = false, apiPath,allowRemove=false,onChanged,inlineImages=false,filterFiles }: Props) {
+  const [unavailable, setUnavailable] = useState<string[]>([]);
   const [files, setFiles] = useState<WorkspaceFile[]>([]);
   const [archivedFiles,setArchivedFiles]=useState<WorkspaceFile[]>([]);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -46,7 +50,8 @@ export default function WorkspaceDocumentFiles({ organization, documentId, admin
     try {
       setLoading(true);
       setError("");
-      const result = await call("GET");
+      const result = await call("GET", inlineImages ? "&previews=1" : "");
+      setUnavailable([]);
       setFiles(Array.isArray(result.files) ? result.files : []);
       setArchivedFiles(result.archivedFiles||[]);
     } catch (caught) {
@@ -54,7 +59,7 @@ export default function WorkspaceDocumentFiles({ organization, documentId, admin
     } finally {
       setLoading(false);
     }
-  }, [call]);
+  }, [call, inlineImages]);
 
   useEffect(() => { void Promise.resolve().then(refresh); }, [refresh]);
 
@@ -97,13 +102,19 @@ export default function WorkspaceDocumentFiles({ organization, documentId, admin
     }catch(error){setError(error instanceof Error?error.message:'附件操作失敗');}finally{setBusy(false);}
   }
 
+  const shown = filterFiles ? filterFiles(files) : files;
+  if (inlineImages && !loading && !error && !shown.length) return null;
   return <section className="eip-workspace-files" aria-label="文件附件">
-    <div className="eip-collab-panel-head"><h3><Paperclip size={17} /> 附件</h3><span>{files.length} / 20 個</span></div>
+    <div className="eip-collab-panel-head"><h3><Paperclip size={17} /> 附件</h3><span>{shown.length}{admin ? " / 20" : ""} 個</span></div>
     {error ? <p className="eip-collab-alert" role="alert">{error}</p> : null}
     {notice ? <p className="eip-collab-notice" role="status">{notice}</p> : null}
-    {loading ? <p className="eip-collab-empty">正在讀取附件…</p> : files.length ? <div className="eip-workspace-file-list">
-      {files.map((file) => admin&&allowRemove?<div key={file.path} className="course-attachment-row"><button type="button" onClick={()=>void download(file)}><span><strong>{file.name}</strong><small>{fileSize(file.size)}</small></span><Download size={17}/></button><button type="button" disabled={busy} onClick={()=>void toggle(file)}>移除附件</button></div>:<button type="button" key={file.path} onClick={()=>void download(file)}><span><strong>{file.name}</strong><small>{fileSize(file.size)}</small></span><Download size={17}/></button>)}
+    {loading ? <p className="eip-collab-empty">正在讀取附件…</p> : shown.length ? <div className="eip-workspace-file-list">
+      {shown.map((file) => admin&&allowRemove?<div key={file.path} className="course-attachment-row"><button type="button" onClick={()=>void download(file)}><span><strong>{file.name}</strong><small>{fileSize(file.size)}</small></span><Download size={17}/></button><button type="button" disabled={busy} onClick={()=>void toggle(file)}>移除附件</button></div> : <div key={file.path} className={inlineImages ? "course-inline-attachment" : undefined}>
+        {inlineImages && file.previewUrl && !unavailable.includes(file.path) ? <figure><img src={file.previewUrl} alt={file.name} loading="lazy" referrerPolicy="no-referrer" onError={()=>setUnavailable(old=>old.includes(file.path)?old:[...old,file.path])}/></figure> : null}
+        <button type="button" onClick={()=>void download(file)}><span><strong>{file.name}</strong><small>{fileSize(file.size)}</small></span><Download size={17}/></button>
+      </div>)}
     </div> : <p className="eip-collab-empty">尚未上傳附件。</p>}
+    {inlineImages && shown.some(file=>unavailable.includes(file.path)) ? <button type="button" onClick={()=>void refresh()}>重新載入圖片</button> : null}
     {admin&&allowRemove&&archivedFiles.length?<details><summary>已移除附件 · {archivedFiles.length} 個</summary>{archivedFiles.map(file=><div key={file.path}><span>{file.name}</span><button type="button" disabled={busy} onClick={()=>void toggle(file,true)}>恢復附件</button></div>)}</details>:null}
     {admin ? <div className="eip-workspace-upload">
       <label>選擇檔案<input type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.ppt,.pptx,.txt,.rtf,.jpg,.jpeg,.png,.webp,.gif,.heic,.zip,.rar,.7z" onChange={(event) => setSelectedFile(event.target.files?.[0] || null)} /></label>

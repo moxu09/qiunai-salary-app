@@ -23,3 +23,8 @@ main.service-console.svc-workspace.service-store-deepnight{--svc-accent:#4b3b75;
 
 .svc-broadcast-tools{display:grid;gap:12px}.svc-resource-grid [id^=manual-]{scroll-margin-top:96px}
 @media(max-width:760px){.service-store-deepnight .svc-home-hero:after{background:linear-gradient(90deg,#131f42 65%,#131f42bd 100%)}}
+
+/* Scroll the document, rather than trapping the wheel in the service rail or its lists. */
+.svc-workspace .svc-rail{position:static;height:auto;overflow:visible;align-self:stretch}
+.svc-workspace .svc-topbar,.svc-workspace .svc-flow-toc{position:static}
+.svc-workspace .svc-template-options{max-height:none;overflow:visible}

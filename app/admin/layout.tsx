@@ -1,6 +1,12 @@
+import { headers } from "next/headers";
+import CommonWorkspaceShell from "@/components/CommonWorkspaceShell";
+import { isSupervisorHost } from "@/lib/hrHostRouting.mjs";
 import { Suspense } from "react";
 import AdminShell from "@/components/AdminShell";
-export default function AdminLayout({ children }: { children: React.ReactNode }) {
+export default async function AdminLayout({ children }: { children: React.ReactNode }) {
+  if (isSupervisorHost((await headers()).get("host"))) {
+    return <Suspense fallback={<p>正在載入共同 EIP 後台…</p>}><CommonWorkspaceShell>{children}</CommonWorkspaceShell></Suspense>;
+  }
   return (
     <Suspense
       fallback={

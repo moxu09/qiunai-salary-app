@@ -113,3 +113,13 @@ test('completion takes employee identity from authentication and rejects identit
  assert.equal((await handler(post({version:2}),context())).status,200);assert.deepEqual(calls[0],['qiunai',id,'123456789012345678',2]);
  assert.equal((await handler(post({version:1}),context())).status,409);
 });
+
+test("screenshots appear in the chapter that references the attachment, with general files in chapter one", async () => {
+  const {attachmentsForLesson}=await import("../lib/knowledgeCourses.mjs");
+  const chapters=knowledgeChapters("# 接單\n見圖 dispatch.webp。\n# 結單\n請照 finish.png 操作。\n# 其他\n沒有附圖。");
+  const files=["dispatch.webp","finish.png","補充資料.pdf"].map(name=>({name}));
+  assert.deepEqual(attachmentsForLesson(files,chapters,1).map(f=>f.name),["dispatch.webp","補充資料.pdf"]);
+  assert.deepEqual(attachmentsForLesson(files,chapters,2).map(f=>f.name),["finish.png"]);
+  assert.deepEqual(attachmentsForLesson(files,chapters,3),[]);
+  assert.deepEqual(attachmentsForLesson(files,chapters,999),[]);
+});

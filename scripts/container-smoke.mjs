@@ -95,6 +95,17 @@ async function readHost(hostname, path) {
     request.on("error", reject);
   });
 }
+for(const path of ["/admin/workspace","/admin/department/qiunai/workspace"]){
+ const workspace=await readHost("eip.wearestilllhere.com",path);
+ assert.equal(workspace.status,200,path);
+ assert.match(workspace.body,/<title>[^<]*協作工作台/);
+ assert.ok(!workspace.location,"協作工作台不可跳頁");
+}
+for(const path of ["/api/qiunai/workspace?admin=1","/api/deepnight/workspace?admin=1"]){
+ const workspace=await readHost("eip.wearestilllhere.com",path);
+ assert.equal(workspace.status,401,path);
+ assert.equal(JSON.parse(workspace.body).ok,false);
+}
 const supervisor = await readHost("eip.wearestilllhere.com", "/");
 assert.equal(supervisor.status, 200, "主管網域入口載入失敗");
 assert.ok(supervisor.body.includes("<title>深夜不關燈 EIP</title>"), "主管網域必須顯示既有主管應用程式");

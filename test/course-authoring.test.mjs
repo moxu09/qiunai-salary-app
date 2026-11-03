@@ -23,6 +23,7 @@ test('authoring keeps courses private, enforces store/manager/version, protects 
  await assert.rejects(()=>db.query('select save_managed_course($1,$2,$3,$4,$5)',['deepnight',manager,c.id,c.version,course()]),/管理課程/);
  await assert.rejects(()=>save(db,course(),c.id,c.version+1),/已被修改/);
  await assert.rejects(()=>db.exec("update eip_workspace_documents set body='legacy edit'"),/課程管理/);
+ await assert.rejects(()=>db.exec('update eip_workspace_documents set is_published=true'),/客服課程只能/);
  const updated=await save(db,{...course(),title:'新版'},c.id,c.version);assert.equal(updated.version,c.version+1);
  assert.equal((await db.query('select count(*)::int n from eip_workspace_document_revisions')).rows[0].n,1);
 }finally{await db.close();}});

@@ -1,4 +1,5 @@
-import {Suspense} from 'react';
-import CourseAdminWorkspace from '@/components/CourseAdminWorkspace';
-export default function Page(){return <Suspense fallback={<p>正在載入協作後台…</p>}><CourseAdminWorkspace/></Suspense>;}
-export const metadata={title:'協作與課程管理｜秋奈 × 深夜'};
+import { redirect } from "next/navigation";
+export default async function LegacyCourseManagement({searchParams}:{searchParams:Promise<{department?:string}>}) {
+  const {department}=await searchParams;
+  redirect(department==="qiunai"?"/admin/department/qiunai/workspace":"/admin/workspace");
+}

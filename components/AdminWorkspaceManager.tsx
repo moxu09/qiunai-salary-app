@@ -84,11 +84,12 @@ export default function AdminWorkspaceManager({ organization }: { organization: 
       setActorRole(String(result.actorRole || ""));
       setWorkspaceSummary(result.workspaceSummary || { upcomingEvents: 0, publishedDocuments: 0, activeTemplates: 0 });
       setRequestPagination(result.requestPagination || { page: 1, pageSize: 25, total: 0 });
+      setError("");
       const notificationResponse = await fetch(`/api/${organization}/admin-notifications`, {
         cache: "no-store", headers: { Authorization: `Bearer ${auth.session.access_token}` },
-      });
-      if (notificationResponse.ok) {
-        const notifications = await notificationResponse.json();
+      }).catch(() => null);
+      if (notificationResponse?.ok) {
+        const notifications = await notificationResponse.json().catch(() => ({}));
         setHrPending(Number(notifications.approvals || 0));
       } else setHrPending(null);
       setError("");
@@ -101,7 +102,7 @@ export default function AdminWorkspaceManager({ organization }: { organization: 
     setPendingFiles([]);
     if (next === "overview") { setRequestStatus("pending"); setRequestPage(1); setOverdueOnly(false); }
     setForm(next === "decision" || next === "overview" || next === "hr-approvals" || next === 'course' ? {} : { ...initial[next] });
-    setError(""); setNotice("");
+    setNotice("");
   }
   function edit(kind: Kind, item: Item) {
     choose(kind); setEditing(item);
@@ -230,14 +231,18 @@ export default function AdminWorkspaceManager({ organization }: { organization: 
   const upcomingEvents = data.events.filter((item) => Boolean(item.is_published) && new Date(String(item.ends_at)).getTime() >= observedAt);
   return <main className="eip-admin-workspace">
     <div className="eip-collab-hero"><div><p className="eip-collab-eyebrow">TEAM OPERATIONS</p><h1>協作工作台</h1><p>從待辦簽核到日程、文件和流程設定，前後台同步處理。</p></div><button className="eip-collab-refresh" onClick={() => void refresh()}>重新整理</button></div>
-    {error ? <p className="eip-collab-alert" role="alert">{error}</p> : null}
+    {error && section !== 'course' ? <p className="eip-collab-alert" role="alert">{error}</p> : null}
     {notice ? <p className="eip-collab-notice" role="status">{notice}</p> : null}
     <div className="eip-admin-workspace-tabs">
-      {([["overview", "總覽", LayoutDashboard], ["decision", "流程簽核", ClipboardCheck], ["hr-approvals", "行政／人事簽核", ClipboardCheck], ["event", "團隊日程", CalendarDays], ["document", "文件／知識庫", BookOpenText], ['course','課程管理',BookOpenText], ["template", "流程設定", FileText]] as const).map(([kind, label, Icon]) =>
-        <button key={kind} onClick={() => choose(kind)} className={section === kind ? "is-active" : ""}><Icon size={17} /> {label}</button>)}
+      {([["overview", "總覽", LayoutDashboard], ["decision", "流程簽核", ClipboardCheck], ["hr-approvals", "行政／人事簽核", ClipboardCheck], ["event", "團隊日程", CalendarDays], ['course','文件／知識庫',BookOpenText], ["template", "流程設定", FileText]] as const).map(([kind, label, Icon]) =>
+        <button key={kind} onClick={() => choose(kind)} className={section === kind || kind === "course" && section === "document" ? "is-active" : ""}><Icon size={17} /> {label}</button>)}
     </div>
+    {section==='course'||section==='document'?<div className="eip-admin-workspace-tabs workspace-knowledge-tabs" aria-label="知識庫內容">
+      <button type="button" aria-pressed={section==='course'} className={section==='course'?'is-active':''} onClick={()=>choose('course')}>課程管理</button>
+      <button type="button" aria-pressed={section==='document'} className={section==='document'?'is-active':''} onClick={()=>choose('document')}>共享文件與文章</button>
+    </div>:null}
     {section==='course'?<AdminCourseManager key={organization} organization={organization}/>:null}
-    {loading ? <p className="eip-collab-empty">正在讀取管理資料…</p> : null}
+    {loading && section!=='course' ? <p className="eip-collab-empty">正在讀取管理資料…</p> : null}
     {!loading && section === "overview" ? <>
       <div className="eip-admin-overview-stats">
         <button onClick={() => choose("decision")}><ClipboardCheck size={21} /><strong>{requestSummary.pending}</strong><span>待處理流程申請</span><ArrowRight size={16} /></button>
