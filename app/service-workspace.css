@@ -50,3 +50,181 @@ main.service-console.svc-workspace.service-store-deepnight{--svc-accent:#4b3b75;
    rail's sticky position follows the viewport, not a non-scrolling ancestor. */
 html:has(.svc-workspace),body:has(.svc-workspace){overflow-x:clip;overflow-y:visible}
 main.service-console.svc-workspace{overflow-x:clip;overflow-y:visible}
+
+/* Keep daily tools close to the top, with full-width links and quiet queue previews. */
+.svc-home {
+  gap: 16px;
+}
+.svc-home-hero {
+  min-height: 188px;
+}
+.svc-hero-content {
+  max-width: 66%;
+  padding: 24px clamp(20px, 3vw, 36px);
+  gap: 7px;
+}
+.svc-hero-content h1 {
+  font-size: clamp(28px, 3.4vw, 42px) !important;
+}
+.svc-hero-content .svc-kicker {
+  letter-spacing: .05em;
+  font-size: 13px;
+}
+.svc-hero-actions {
+  margin-top: 6px;
+}
+.svc-home .svc-shortcut-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+.svc-home .svc-shortcut {
+  min-height: 76px;
+  padding: 12px;
+}
+.svc-shortcut .svc-icon-bubble {
+  width: 36px;
+  height: 36px;
+  flex: none;
+}
+.svc-shortcut strong {
+  font-size: 15px;
+}
+.svc-shortcut .svc-shortcut-copy {
+  gap: 2px;
+}
+.svc-shortcut .svc-shortcut-arrow {
+  color: var(--svc-muted);
+}
+.svc-home .svc-campaign-banner {
+  padding: 10px 14px;
+}
+.svc-home .svc-campaign-banner > svg {
+  flex: none;
+}
+.svc-home :is(.svc-home-main, .svc-home-rail) {
+  gap: 14px;
+}
+.svc-home .svc-workflow-panel {
+  padding: 16px;
+}
+.svc-home .svc-flow-tile {
+  min-height: 132px;
+  padding: 12px;
+  gap: 5px;
+  align-content: stretch;
+  grid-template-rows: auto auto 1fr auto;
+}
+.svc-home .svc-flow-tile .svc-icon-bubble {
+  width: 35px;
+  height: 35px;
+}
+.svc-home .svc-flow-tile strong {
+  font-size: 15px;
+}
+.svc-home .svc-queue-card {
+  padding: 13px 15px;
+}
+.svc-home .svc-queue-card .svc-section-title {
+  margin-bottom: 4px;
+}
+.svc-home .svc-queue-card h2 {
+  min-width: 0;
+  font-size: 16px !important;
+}
+.svc-queue-card .svc-quick-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.svc-queue-card li > a {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 44px;
+  padding: 7px 3px;
+  border-bottom: 1px solid var(--svc-line);
+  color: var(--svc-ink);
+  text-decoration: none;
+}
+.svc-queue-card li:last-child > a {
+  border-bottom: 0;
+}
+.svc-queue-card li > a:hover {
+  background: var(--svc-soft);
+}
+.svc-queue-card li strong {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+.svc-queue-card li small {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+.svc-queue-card .svc-queue-empty {
+  font-size: 13px;
+  color: var(--svc-muted);
+}
+.svc-workspace .svc-mobile-menu > button {
+  justify-content: space-between;
+}
+.svc-mobile-menu button[aria-expanded="true"] svg {
+  transform: rotate(180deg);
+}
+@media (max-width: 1180px) {
+  .svc-home .svc-shortcut-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 760px) {
+  .svc-home {
+    gap: 12px;
+  }
+  .svc-home-hero {
+    min-height: 168px;
+  }
+  .svc-hero-content {
+    max-width: 100%;
+    padding: 17px;
+  }
+  .svc-hero-content p {
+    max-width: 28ch;
+    font-size: 13px;
+  }
+  .svc-home-hero:after {
+    background: linear-gradient(90deg, var(--svc-hero) 60%, color-mix(in srgb, var(--svc-hero) 70%, transparent));
+  }
+  .svc-home .svc-shortcut {
+    min-height: 68px;
+    padding: 9px;
+    gap: 7px;
+  }
+  .svc-home .svc-shortcut .svc-icon-bubble {
+    width: 30px;
+    height: 30px;
+  }
+  .svc-home .svc-shortcut-arrow {
+    display: none;
+  }
+  .svc-workspace .svc-topbar-controls select {
+    width: clamp(105px, 33vw, 145px);
+  }
+}
+@media (max-width: 420px) {
+  .svc-home .svc-workflow-panel {
+    padding: 11px;
+  }
+  .svc-home .svc-flow-tile {
+    min-height: 132px;
+    padding: 9px;
+  }
+  .svc-home .svc-shortcut strong {
+    font-size: 14px;
+  }
+  .svc-home .svc-shortcut small {
+    font-size: 11px;
+  }
+}
