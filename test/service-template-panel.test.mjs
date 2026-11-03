@@ -3,13 +3,13 @@ import assert from 'node:assert/strict';
 import {createServiceTemplatePanel} from '../lib/serviceTemplatePanel.cjs';
 const actor='123456789012345678',other='223456789012345678',id='11111111-1111-4111-8111-111111111111';
 const template={id,organization_code:'qiunai',version:1,is_active:true,title:'六欄模板',category:'播報',body:'{{f0}} {{f5}}',fields:Array.from({length:6},(_,i)=>({key:`f${i}`,label:`欄位${i}`,type:'text',required:true}))};
-function fixture(tipGifts=[]){
+function fixture(tipGifts=[],loadHeartGifts){
  let clock=Date.now();const state={template:structuredClone(template),assignment:null,staff:{discord_id:actor,is_active:true},registry:{message_id:null},messages:new Map(),sends:0,edits:0};
  const supabase={from(table){const filters=[];let update=null,selected=false;const query={select(){selected=true;return this;},eq(key,value){filters.push([key,value]);return this;},gt(){return this;},order(){return this;},update(value){update=value;return this;},async maybeSingle(){return {data:table==='erp_role_assignments'?state.assignment:table==='qiunai_staff'?state.staff:state.template,error:null};},then(resolve,reject){return Promise.resolve().then(()=>{if(table==='service_templates')return {data:[state.template],error:null};if(table==='service_panel_registry'){const owner=filters.find(([key])=>key==='lease_owner')?.[1];if(owner&&owner!==state.registry.lease_owner)return {data:[],error:null};Object.assign(state.registry,update);return {data:selected?[{message_id:state.registry.message_id}]:null,error:null};}throw Error('unexpected table');}).then(resolve,reject);}};return query;},async rpc(){state.registry.lease_owner='unused';return {data:{...state.registry},error:null};}};
  // Preserve the owner UUID supplied by the production lease function.
  supabase.rpc=async(_name,args)=>{state.registry.lease_owner=args.p_owner;return {data:{...state.registry},error:null};};
  const channel={guildId:'1513174069087047731',isTextBased:()=>true,messages:{async fetch(key){if(typeof key==='object')return state.messages;if(state.messages.has(key))return state.messages.get(key);throw Object.assign(Error('missing'),{code:10008});}},async send(data){state.sends++;const message={id:String(state.sends),author:{id:'bot'},embeds:data.embeds,components:data.components,async edit(data){state.edits++;message.embeds=data.embeds;message.components=data.components;},async delete(){state.messages.delete(message.id);}};state.messages.set(message.id,message);return message;}};
- const panel=createServiceTemplatePanel({client:{user:{id:'bot'},channels:{fetch:async()=>channel}},supabase,organization:'qiunai',tipGifts,now:()=>clock});
+ const panel=createServiceTemplatePanel({client:{user:{id:'bot'},channels:{fetch:async()=>channel}},supabase,organization:'qiunai',tipGifts,loadHeartGifts,now:()=>clock});
  function interaction(customId,options={}){const calls=[];return {customId,guildId:channel.guildId,channelId:'1566885603637854269',user:{id:actor},member:{roles:['1513203868895412305']},values:[id],calls,...options,async reply(data){calls.push(['reply',data]);this.replied=true;},async deferReply(data){calls.push(['defer',data]);this.deferred=true;},async editReply(data){calls.push(['edit',data]);},async showModal(data){calls.push(['modal',data]);this.replied=true;}};}
  return {state,panel,interaction,advance:()=>{clock+=16*60*1000;}};
 }
@@ -52,4 +52,21 @@ test('one existing panel directly lists shop gifts and templates, and chosen gif
  const custom=f.interaction('svc:gift',{values:['tip_custom']});
  await f.panel.handleInteraction(custom);
  assert.ok(custom.calls[0][1].components.flatMap(row=>row.components).some(field=>field.custom_id==='f2'));
+});
+
+test('heart broadcast lists official heart gifts and prefills the heart-specific name field',async()=>{
+ const heart=[{key:'心動測試禮物',name:'心動測試禮物',price:520}];
+ const f=fixture([],async()=>heart);
+ f.state.template={...template,slug:'heart-gift-broadcast',title:'心動禮物播報',
+  fields:template.fields.map((field,index)=>index===2?{...field,label:'心動禮物名稱'}:field)};
+ const choose=f.interaction('svc:template');
+ await f.panel.handleInteraction(choose);
+ const picker=choose.calls.at(-1)[1].components[0].components[0];
+ assert.equal(picker.custom_id,'svc:heart');
+ assert.equal(picker.options[0].label,heart[0].name);
+ const gift=f.interaction(picker.custom_id,{values:[heart[0].key]});
+ await f.panel.handleInteraction(gift);
+ const modal=gift.calls[0][1];
+ assert.match(modal.title,/心動測試禮物/);
+ assert.deepEqual(modal.components.map(row=>row.components[0].custom_id),['f0','f1','f3','f4','f5']);
 });
