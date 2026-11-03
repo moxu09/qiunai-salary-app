@@ -207,7 +207,7 @@ export default function CommonWorkspaceShell({ children }: { children: React.Rea
             >
               <p className="text-xs font-bold tracking-[0.18em]">共同 EIP 後台</p>
               <p className="mt-2 text-lg font-black">{company}</p>
-              <p className="mt-2 text-xs font-bold text-slate-400">
+              <p className="workspace-role mt-2 text-xs font-bold">
                 {ERP_ROLE_LABELS[access.role as keyof typeof ERP_ROLE_LABELS]}
               </p>
             </a>
@@ -216,16 +216,17 @@ export default function CommonWorkspaceShell({ children }: { children: React.Rea
               <div className="mx-3 mb-3 mt-3 rounded-2xl border border-slate-700 bg-slate-800/80 p-2 lg:mt-0">
                 <a
                   href="/admin"
-                  className={`flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-black transition ${
-                    pathname === "/admin"
-                      ? "bg-violet-500 text-white"
-                      : "text-slate-300 hover:bg-slate-700"
-                  }`}
+                  className="workspace-shortcut flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-black transition"
+                  aria-current={pathname === "/admin" ? "page" : undefined}
                 >
                   <Building2 size={14} />
                   兩家合併總覽
                 </a>
-                <a href="/admin/finance-erp-installers" className={`mt-1 flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-black ${pathname === '/admin/finance-erp-installers' ? 'bg-violet-500 text-white' : 'text-slate-300 hover:bg-slate-700'}`}>
+                <a
+                  href="/admin/finance-erp-installers"
+                  className="workspace-shortcut mt-1 flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-black transition"
+                  aria-current={pathname === "/admin/finance-erp-installers" ? "page" : undefined}
+                >
                   <FolderDown size={14} />財務 ERP 下載
                 </a>
               </div>
@@ -256,7 +257,7 @@ export default function CommonWorkspaceShell({ children }: { children: React.Rea
                     {notificationCount > 0 ? (
                       <span
                         aria-label={href.endsWith("/workspace") ? `${label}有 ${notificationCount} 筆超時流程` : `${label}有 ${notificationCount} 筆待處理`}
-                        className="ml-auto inline-flex min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 py-0.5 text-[11px] font-black leading-none text-white shadow-sm shadow-red-950/30"
+                        className="workspace-badge ml-auto inline-flex min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 py-0.5 text-[11px] font-black leading-none shadow-sm shadow-red-950/30"
                       >
                         {notificationCount > 99 ? "99+" : notificationCount}
                       </span>

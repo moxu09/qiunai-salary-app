@@ -75,6 +75,19 @@ html:has(.common-workspace-shell), body:has(.common-workspace-shell) {
 .common-workspace-shell .admin-portal-brand p:first-child {
   color: #9fb3c8;
 }
+.common-workspace-shell .workspace-role {
+  color: var(--color-slate-400);
+}
+.common-workspace-shell .workspace-shortcut {
+  color: var(--color-slate-300);
+}
+.common-workspace-shell .workspace-shortcut:hover {
+  background: var(--color-slate-700);
+}
+.common-workspace-shell .workspace-shortcut[aria-current="page"] {
+  background: #243b53;
+  color: #fff;
+}
 .common-workspace-shell .workspace-nav {
   display: flex;
   flex-direction: column;
@@ -95,16 +108,21 @@ html:has(.common-workspace-shell), body:has(.common-workspace-shell) {
   color: #d8e4ef !important;
 }
 .common-workspace-shell .admin-portal-link:hover {
-  background: #ffffff14;
+  background: #ffffff14 !important;
   color: #fff !important;
 }
 .common-workspace-shell .admin-portal-link.is-active {
   border-left-color: #58b9ef;
   background: #243b53 !important;
   color: #fff !important;
+  box-shadow: inset 0 0 0 1px #58b9ef14 !important;
 }
 .common-workspace-shell .admin-portal-link svg {
   flex: none;
+  color: inherit !important;
+}
+.common-workspace-shell .workspace-badge {
+  color: #fff;
 }
 .common-workspace-shell .eip-admin-workspace {
   width: 100%;
