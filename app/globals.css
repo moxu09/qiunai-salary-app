@@ -2230,3 +2230,13 @@ main.service-console.service-store-deepnight{background:radial-gradient(ellipse 
 @media(max-width:760px){main.service-console{padding:18px 14px!important}.service-console h1{font-size:19px!important}.service-console .service-hero h2{font-size:27px!important}.service-console button{font-size:16px!important}}
 
 .service-staff-directory{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(240px,100%),1fr));gap:10px;margin-top:18px}.service-staff-directory a{display:grid;gap:6px;border:1px solid var(--svc-line);border-radius:12px;padding:14px;min-height:70px;overflow-wrap:anywhere;text-decoration:none}.service-staff-directory a span{font-size:13px}
+
+.hr-commission-details {
+  margin-top: 12px;
+}
+
+.hr-commission-details > summary {
+  padding-block: 6px;
+  cursor: pointer;
+  font-weight: 700;
+}
