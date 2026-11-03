@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState, type FormEvent } from "react";
-import { ArrowRight, BookOpenText, CalendarDays, ClipboardCheck, FileText, FileUp, LayoutDashboard, Plus, Save } from "lucide-react";
+import { ArrowRight, BookOpenText, CalendarDays, ClipboardCheck, FileText, FileUp, GraduationCap, LayoutDashboard, Plus, Save } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import WorkspaceDocumentFiles from "@/components/WorkspaceDocumentFiles";
 import AdminApprovals from "@/components/AdminApprovals";
@@ -233,14 +233,20 @@ export default function AdminWorkspaceManager({ organization }: { organization: 
     <div className="eip-collab-hero"><div><p className="eip-collab-eyebrow">TEAM OPERATIONS</p><h1>協作工作台</h1><p>從待辦簽核到日程、文件和流程設定，前後台同步處理。</p></div><button className="eip-collab-refresh" onClick={() => void refresh()}>重新整理</button></div>
     {error && section !== 'course' ? <p className="eip-collab-alert" role="alert">{error}</p> : null}
     {notice ? <p className="eip-collab-notice" role="status">{notice}</p> : null}
-    <div className="eip-admin-workspace-tabs">
-      {([["overview", "總覽", LayoutDashboard], ["decision", "流程簽核", ClipboardCheck], ["hr-approvals", "行政／人事簽核", ClipboardCheck], ["event", "團隊日程", CalendarDays], ['course','文件／知識庫',BookOpenText], ["template", "流程設定", FileText]] as const).map(([kind, label, Icon]) =>
-        <button key={kind} onClick={() => choose(kind)} className={section === kind || kind === "course" && section === "document" ? "is-active" : ""}><Icon size={17} /> {label}</button>)}
-    </div>
-    {section==='course'||section==='document'?<div className="eip-admin-workspace-tabs workspace-knowledge-tabs" aria-label="知識庫內容">
-      <button type="button" aria-pressed={section==='course'} className={section==='course'?'is-active':''} onClick={()=>choose('course')}>課程管理</button>
-      <button type="button" aria-pressed={section==='document'} className={section==='document'?'is-active':''} onClick={()=>choose('document')}>共享文件與文章</button>
-    </div>:null}
+    <nav className="eip-admin-workspace-tabs" aria-label="協作功能">
+      {([
+        ["overview", "總覽", LayoutDashboard],
+        ["decision", "流程簽核", ClipboardCheck],
+        ["hr-approvals", "行政／人事簽核", ClipboardCheck],
+        ["event", "團隊日程", CalendarDays],
+        ["document", "知識庫", BookOpenText],
+        ["course", "課程管理", GraduationCap],
+        ["template", "流程設定", FileText],
+      ] as const).map(([kind, label, Icon]) =>
+        <button key={kind} type="button" onClick={() => choose(kind)} aria-pressed={section === kind}
+          className={section === kind ? "is-active" : ""}><Icon size={17} /> <span>{label}</span></button>
+      )}
+    </nav>
     {section==='course'?<AdminCourseManager key={organization} organization={organization}/>:null}
     {loading && section!=='course' ? <p className="eip-collab-empty">正在讀取管理資料…</p> : null}
     {!loading && section === "overview" ? <>
@@ -266,7 +272,7 @@ export default function AdminWorkspaceManager({ organization }: { organization: 
     </> : null}
     {!loading && section !== "decision" && section !== "overview" && section !== "hr-approvals" && section !== 'course' ? <div className="eip-collab-columns">
       <form className="eip-collab-panel eip-collab-form" onSubmit={(event) => void submit(event)}>
-        <h2>{editing ? "編輯" : "新增"}{section === "event" ? "日程" : section === "document" ? "文章" : "流程"}</h2>
+        <h2>{editing ? "編輯" : "新增"}{section === "event" ? "日程" : section === "document" ? "文件／文章" : "流程"}</h2>
         {section === "event" ? <>
           <label>標題<input required maxLength={120} value={String(form.title || "")} onChange={(event) => update("title", event.target.value)} /></label>
           <div className="eip-collab-form-grid"><label>開始時間<input type="datetime-local" required value={String(form.startsAt || "")} onChange={(event) => update("startsAt", event.target.value)} /></label><label>結束時間<input type="datetime-local" required value={String(form.endsAt || "")} onChange={(event) => update("endsAt", event.target.value)} /></label></div>

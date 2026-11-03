@@ -1,7 +1,6 @@
 "use client";
 
-/* eslint-disable @next/next/no-html-link-for-pages -- the other supervisor pages run on a separate upstream Next.js build */
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import {
   BarChart3,
@@ -9,6 +8,7 @@ import {
   ClipboardCheck,
   CalendarHeart,
   Coins,
+  ChevronDown,
   Cpu,
   FileSpreadsheet,
   FolderDown,
@@ -98,6 +98,24 @@ export default function CommonWorkspaceShell({ children }: { children: React.Rea
     (auditOnly &&
       (pathname === deviceAuditHref ||
         pathname.startsWith(`${deviceAuditHref}/`)));
+  const railContent = useRef<HTMLDivElement>(null);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  useEffect(() => {
+    const panel = railContent.current;
+    if (!panel) return;
+    const position = () => {
+      const top = Math.min(0, window.innerHeight - panel.offsetHeight);
+      panel.style.setProperty("--workspace-rail-top", `${top}px`);
+    };
+    const observer = new ResizeObserver(position);
+    observer.observe(panel);
+    window.addEventListener("resize", position);
+    position();
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", position);
+    };
+  }, [loading, access?.isAdmin, allowedPath]);
   const links = makeAdminLinks(currentOrganization).filter(
     (link) =>
       (!supportOnly && !auditOnly) ||
@@ -182,75 +200,84 @@ export default function CommonWorkspaceShell({ children }: { children: React.Rea
   }
 
   return (
-    <div className="common-workspace-shell admin-portal-shell min-h-screen bg-slate-100 lg:grid lg:grid-cols-[240px_minmax(0,1fr)]">
-      <aside className="admin-portal-sidebar sticky top-0 z-50 overflow-x-auto bg-[#17202d] text-white lg:h-screen lg:overflow-y-auto">
-        <a
-          href={owner && !supportOnly && !auditOnly ? "/admin" : fallbackHref}
-          className="admin-portal-brand hidden lg:block"
-        >
-          <p className="text-xs font-bold tracking-[0.18em]">共同 EIP 後台</p>
-          <p className="mt-2 text-lg font-black">{company}</p>
-          <p className="mt-2 text-xs font-bold text-slate-400">
-            {ERP_ROLE_LABELS[access.role as keyof typeof ERP_ROLE_LABELS]}
-          </p>
-        </a>
-
-        {owner ? (
-          <div className="mx-3 mb-3 mt-3 rounded-2xl border border-slate-700 bg-slate-800/80 p-2 lg:mt-0">
+    <div className="common-workspace-shell admin-portal-shell">
+      <aside className="admin-portal-sidebar workspace-rail">
+        <div className="workspace-rail-content" ref={railContent}>
+          <button type="button" className="workspace-menu-toggle" aria-controls="workspace-navigation" aria-expanded={mobileMenuOpen}
+            onClick={() => setMobileMenuOpen(open => !open)}>
+            <span>{company} · EIP 導覽</span><ChevronDown size={18}/>
+          </button>
+          <div id="workspace-navigation" className={mobileMenuOpen ? "workspace-navigation is-open" : "workspace-navigation"}>
             <a
-              href="/admin"
-              className={`flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-black transition ${
-                pathname === "/admin"
-                  ? "bg-violet-500 text-white"
-                  : "text-slate-300 hover:bg-slate-700"
-              }`}
+              href={owner && !supportOnly && !auditOnly ? "/admin" : fallbackHref}
+              className="admin-portal-brand"
             >
-              <Building2 size={14} />
-              兩家合併總覽
+              <p className="text-xs font-bold tracking-[0.18em]">共同 EIP 後台</p>
+              <p className="mt-2 text-lg font-black">{company}</p>
+              <p className="mt-2 text-xs font-bold text-slate-400">
+                {ERP_ROLE_LABELS[access.role as keyof typeof ERP_ROLE_LABELS]}
+              </p>
             </a>
-            <a href="/admin/finance-erp-installers" className={`mt-1 flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-black ${pathname === '/admin/finance-erp-installers' ? 'bg-violet-500 text-white' : 'text-slate-300 hover:bg-slate-700'}`}>
-              <FolderDown size={14} />財務 ERP 下載
-            </a>
-          </div>
-        ) : null}
 
-        {owner ? <div className="mx-3 mb-3 flex flex-wrap gap-2 px-2 text-xs font-bold text-slate-200" aria-label="切換協作店家">
-          <a href="/admin/workspace" aria-current={currentOrganization === "deepnight" ? "page" : undefined}>深夜協作</a>
-          <a href="/admin/department/qiunai/workspace" aria-current={currentOrganization === "qiunai" ? "page" : undefined}>秋奈協作</a>
-        </div> : null}
-        <nav className="admin-portal-nav flex min-w-max lg:min-w-0 lg:flex-col">
-          {links.map(({ href, label, icon: Icon }) => {
-            const active =
-              pathname === href || pathname.startsWith(`${href}/`);
-            const notificationCount = href.endsWith("/payroll")
-              ? notificationCounts.payroll
-              : href.endsWith("/approvals")
-                ? notificationCounts.approvals
-                : href.endsWith("/workspace")
-                  ? notificationCounts.workflowOverdue
-                : 0;
-            return (
-              <a
-                key={href}
-                href={href}
-                className={`admin-portal-link flex items-center gap-3 text-sm font-bold transition ${
-                  active ? "is-active" : ""
-                }`}
-              >
-                <Icon size={18} />
-                <span className="min-w-0 flex-1">{label}</span>
-                {notificationCount > 0 ? (
-                  <span
-                    aria-label={href.endsWith("/workspace") ? `${label}有 ${notificationCount} 筆超時流程` : `${label}有 ${notificationCount} 筆待處理`}
-                    className="ml-auto inline-flex min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 py-0.5 text-[11px] font-black leading-none text-white shadow-sm shadow-red-950/30"
+            {owner ? (
+              <div className="mx-3 mb-3 mt-3 rounded-2xl border border-slate-700 bg-slate-800/80 p-2 lg:mt-0">
+                <a
+                  href="/admin"
+                  className={`flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-black transition ${
+                    pathname === "/admin"
+                      ? "bg-violet-500 text-white"
+                      : "text-slate-300 hover:bg-slate-700"
+                  }`}
+                >
+                  <Building2 size={14} />
+                  兩家合併總覽
+                </a>
+                <a href="/admin/finance-erp-installers" className={`mt-1 flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-black ${pathname === '/admin/finance-erp-installers' ? 'bg-violet-500 text-white' : 'text-slate-300 hover:bg-slate-700'}`}>
+                  <FolderDown size={14} />財務 ERP 下載
+                </a>
+              </div>
+            ) : null}
+
+            {owner ? <div className="mx-3 mb-3 flex flex-wrap gap-2 px-2 text-xs font-bold text-slate-200" aria-label="切換協作店家">
+              <a href="/admin/workspace" aria-current={currentOrganization === "deepnight" ? "page" : undefined}>深夜協作</a>
+              <a href="/admin/department/qiunai/workspace" aria-current={currentOrganization === "qiunai" ? "page" : undefined}>秋奈協作</a>
+            </div> : null}
+            <nav className="admin-portal-nav" aria-label="EIP 後台導覽">
+              {links.map(({ href, label, icon: Icon }) => {
+                const active =
+                  pathname === href || pathname.startsWith(`${href}/`);
+                const notificationCount = href.endsWith("/payroll")
+                  ? notificationCounts.payroll
+                  : href.endsWith("/approvals")
+                    ? notificationCounts.approvals
+                    : href.endsWith("/workspace")
+                      ? notificationCounts.workflowOverdue
+                    : 0;
+                return (
+                  <a
+                    key={href}
+                    href={href}
+                    aria-current={active ? "page" : undefined}
+                    className={`admin-portal-link flex items-center gap-3 text-sm font-bold transition ${
+                      active ? "is-active" : ""
+                    }`}
                   >
-                    {notificationCount > 99 ? "99+" : notificationCount}
-                  </span>
-                ) : null}
-              </a>
-            );
-          })}
-        </nav>
+                    <Icon size={18} />
+                    <span className="min-w-0 flex-1">{label}</span>
+                    {notificationCount > 0 ? (
+                      <span
+                        aria-label={href.endsWith("/workspace") ? `${label}有 ${notificationCount} 筆超時流程` : `${label}有 ${notificationCount} 筆待處理`}
+                        className="ml-auto inline-flex min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 py-0.5 text-[11px] font-black leading-none text-white shadow-sm shadow-red-950/30"
+                      >
+                        {notificationCount > 99 ? "99+" : notificationCount}
+                      </span>
+                    ) : null}
+                  </a>
+                );
+              })}
+            </nav>
+          </div>
+        </div>
       </aside>
       <div className="admin-portal-content min-w-0">
         {children}
