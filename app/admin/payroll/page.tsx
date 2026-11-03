@@ -15,6 +15,7 @@ import {
   WalletCards,
   XCircle,
 } from "lucide-react";
+import { ERP_OWNER_DISCORD_ID } from "@/lib/erpRoles";
 import { supabase } from "@/lib/supabase";
 import { useQiunaiAdminGuard } from "@/lib/useQiunaiAdminGuard";
 import {
@@ -136,7 +137,8 @@ const DEFAULT_WALLET_OPTIONS: Record<WalletOptionKey, boolean> = {
 };
 
 export default function AdminPayrollPage() {
-  const { adminLoading, isAdmin } = useQiunaiAdminGuard();
+  const { adminLoading, isAdmin, access } = useQiunaiAdminGuard();
+  const canSendToWallet = access?.discordId === ERP_OWNER_DISCORD_ID;
 
   const [loading, setLoading] = useState(true);
   const [staffList, setStaffList] = useState<Staff[]>([]);
@@ -783,14 +785,16 @@ export default function AdminPayrollPage() {
           </div>
 
           <div className="flex flex-wrap gap-3">
-            <button
-              onClick={openBulkWalletModal}
-              disabled={bulkWalletSending}
-              className="inline-flex items-center gap-2 rounded-2xl bg-emerald-500 px-4 py-2 text-sm font-bold text-white hover:bg-emerald-400 disabled:opacity-60"
-            >
-              <WalletCards size={16} />
-              批次匯入錢包
-            </button>
+            {canSendToWallet ? (
+              <button
+                onClick={openBulkWalletModal}
+                disabled={bulkWalletSending}
+                className="inline-flex items-center gap-2 rounded-2xl bg-emerald-500 px-4 py-2 text-sm font-bold text-white hover:bg-emerald-400 disabled:opacity-60"
+              >
+                <WalletCards size={16} />
+                批次匯入錢包
+              </button>
+            ) : null}
 
             <button
               onClick={copyPayrollList}
@@ -1091,14 +1095,16 @@ export default function AdminPayrollPage() {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => openWalletModal(row)}
-                            disabled={walletSendingId === row.discordId}
-                            className="inline-flex items-center gap-2 rounded-2xl bg-violet-500 px-3 py-2 text-xs font-bold text-white hover:bg-violet-400 disabled:opacity-60"
-                          >
-                            <WalletCards size={14} />
-                            發送
-                          </button>
+                          {canSendToWallet ? (
+                            <button
+                              onClick={() => openWalletModal(row)}
+                              disabled={walletSendingId === row.discordId}
+                              className="inline-flex items-center gap-2 rounded-2xl bg-violet-500 px-3 py-2 text-xs font-bold text-white hover:bg-violet-400 disabled:opacity-60"
+                            >
+                              <WalletCards size={14} />
+                              發送
+                            </button>
+                          ) : null}
                           <button
                             onClick={() => markStaffPaid(row)}
                             disabled={markingPaidId === row.discordId}
@@ -1195,7 +1201,7 @@ export default function AdminPayrollPage() {
         </section>
       </section>
 
-      {walletModalRow ? (
+      {canSendToWallet && walletModalRow ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 py-6">
           <div className="w-full max-w-md rounded-3xl border border-white/10 bg-[#181127] p-5 shadow-2xl">
             <div className="flex items-start justify-between gap-4">
@@ -1294,7 +1300,7 @@ export default function AdminPayrollPage() {
         </div>
       ) : null}
 
-      {bulkWalletOpen ? (
+      {canSendToWallet && bulkWalletOpen ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 py-6">
           <div className="w-full max-w-md rounded-3xl border border-white/10 bg-[#181127] p-5 shadow-2xl">
             <div className="flex items-start justify-between gap-4">

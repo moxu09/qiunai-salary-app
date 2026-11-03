@@ -6,7 +6,7 @@ import {
   manuallyDepositSalaryWallet,
   settleSalaryWallet,
 } from "@/lib/salaryWallet";
-import { authorizeErpRequest } from "@/lib/erpAccess";
+import { ERP_OWNER_DISCORD_ID, authorizeErpRequest } from "@/lib/erpAccess";
 
 const walletConfig = {
   appKey: "qiunai",
@@ -117,6 +117,16 @@ export async function POST(request) {
     const { discordId } = await requireAdmin(request);
     const body = await request.json();
     const action = String(body.action || "").trim();
+
+    if (
+      (action === "deposit-wallet" || action === "bulk-deposit-wallet") &&
+      discordId !== ERP_OWNER_DISCORD_ID
+    ) {
+      return NextResponse.json(
+        { ok: false, message: "只有帳套擁有者可以發送薪資到錢包" },
+        { status: 403 },
+      );
+    }
 
     if (action === "bulk-deposit-wallet") {
       const giftNames = await loadGiftNames();
