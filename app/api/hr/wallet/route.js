@@ -39,6 +39,7 @@ export async function POST(request) {
       total: body.total ?? null,
       amounts: body.amounts ?? null,
       ...(body.sources ? { sources: body.sources } : {}),
+      ...(Object.hasOwn(body, "bankOwner") ? { bankOwner: body.bankOwner } : {}),
     };
     if (existing.data) {
       if (canonicalJson(existing.data.request_payload) !== canonicalJson(identity))
@@ -46,6 +47,8 @@ export async function POST(request) {
       return Response.json({ ok: true, result: existing.data.result, duplicate: true });
     }
     const summaries = await hrLinkedWallets(auth, request);
+    if (body.destination === "bank" && (body.bankOwner || null) !== (summaries[0]?.bankOwner || null))
+      throw Error("收款帳號已變更，請重新讀取再送出");
     const balances = withdrawalBalances(summaries, body.destination);
     let amounts =
       body.mode === "combined" ? allocateWithdrawal(Number(body.total), balances) : body.amounts;

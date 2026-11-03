@@ -63,7 +63,7 @@ type Wallet = {
   }>;
 };
 type WalletSource = { owner: string; available: number; serviceFee: number; pendingBank: boolean; bankReady: boolean };
-type WalletDepartment = { key: DepartmentKey; wallet: Wallet; sources: WalletSource[] };
+type WalletDepartment = { key: DepartmentKey; wallet: Wallet; sources: WalletSource[]; bankOwner?: string | null };
 type WithdrawalSource = Pick<WalletSource, "owner" | "serviceFee"> & { department: DepartmentKey; amount: number };
 type AccountLink = { primary_id: string; alternate_id: string; verified_at: string | null };
 type Order = {
@@ -511,7 +511,7 @@ function AccountLinksPanel({ primary, onChanged }: { primary: string; onChanged:
   const linkedAsAlternate = incoming.some((link) => link.verified_at);
   async function update(action: "request" | "confirm" | "remove", otherId: string) {
     if (action === "confirm" && !window.confirm(
-      `確定 ${otherId} 是你本人的主帳號？綁定後，該帳號可以查看這個帳號的訂單、打賞、薪資與提領紀錄，也能代為申請提領或轉入 ASD。`,
+      `確定 ${otherId} 是你本人的主帳號？綁定後，該帳號可以查看這個帳號的訂單、打賞、薪資與提領紀錄，也能代為申請提領或轉入 ASD。綁定期間，銀行提領會匯到主帳號的銀行帳戶。`,
     )) return;
     if (action === "remove" && !window.confirm("確定取消這筆綁定或申請？已入帳與已送出的提領紀錄會保留。")) return;
     setBusy(true);
@@ -641,6 +641,8 @@ export function WalletPanel({ departments, primary }: { departments: Department[
   const windowOpen = wallets
     .filter((d) => (allocations[d.key] || 0) > 0)
     .every((d) => d.wallet.withdrawWindow.isOpen);
+  const bankOwner = wallets[0]?.bankOwner || null;
+  const usesPrimaryBank = Boolean(bankOwner);
   const bankSources = wallets.flatMap((d) => d.sources).filter((source) => source.available >= 1);
   const pendingBank = bankSources.some((source) => source.pendingBank);
   const missingBank = bankSources.some((source) => !source.bankReady);
@@ -662,7 +664,7 @@ export function WalletPanel({ departments, primary }: { departments: Department[
       ).join("\n");
     if (
       !window.confirm(
-        `${destination === "bank" ? "確認送出銀行提領申請？" : "確認轉入各來源帳號的 ASD 錢包？"}\n${summary}\n合計 ${money(total)}，${destination === "bank" ? "預計實領" : "轉入"} ${money(total - fees)}`,
+        `${destination === "bank" ? (usesPrimaryBank ? "確認將這筆提領匯到主帳號的銀行帳戶？" : "確認送出銀行提領申請？") : "確認轉入各來源帳號的 ASD 錢包？"}\n${summary}\n合計 ${money(total)}，${destination === "bank" ? "預計實領" : "轉入"} ${money(total - fees)}`,
       )
     )
       return;
@@ -675,6 +677,7 @@ export function WalletPanel({ departments, primary }: { departments: Department[
       total: mode === "combined" ? total : null,
       amounts: mode === "separate" ? allocations : null,
       sources: withdrawalSourceAmounts(plan, destination),
+      ...(destination === "bank" ? { bankOwner } : {}),
     };
     const serialized = JSON.stringify(payload);
     const storageKey = `hr-withdrawal:${primary}`;
@@ -741,8 +744,9 @@ export function WalletPanel({ departments, primary }: { departments: Department[
         ))}
       </div>
       {wallets.some((d) => d.sources.some((source) => source.owner !== primary)) ? (
-        <p className="hr-note">已合併小號餘額。銀行提領沿用各來源帳號的銀行資料；轉入 ASD 會入到各來源帳號。</p>
+        <p className="hr-note">已合併小號餘額。轉入 ASD 會入到各來源帳號。</p>
       ) : null}
+      {usesPrimaryBank ? <p className="hr-note">銀行提領一律匯到主帳號的銀行帳戶。</p> : null}
       {loading ? <p className="hr-note">同步錢包中…</p> : null}
       {error ? (
         <Notice>
@@ -840,7 +844,7 @@ export function WalletPanel({ departments, primary }: { departments: Department[
           <p className="hr-note">
             {wallets[0]?.wallet.withdrawWindow.note}{" "}
             {pendingBank ? "已有銀行提領待審的帳號暫不列入分配。" : ""}{" "}
-            {missingBank ? "未填銀行資料的帳號暫不列入分配，可用該帳號登入補填。" : ""}
+            {missingBank ? (usesPrimaryBank ? "請先在主帳號填寫銀行資料。" : "未填銀行資料的部門暫不列入分配。") : ""}
             {mode === "separate"
               ? "分開提領時，各部門申請金額須高於 1,000 元。"
               : "合併提領總額須高於 1,000 元。"}

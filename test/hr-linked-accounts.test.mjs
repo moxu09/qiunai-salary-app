@@ -25,7 +25,7 @@ async function fixture(t) {
     insert into players values ('${alt}',true,'alt','bank','001');
     insert into salary_wallet_entries(app_key,discord_id,amount) values ('qiunai','${primary}',2000),('qiunai','${alt}',600),('deepnight','${alt}',500);
   `);
-  for (const path of ["salary_to_asd.sql", "migrations/20261102000100_unified_hr.sql", "migrations/20261103001000_hr_linked_accounts.sql"]) {
+  for (const path of ["salary_to_asd.sql", "migrations/20261102000100_unified_hr.sql", "migrations/20261103001000_hr_linked_accounts.sql", "migrations/20261103001100_hr_linked_bank_payout.sql"]) {
     const sql = await readFile(new URL("../supabase/" + path, import.meta.url), "utf8");
     // Pin the bank window for deterministic tests. Other SQL runs as published.
     await db.exec(sql.replace("v_local timestamp:=now() at time zone 'Asia/Taipei'", "v_local timestamp:='2026-11-10 12:00:00'"));
@@ -35,11 +35,11 @@ async function fixture(t) {
 const change = (db, actor, target, action) => db.query(
   "select hr_change_account_link($1,$2,$3,array['qiunai','deepnight'])", [actor, target, action],
 );
-const submit = (db, n, destination, sources, mode = "combined") => db.query(
+const submit = (db, n, destination, sources, mode = "combined", actor = primary, bankOwner = primary) => db.query(
   "select hr_request_linked_withdrawal_atomic($1,$2,$3,$4,$5) as result",
-  [primary, `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`,
+  [actor, `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`,
     JSON.stringify(sources.map(([department, owner, amount, fee = 0]) => ({ department, owner, amount, fee }))),
-    destination, JSON.stringify({ mode })],
+    destination, JSON.stringify(destination === "bank" ? { mode, bankOwner } : { mode })],
 );
 test("cap, ownership, consent, expiration, and database privileges", async (t) => {
   const db = await fixture(t);
@@ -84,7 +84,11 @@ test("bank applies the minimum per department, preserving source account and rol
   await assert.rejects(submit(db, 1, "bank", [["qiunai", primary, 600], ["qiunai", alt, 400]], "separate"), /1,000|不足/);
   await assert.rejects(submit(db, 2, "bank", [["qiunai", primary, 600], ["qiunai", alt, 600, 15]], "separate"), /手續費已變更/);
   assert.equal((await db.query("select * from salary_withdraw_requests")).rows.length, 0);
+  await db.query("update qiunai_staff set bank_name=null,bank_account=null where discord_id=$1", [alt]);
   await submit(db, 3, "bank", [["qiunai", primary, 600], ["qiunai", alt, 600]], "separate");
+  await db.query("update qiunai_staff set bank_account='new-primary' where discord_id=$1", [primary]);
+  assert.deepEqual((await db.query("select primary_discord_id, bank_account from hr_bank_payout_details")).rows,
+    [{ primary_discord_id: primary, bank_account: "000" }, { primary_discord_id: primary, bank_account: "000" }]);
   assert.deepEqual((await db.query("select discord_id,amount::integer from salary_withdraw_requests order by discord_id")).rows,
     [{discord_id:primary,amount:600},{discord_id:alt,amount:600}]);
   await assert.rejects(submit(db, 4, "bank", [["qiunai", primary, 1200]]), /等待審核/);
@@ -114,4 +118,22 @@ test("bank excludes ineligible accounts and can skip tiny shares without blockin
   assert.ok(linkedWithdrawalPlan([wallet], { qiunai: 50200 }, "asd").some(({owner}) => owner === other));
   const tight = { key: "qiunai", sources: [source(primary, 1000), source(alt, 200, {serviceFee:15})] };
   assert.deepEqual(linkedWithdrawalPlan([tight], {qiunai: 1010}, "bank").map(({amount}) => amount), [842,168]);
+});
+
+test("alternate login inherits the primary bank and stale owner quotes cannot submit", async (t) => {
+  const db = await fixture(t);
+  await change(db, primary, alt, "request");
+  await change(db, alt, primary, "confirm");
+  await db.query("update qiunai_staff set bank_account=null where discord_id=$1", [primary]);
+  await assert.rejects(submit(db, 11, "bank", [["qiunai", alt, 600], ["deepnight", alt, 500]], "combined", alt), /主帳號填寫/);
+  await db.query("insert into players values ($1,true,'main','other store bank','123')", [primary]);
+  await submit(db, 11, "bank", [["qiunai", alt, 600], ["deepnight", alt, 500]], "combined", alt);
+  assert.deepEqual((await db.query("select distinct primary_discord_id,bank_account from hr_bank_payout_details")).rows,
+    [{primary_discord_id:primary,bank_account:"123"}]);
+  await change(db, alt, primary, "remove");
+  await assert.rejects(submit(db, 12, "bank", [["qiunai", alt, 600], ["deepnight", alt, 500]], "combined", alt), /收款帳號已變更/);
+  assert.equal((await db.query("select count(*)::int as n from hr_bank_payout_details")).rows[0].n, 2);
+  await db.exec("set role authenticated");
+  await assert.rejects(db.query("select * from hr_bank_payout_details"), /permission denied/);
+  await assert.rejects(db.query("select * from hr_resolve_linked_bank($1)", [alt]), /permission denied/);
 });
