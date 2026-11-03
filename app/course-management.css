@@ -38,3 +38,8 @@
 .common-workspace-shell .admin-portal-link{color:#d8e4ef!important}
 .common-workspace-shell .admin-portal-link.is-active{background:#243b53!important;color:#fff!important;border-left-color:#58b9ef}
 @media(max-width:600px){.hr-course-select{grid-template-columns:minmax(0,1fr);gap:5px}}
+
+/* The legacy Qiunai shell fixes its nav to the viewport. In the common EIP
+   shell the enclosing sidebar owns positioning, so links remain clickable. */
+.common-workspace-shell .admin-portal-sidebar>.admin-portal-nav{position:static;inset:auto;width:100%;height:auto;max-height:none;overflow:visible;box-shadow:none;background:transparent!important}
+@media(max-width:1023px){.common-workspace-shell .admin-portal-sidebar>.admin-portal-nav{width:max-content}}
