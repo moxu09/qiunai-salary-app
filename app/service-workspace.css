@@ -318,3 +318,21 @@ main.service-console.svc-workspace{overflow-x:clip;overflow-y:visible}
   z-index: 80;
   overflow: auto;
 }
+.svc-handover,.svc-handover-slot,.svc-handover-grid{display:grid;gap:14px;min-width:0}
+.svc-handover{padding:18px;border:1px solid var(--svc-line);border-radius:18px;background:linear-gradient(125deg,#e7f3ff 0%,#fff7fd 100%)}
+.svc-handover-heading{display:flex;justify-content:space-between;align-items:start;gap:12px;flex-wrap:wrap}
+.svc-handover-heading h2{margin:4px 0;font-size:clamp(22px,2.4vw,29px)}
+.svc-handover-heading p{margin:0;color:var(--svc-muted)}
+.svc-handover-slot{display:block;padding-top:13px;border-top:1px solid var(--svc-line)}
+.svc-handover-slot summary{cursor:pointer;font-size:16px;font-weight:750;overflow-wrap:anywhere}
+.svc-handover-slot summary span{color:var(--svc-muted);font-weight:400}
+.svc-handover-slot .svc-handover-grid{margin-top:12px}
+.svc-handover-grid{grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr))}
+.svc-handover-card{display:grid;gap:12px;align-content:start}
+.svc-handover-meta,.svc-handover-link{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0}
+.svc-handover-meta time{color:var(--svc-muted);font-size:12px}
+.svc-handover-meta a{margin-left:auto}
+.svc-handover-body{margin:0;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.6}
+.svc-handover-links{display:grid;gap:7px}
+.svc-handover-link{justify-content:space-between;border-top:1px solid var(--svc-line);padding-top:7px}
+.svc-handover a,.svc-handover-link a{display:inline-flex;align-items:center;gap:4px;overflow-wrap:anywhere}
