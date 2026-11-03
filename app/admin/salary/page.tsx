@@ -1266,6 +1266,11 @@ export default function AdminSalaryPage() {
             <div className="mt-5 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {staffList.filter((staff) => {
                 const query = commissionKeyword.trim().toLowerCase();
+                const percentage = query.match(/^(80|85|90|95)%?$/)?.[1];
+                if (percentage) {
+                  return (staff.commission_tier || "auto") ===
+                    (percentage === "95" ? "manager_95" : `rate_${percentage}`);
+                }
                 const tierLabels: Record<string, string> = {
                   auto: "自動判定",
                   rate_80: "80% 一般陪陪",
@@ -1274,7 +1279,7 @@ export default function AdminSalaryPage() {
                   manager_95: "95% 主管津貼",
                 };
                 const tierLabel = tierLabels[staff.commission_tier || "auto"] || "";
-                return !query || [staff.display_name, staff.real_name, staff.discord_name, staff.discord_id, tierLabel]
+                return !query || [staff.display_name, staff.real_name, staff.discord_name, staff.discord_id, staff.commission_tier, tierLabel]
                   .filter(Boolean).join(" ").toLowerCase().includes(query);
               }).map((staff) => (
                 <div

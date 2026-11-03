@@ -397,7 +397,7 @@ export default function AdminStaffPage() {
                 本月金榜陪陪
               </h2>
               <p className="mt-1 text-sm text-[#8b5a8f]">
-                可複選；已選 {featuredIds.length} 人。儲存後這些陪陪會優先顯示在官網。
+                可複選；儲存後這些陪陪會優先顯示在官網。
               </p>
             </div>
             <button onClick={saveFeatured} disabled={featuredSaving} className="qiunai-button px-5 py-2.5 text-sm font-bold">
