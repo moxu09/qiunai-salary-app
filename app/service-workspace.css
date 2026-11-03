@@ -336,3 +336,13 @@ main.service-console.svc-workspace{overflow-x:clip;overflow-y:visible}
 .svc-handover-links{display:grid;gap:7px}
 .svc-handover-link{justify-content:space-between;border-top:1px solid var(--svc-line);padding-top:7px}
 .svc-handover a,.svc-handover-link a{display:inline-flex;align-items:center;gap:4px;overflow-wrap:anywhere}
+.svc-proxy-form{display:grid;gap:17px;max-width:850px}
+.svc-proxy-form fieldset{border:0;margin:0;padding:0;min-width:0}
+.svc-proxy-form legend{font-weight:800;margin-bottom:10px}
+.svc-proxy-kinds{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,200px),1fr));gap:10px}
+.svc-proxy-kinds label{display:flex;align-items:flex-start;gap:9px;padding:13px;border:1px solid var(--svc-line);border-radius:12px;background:#fff;cursor:pointer;min-width:0}
+.svc-proxy-kinds label.is-selected{border-color:var(--svc-accent);background:var(--svc-soft)}
+.svc-proxy-kinds input{width:auto;flex:none;margin-top:4px}
+.svc-proxy-kinds span{display:grid;gap:3px;min-width:0;overflow-wrap:anywhere}
+.svc-proxy-kinds small{color:var(--svc-muted);line-height:1.5}
+.svc-proxy-orders .svc-desk-card>a{display:inline-flex;align-items:center;gap:5px;min-height:42px;font-weight:750}
