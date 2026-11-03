@@ -228,3 +228,65 @@ main.service-console.svc-workspace{overflow-x:clip;overflow-y:visible}
     font-size: 11px;
   }
 }
+
+.svc-review-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-block: 4px;
+}
+.svc-review-tabs button[aria-pressed="true"] {
+  color: #fff;
+  border-color: var(--svc-accent);
+  background: var(--svc-accent);
+}
+.svc-review-count {
+  border-radius: 7px;
+  padding: 1px 6px;
+  color: var(--svc-accent);
+  background: var(--svc-soft);
+  font-size: 12px;
+}
+.svc-review-body {
+  min-width: 0;
+}
+.svc-review-orders {
+  display: grid;
+  gap: 12px;
+}
+.svc-review-order {
+  min-width: 0;
+  border: 1px solid var(--svc-line);
+  border-radius: 14px;
+  background: #fff;
+  padding: 14px;
+  display: grid;
+  gap: 12px;
+}
+.svc-review-order-title {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.svc-review-order dl {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 120px), 1fr));
+  gap: 9px;
+}
+.svc-review-order dt {
+  color: var(--svc-muted);
+  font-size: 12px;
+}
+.svc-review-order dd {
+  margin: 0;
+  font-weight: 700;
+}
+.svc-review .svc-review-reject {
+  color: #982637;
+  border-color: #e5b1ba;
+}
+.svc-review [role="dialog"] {
+  z-index: 80;
+  overflow: auto;
+}

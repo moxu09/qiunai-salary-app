@@ -66,6 +66,7 @@ export default function ServiceDashboard({department,items,staff,templateCount}:
     <p>查工單、回覆老闆、準備播報，從本店常用工具開始。</p>
     <div className="svc-hero-actions">
      <Link className="svc-primary-link" href={path('flows')}><ClipboardList size={17}/> 查看訂單流程</Link>
+     <Link className="svc-secondary-link" href={path('reviews')}><Clock3 size={17}/> 待審核訂單</Link>
      <Link className="svc-secondary-link" href={path('courses')}><BookOpenText size={17}/> 完整教程</Link>
     </div>
    </div>
