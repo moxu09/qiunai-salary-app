@@ -51,6 +51,34 @@ main.service-console.svc-workspace.service-store-deepnight{--svc-accent:#4b3b75;
 html:has(.svc-workspace),body:has(.svc-workspace){overflow-x:clip;overflow-y:visible}
 main.service-console.svc-workspace{overflow-x:clip;overflow-y:visible}
 
+/* The pattern sits behind the workspace, while cards and controls keep solid surfaces. */
+.svc-workspace {
+  --svc-canvas: #edf5fd;
+  --svc-canvas-glow: #ffe6f0;
+  --svc-canvas-depth: #dcecff;
+  --svc-canvas-pattern: url("/service/assets/brand/service-petals.svg");
+  --svc-topbar-start: #f5faff;
+  --svc-topbar-end: #fff3f8;
+}
+.svc-workspace.service-store-deepnight {
+  --svc-canvas: #efedf9;
+  --svc-canvas-glow: #f9e9df;
+  --svc-canvas-depth: #dfe3f8;
+  --svc-canvas-pattern: url("/service/assets/brand/service-stars.svg");
+  --svc-topbar-start: #f5f3ff;
+  --svc-topbar-end: #fdf5ed;
+}
+.svc-workspace .svc-main {
+  background:
+    var(--svc-canvas-pattern) 0 0 / 272px 224px repeat,
+    radial-gradient(ellipse at top right, var(--svc-canvas-glow), transparent 72%) top / 100% 560px no-repeat,
+    linear-gradient(var(--svc-canvas-depth), var(--svc-canvas)) top / 100% 720px no-repeat,
+    var(--svc-canvas);
+}
+.svc-workspace .svc-topbar {
+  background: linear-gradient(105deg, var(--svc-topbar-start), var(--svc-topbar-end));
+}
+
 /* Keep daily tools close to the top, with full-width links and quiet queue previews. */
 .svc-home {
   gap: 16px;
