@@ -52,7 +52,7 @@ type Withdrawal = {
 type Wallet = {
   totals: { available: number; deposited: number; pendingWithdrawn: number; balance: number };
   withdrawPolicy: { nextServiceFee: number; minimumAmount: number };
-  withdrawWindow: { isOpen: boolean; note: string };
+  withdrawWindow: { isOpen: boolean };
   requests: Withdrawal[];
   entries: Entry[];
   monthlySummaries: Array<{
@@ -774,6 +774,23 @@ export function WalletPanel({ departments, primary }: { departments: Department[
           {notice}
         </p>
       ) : null}
+      <section aria-labelledby="hr-withdrawal-rules" className="hr-history mb-4">
+        <h3 id="hr-withdrawal-rules" className="mb-2 text-sm font-bold">
+          薪資提領規則
+        </h3>
+        <div className="hr-note space-y-1">
+          <p>每月 2 日 00:00 入帳上月 16 日至月底薪資；每月 17 日 00:00 入帳當月 1 日至 15 日薪資。</p>
+          <p>客服底薪與客服接待件數薪資統一於次月 2 日 00:00 入帳。</p>
+          <p>轉入 ASD 不限提領期間、金額，無需手續費並立即入帳，一個月限領 15 次。</p>
+          <p>每月 5 日 09:00 至 25 日 15:30 開放提領。</p>
+          <p>金額須高於 $1,000；本月首次免手續費，第二次起每次 $15。</p>
+          <p>為配合政府及銀行作業需 3 到 7 個工作日，例假日不計。</p>
+          <p className="pt-1 font-bold">提領日期計算如下：</p>
+          <p>例：提領時間為 10 號 00:00～15:30，則計入 13 號發放。</p>
+          <p>若提領時間為 10 號 15:31～23:59，則計入 14 號發放。</p>
+          <p>若個人銀行、帳戶、戶名其中一項填寫不完整，則會導致薪資發放失敗，而繼續累積。</p>
+        </div>
+      </section>
       <div className="hr-wallet-form">
         <div className="hr-form-grid">
           <label>
@@ -855,7 +872,6 @@ export function WalletPanel({ departments, primary }: { departments: Department[
         )}
         {destination === "bank" ? (
           <p className="hr-note">
-            {wallets[0]?.wallet.withdrawWindow.note}{" "}
             {pendingBank ? "已有銀行提領待審的帳號暫不列入分配。" : ""}{" "}
             {missingBank ? (usesPrimaryBank ? "請先在主帳號填寫銀行資料。" : "未填銀行資料的部門暫不列入分配。") : ""}
             {mode === "separate"
