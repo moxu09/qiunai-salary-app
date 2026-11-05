@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { ArrowRight, BookOpenText, CalendarDays, CheckCircle2, ClipboardCheck, FileText, MessageSquareText, Search, Send, Sparkles } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import WorkspaceDocumentFiles from "@/components/WorkspaceDocumentFiles";
@@ -18,7 +18,7 @@ type AuditEntry = { new_status: "pending" | "approved" | "rejected"; actor_disco
 type ExistingAnnouncement = { id: string; title: string; created_at: string; requires_signature?: boolean; signature?: { status: string } | null };
 type ExistingRequest = { id: string; request_type: string; status: string; application_date: string };
 type Data = { serviceCoursesUnavailable?: boolean; events: Event[]; documents: Document[]; templates: Template[]; requests: Submission[] };
-type Props = { organization: "qiunai" | "deepnight" | "hr"; section: Section; employeeName: string; onSelect: (tab: string) => void };
+type Props = { organization: "qiunai" | "deepnight" | "hr"; section: Section; employeeName: string; onSelect: (tab: string) => void; workspaceActions?: ReactNode };
 const emptyData: Data = { events: [], documents: [], templates: [], requests: [] };
 const time = (value: string) => new Intl.DateTimeFormat("zh-TW", { timeZone: "Asia/Taipei", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(value));
 const statusLabel: Record<string, string> = { pending: "待簽核", approved: "已核准", rejected: "未通過" };
@@ -26,7 +26,7 @@ const pendingStage = (item: Submission) => item.approval_steps?.length === 2
   ? Number(item.approval_step_index || 0) === 0 ? "等待店經理初審" : "等待最高管理員複審"
   : "等待管理員簽核";
 
-export default function StaffCollaboration({ organization, section, employeeName, onSelect }: Props) {
+export default function StaffCollaboration({ organization, section, employeeName, onSelect, workspaceActions }: Props) {
   const [data, setData] = useState<Data>(emptyData);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -152,6 +152,7 @@ export default function StaffCollaboration({ organization, section, employeeName
             <div className="eip-collab-panel">
               <div className="eip-collab-panel-head"><h2>快速開始</h2></div>
               <div className="eip-collab-actions">
+                {workspaceActions}
                 <button onClick={() => go("messages")}><MessageSquareText /> 聯絡同事 <ArrowRight /></button>
                 <button onClick={() => go("workflows")}><ClipboardCheck /> 發起流程 <ArrowRight /></button>
                 <button onClick={() => go("approval-administrative")}><CheckCircle2 /> 現有行政簽核 <ArrowRight /></button>

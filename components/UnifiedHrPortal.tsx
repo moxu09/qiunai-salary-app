@@ -2,7 +2,7 @@
 /* eslint-disable @next/next/no-img-element */
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { LogOut, RefreshCw, WalletCards, Save, UserRound, LockKeyhole } from "lucide-react";
+import { LogOut, RefreshCw, WalletCards, Save, UserRound, LockKeyhole, Landmark, ArrowUpRight } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { linkedWithdrawalPlan, withdrawalBalances, withdrawalSourceAmounts } from "@/lib/hrLinkedWallet.mjs";
 import { HR_DEPARTMENTS, HR_ROUTES, hrTabForPath, allocateWithdrawal } from "@/lib/hrRoutes.mjs";
@@ -29,7 +29,7 @@ type Staff = Record<string, unknown> & {
   is_online?: boolean;
 };
 type Department = { key: DepartmentKey; staff: Staff };
-type Session = { discordId: string; departments: Department[] };
+type Session = { discordId: string; departments: Department[]; financeErpUrl?: string };
 type Entry = {
   id: string;
   discord_id?: string;
@@ -184,6 +184,8 @@ export default function UnifiedHrPortal() {
         return;
       }
       const result = await hrFetch("/api/hr/session");
+      const { data: currentAuth } = await supabase.auth.getSession();
+      if (currentAuth.session?.user.id !== data.session.user.id) return;
       if (!result.departments.length)
         throw Error("你目前沒有在職員工權限，請確認 Discord 身分組及入職資料");
       setSession(result);
@@ -209,6 +211,12 @@ export default function UnifiedHrPortal() {
   useEffect(() => {
     setChatOpen(activeTab === "messages");
   }, [activeTab]);
+  useEffect(() => {
+    const { data } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "SIGNED_OUT") setSession(null);
+    });
+    return () => data.subscription.unsubscribe();
+  }, []);
   async function logout() {
     await supabase.auth.signOut();
     router.replace("/");
@@ -293,6 +301,11 @@ export default function UnifiedHrPortal() {
                 }
                 employeeName={employeeName}
                 onSelect={select}
+                workspaceActions={session.financeErpUrl ? (
+                  <a href={session.financeErpUrl} target="_blank" rel="noopener noreferrer">
+                    <Landmark /> 財務 ERP <ArrowUpRight />
+                  </a>
+                ) : null}
               />
             ) : null}
             {activeTab === "profile" ? (

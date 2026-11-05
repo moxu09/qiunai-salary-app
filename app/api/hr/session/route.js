@@ -1,5 +1,6 @@
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { hrAuth, hrFail } from "@/lib/hrServer";
+import { ERP_OWNER_DISCORD_ID } from "@/lib/erpRoles";
 export const dynamic = "force-dynamic";
 export async function GET(request) {
   try {
@@ -25,7 +26,14 @@ export async function GET(request) {
       };
     });
     return Response.json(
-      { ok: true, discordId, departments },
+      {
+        ok: true,
+        discordId,
+        departments,
+        ...(discordId === ERP_OWNER_DISCORD_ID
+          ? { financeErpUrl: "https://finance-erp-production.up.railway.app/erp" }
+          : {}),
+      },
       { headers: { "Cache-Control": "no-store" } },
     );
   } catch (error) {

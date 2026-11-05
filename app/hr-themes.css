@@ -391,13 +391,13 @@
 .hr-theme-root .hr-unified .hr-theme-option.is-selected .hr-theme-option-status { background:var(--hr-primary); color:#fff; border-color:var(--hr-primary); }
 .hr-theme-root .hr-unified .hr-theme-option-description { color:var(--hr-muted); }
 .hr-theme-root .hr-unified .eip-collaboration { color:var(--hr-ink); }
-.hr-theme-root .hr-unified :is(.eip-collab-metrics button,.eip-collab-actions button,.eip-collab-document-list button,.eip-collab-form,.eip-collab-form-actions button) { color:var(--hr-ink); background:var(--hr-paper); border-color:var(--hr-border); }
+.hr-theme-root .hr-unified :is(.eip-collab-metrics button,.eip-collab-actions :is(button,a),.eip-collab-document-list button,.eip-collab-form,.eip-collab-form-actions button) { color:var(--hr-ink); background:var(--hr-paper); border-color:var(--hr-border); }
 .hr-theme-root .hr-unified :is(.eip-collab-document-layout,.eip-collab-panel-head,.eip-collab-row,.eip-collab-event,.eip-collab-request) { border-color:var(--hr-border); }
 .hr-theme-root .hr-unified .eip-collab-panel-head { padding:12px 14px; margin:-5px -5px 12px; border-radius:13px; background:var(--hr-soft); }
 .hr-theme-root .hr-unified :is(.eip-collab-empty,.eip-collab-helper,.eip-collab-panel-head>span,.eip-collab-metrics span,.eip-collab-hero p:last-child,.eip-collab-row small,.eip-collab-tile span,.eip-collab-template small,.eip-collab-event p,.eip-collab-document-list span,.eip-collab-document-list small,.eip-collab-document-body>span,.eip-collab-request small,.eip-collab-request p,.eip-collab-form>p) { color:var(--hr-muted) !important; }
 .hr-theme-root .hr-unified :is(.eip-collab-eyebrow,.eip-collab-date,.eip-collab-event-time,.eip-collab-panel-head button,.eip-collab-tile svg,.eip-collab-metrics svg) { color:var(--hr-link); }
 .hr-theme-root .hr-unified :is(.eip-collab-document-body>div,.eip-collab-document-list strong,.eip-collab-form label) { color:var(--hr-ink); }
-.hr-theme-root .hr-unified :is(.eip-collab-document-list button.is-selected,.eip-collab-document-list button:hover,.eip-collab-tile:hover,.eip-collab-template:hover,.eip-collab-actions button:hover) { background:var(--hr-soft) !important; color:var(--hr-ink); }
+.hr-theme-root .hr-unified :is(.eip-collab-document-list button.is-selected,.eip-collab-document-list button:hover,.eip-collab-tile:hover,.eip-collab-template:hover,.eip-collab-actions :is(button,a):hover) { background:var(--hr-soft) !important; color:var(--hr-ink); }
 .hr-theme-root .hr-unified .eip-messages { --msg-accent:var(--hr-primary); --msg-soft:var(--hr-soft); --msg-line:var(--hr-border); }
 .hr-theme-root .hr-unified :is(.eip-messages-panel,.eip-messages-contacts,.eip-messages-thread,.eip-messages-compose,.eip-messages-bubble) { color:var(--hr-ink); background:var(--hr-paper) !important; }
 .hr-theme-root .hr-unified .eip-messages-history { background:var(--hr-soft); }
@@ -488,7 +488,7 @@
 .hr-theme-root .hr-unified label:has(input:is([type="checkbox"],[type="radio"])) :is(span,strong,small) { color:inherit !important; }
 .hr-theme-root .hr-unified input:is([type="checkbox"],[type="radio"]) { accent-color:var(--hr-primary) !important; }
 .hr-theme-root .hr-unified :is([class~="bg-cyan-50"],[class~="bg-slate-100"],[class~="bg-gray-100"],[class~="bg-sky-100"],[class~="bg-pink-100"],[class~="bg-violet-100"]) { background:var(--hr-soft) !important; }
-.hr-theme-root .hr-unified :is(.qiunai-soft-button,.eip-collab-refresh,.eip-collab-template,.eip-collab-tile,.eip-collab-document-list button,.eip-collab-form-actions button,.eip-collab-actions button,.eip-workspace-file-list button) { border-color:var(--hr-control-border) !important; }
+.hr-theme-root .hr-unified :is(.qiunai-soft-button,.eip-collab-refresh,.eip-collab-template,.eip-collab-tile,.eip-collab-document-list button,.eip-collab-form-actions button,.eip-collab-actions :is(button,a),.eip-workspace-file-list button) { border-color:var(--hr-control-border) !important; }
 .hr-theme-root .hr-unified input[type="file"]::file-selector-button { min-height:44px; padding:9px 14px; margin-right:12px; border:1px solid var(--hr-primary); border-radius:12px; background:var(--hr-primary); color:#fff; -webkit-text-fill-color:#fff; font:inherit; font-weight:800; cursor:pointer; }
 .hr-theme-root .hr-unified input[type="file"]:disabled::file-selector-button { background:var(--hr-disabled-bg); color:var(--hr-disabled-text); -webkit-text-fill-color:var(--hr-disabled-text); cursor:not-allowed; }
 
@@ -520,7 +520,7 @@
 .hr-theme-root .hr-unified :is(.eip-collab-document-list button,.eip-messages-contact,.hr-theme-option-status,.eip-collab-metrics button,.hr-device-audit-hero button):focus-visible { outline-offset:-4px; }
 .hr-theme-root .hr-unified .hr-theme-option.is-selected .hr-theme-option-status:focus-visible { outline-color:#fff !important; }
 .hr-theme-root .hr-unified .eip-messages-launcher:focus-visible { outline-color:#fff !important; box-shadow:0 0 0 6px #111827 !important; }
-.hr-theme-root .hr-unified :is(.eip-collab-actions button,.eip-collab-template) svg { color:var(--hr-link); }
+.hr-theme-root .hr-unified :is(.eip-collab-actions :is(button,a),.eip-collab-template) svg { color:var(--hr-link); }
 .hr-theme-root .hr-unified :is(.hr-icon-button,.eip-messages-back,.eip-messages-close) {
   display:inline-grid; place-items:center; flex-shrink:0; min-width:44px; min-height:44px;
   border:1px solid var(--hr-control-border) !important; background:var(--hr-soft) !important; color:var(--hr-link) !important;
