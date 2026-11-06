@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CheckCircle2, FileSignature, Loader2, RotateCcw, ShieldCheck } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
 type Organization = "deepnight" | "qiunai";
+type DiscordAccess = "required" | "mismatch" | "verified";
 type Signing = {
   status: string;
   organization: Organization;
@@ -138,7 +139,8 @@ export default function EmploymentSigningFlow({ token, organization }: { token: 
   const brand = BRAND[organization];
   const apiPath = `/api/${organization}/employment-signing`;
   const [signing, setSigning] = useState<Signing | null>(null);
-  const [hasDiscordSession, setHasDiscordSession] = useState(false);
+  const [discordAccess, setDiscordAccess] = useState<DiscordAccess>("required");
+  const [needsReauth, setNeedsReauth] = useState(false);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -166,41 +168,39 @@ export default function EmploymentSigningFlow({ token, organization }: { token: 
     signatureDataUrl && (!isMinor || guardianSignatureDataUrl),
   );
 
-  useEffect(() => {
-    void (async () => {
-      try {
-        const authResult = await supabase.auth.getSession();
-        const session = authResult.data.session;
-        const response = await fetch(`${apiPath}?token=${encodeURIComponent(token)}`, {
-          cache: "no-store",
-          headers: session
-            ? { Authorization: `Bearer ${session.access_token}` }
-            : undefined,
-        });
-        const data = await response.json().catch(() => ({}));
-        if (!response.ok || !data.signing) throw new Error(data.message || "讀取簽署邀請失敗");
-        setHasDiscordSession(Boolean(session));
-        setSigning(data.signing);
-        if (data.signing.prefill) {
-          const prefill = data.signing.prefill;
-          setForm((current) => ({
-            ...current,
-            realName: prefill.real_name || current.realName,
-            gender: prefill.gender || current.gender,
-            birthday: prefill.birthday || current.birthday,
-            bankName: prefill.bank_name || current.bankName,
-            bankAccount: prefill.bank_account || current.bankAccount,
-          }));
-        }
-        if (["signed", "activated"].includes(data.signing.status)) setStage("complete");
-        else if (data.signing.status === "read") setStage("form");
-      } catch (requestError) {
-        setError(requestError instanceof Error ? requestError.message : "讀取簽署邀請失敗");
-      } finally {
-        setLoading(false);
-      }
-    })();
+  const loadInvitation = useCallback(async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const response = await fetch(`${apiPath}?token=${encodeURIComponent(token)}`, {
+      cache: "no-store",
+      headers: session ? { Authorization: `Bearer ${session.access_token}` } : undefined,
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || !data.signing) throw new Error(data.message || "讀取簽署邀請失敗");
+    const nextSigning = data.signing as Signing;
+    setSigning(nextSigning);
+    setDiscordAccess(data.discordAccess === "verified" || data.discordAccess === "mismatch"
+      ? data.discordAccess
+      : "required");
+    if (data.discordAccess === "verified" && nextSigning.prefill) {
+      const prefill = nextSigning.prefill;
+      setForm((current) => ({
+        ...current,
+        realName: prefill.real_name || current.realName,
+        gender: prefill.gender || current.gender,
+        birthday: prefill.birthday || current.birthday,
+        bankName: prefill.bank_name || current.bankName,
+        bankAccount: prefill.bank_account || current.bankAccount,
+      }));
+    }
+    if (["signed", "activated"].includes(nextSigning.status)) setStage("complete");
+    else if (nextSigning.status === "read") setStage("form");
   }, [apiPath, token]);
+
+  useEffect(() => {
+    void Promise.resolve().then(loadInvitation).catch((requestError) => {
+      setError(requestError instanceof Error ? requestError.message : "讀取簽署邀請失敗");
+    }).finally(() => setLoading(false));
+  }, [loadInvitation]);
 
   function update(name: keyof typeof form, value: string) {
     setForm((current) => ({ ...current, [name]: value }));
@@ -217,15 +217,8 @@ export default function EmploymentSigningFlow({ token, organization }: { token: 
         body: JSON.stringify({ token }),
       });
       const data = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(data.message || "儲存閱讀確認失敗");
-      setSigning(data.signing);
-      const { data: authData } = await supabase.auth.getSession();
-      if (!authData.session && !data.signing?.demo) {
-        await discordLogin();
-        return;
-      }
-      setHasDiscordSession(Boolean(authData.session));
-      setStage("form");
+      if (!response.ok || !data.signing) throw new Error(data.message || "儲存閱讀確認失敗");
+      await loadInvitation();
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "儲存閱讀確認失敗");
@@ -234,14 +227,32 @@ export default function EmploymentSigningFlow({ token, organization }: { token: 
     }
   }
 
-  async function discordLogin() {
-    const next = `/employment-sign/${token}`;
-    const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}&method=discord`;
-    const { error: loginError } = await supabase.auth.signInWithOAuth({
-      provider: "discord",
-      options: { redirectTo },
-    });
-    if (loginError) setError(`Discord 登入失敗：${loginError.message}`);
+  async function discordLogin(resume = false) {
+    const popup = resume ? window.open("about:blank", "_blank") : null;
+    if (resume && !popup) {
+      setError("瀏覽器阻擋了新分頁。請允許開啟新分頁，再重新登入 Discord。");
+      return;
+    }
+    if (popup) popup.opener = null;
+    setBusy(true);
+    setError("");
+    try {
+      const params = new URLSearchParams({ next: `/employment-sign/${token}`, method: "discord" });
+      if (resume) params.set("mode", "resume-employment-signing");
+      const redirectTo = `${window.location.origin}/auth/callback?${params}`;
+      const { data, error: loginError } = await supabase.auth.signInWithOAuth({
+        provider: "discord",
+        options: { redirectTo, skipBrowserRedirect: resume },
+      });
+      if (loginError) throw loginError;
+      if (popup && data.url) popup.location.replace(data.url);
+      else if (popup) throw new Error("無法取得登入網址");
+    } catch (loginError) {
+      popup?.close();
+      setError(`Discord 登入失敗：${loginError instanceof Error ? loginError.message : "請再試一次"}`);
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
@@ -253,7 +264,7 @@ export default function EmploymentSigningFlow({ token, organization }: { token: 
       if (isMinor && !guardianSignatureDataUrl) throw new Error("未滿 18 歲需完成法定代理人手寫簽名");
       const { data } = await supabase.auth.getSession();
       if (!data.session && !signing?.demo) {
-        await discordLogin();
+        setNeedsReauth(true);
         return;
       }
       const response = await fetch(apiPath, {
@@ -272,11 +283,12 @@ export default function EmploymentSigningFlow({ token, organization }: { token: 
         }),
       });
       const result = await response.json().catch(() => ({}));
-      if (response.status === 401 && /登入/.test(result.message || "")) {
-        await supabase.auth.signOut();
-        await discordLogin();
+      if (response.status === 401) {
+        setNeedsReauth(true);
+        setError(result.message || "請重新驗證受邀的 Discord 帳號");
         return;
       }
+      setNeedsReauth(false);
       if (!response.ok || !result.signing) throw new Error(result.message || "完成契約簽署失敗");
       setSigning(result.signing);
       setStage("complete");
@@ -333,16 +345,17 @@ export default function EmploymentSigningFlow({ token, organization }: { token: 
           </section>
         ) : null}
 
-        {stage === "form" && !hasDiscordSession && !signing?.demo ? (
+        {stage === "form" && discordAccess !== "verified" && !signing?.demo ? (
           <section className="mt-6 rounded-3xl bg-white p-6 text-center shadow-sm sm:p-10">
             <ShieldCheck className="mx-auto" size={48} style={{ color: brand.accent }} />
             <h2 className="mt-4 text-2xl font-black">先驗證受邀 Discord 帳號</h2>
             <p className="mx-auto mt-3 max-w-xl leading-7 text-slate-600">驗證成功後才會開啟資料與簽名欄位，避免填寫完成後因登入跳轉而需要重新輸入。</p>
-            <button type="button" onClick={discordLogin} disabled={busy} className="mt-6 inline-flex items-center justify-center gap-2 rounded-2xl px-7 py-4 text-lg font-black text-white disabled:opacity-50" style={{ background: brand.accent }}><ShieldCheck size={20} /> 使用 Discord 驗證後開始填寫</button>
+            {discordAccess === "mismatch" ? <p role="alert" className="mt-3 font-bold text-rose-700">目前登入的帳號與邀請不符，請改用受邀的 Discord 帳號。</p> : null}
+            <button type="button" onClick={() => void discordLogin()} disabled={busy} className="mt-6 inline-flex items-center justify-center gap-2 rounded-2xl px-7 py-4 text-lg font-black text-white disabled:opacity-50" style={{ background: brand.accent }}><ShieldCheck size={20} /> 使用 Discord 驗證後開始填寫</button>
           </section>
         ) : null}
 
-        {stage === "form" && (hasDiscordSession || signing?.demo) ? (
+        {stage === "form" && (discordAccess === "verified" || signing?.demo) ? (
           <form onSubmit={submit} className="mt-6 space-y-6 rounded-3xl bg-white p-5 shadow-sm sm:p-8">
             <div><h2 className="text-xl font-black">第二步：填寫資料並手寫簽名</h2><p className="mt-2 text-sm leading-6 text-slate-500">Discord 名稱與 ID 已由邀請固定帶入。身分證字號、聯絡方式與手寫簽名只會保存在最終簽署 PDF；EIP 僅帶入現有個人資料欄位。</p></div>
             <div className="grid gap-4 sm:grid-cols-2">
@@ -360,7 +373,13 @@ export default function EmploymentSigningFlow({ token, organization }: { token: 
             <SignaturePad label="乙方手寫簽名" onChange={setSignatureDataUrl} />
             <label className="flex items-start gap-3 rounded-2xl bg-slate-50 p-4"><input type="checkbox" required className="mt-1 h-5 w-5" /><span className="text-sm font-bold leading-7">本人確認上述資料正確、簽名由本人親自完成，並同意系統保存 Discord 身分驗證、閱讀確認、手寫簽名、簽署時間及文件完整性稽核紀錄。</span></label>
             {!signaturesComplete ? <p className="rounded-xl bg-amber-50 px-4 py-3 text-center text-sm font-bold text-amber-800">請先完成所有必填手寫簽名，才能送出契約。</p> : null}
-            <button type="submit" disabled={busy || !signaturesComplete} className="flex w-full items-center justify-center gap-2 rounded-2xl px-6 py-4 text-lg font-black text-white disabled:cursor-not-allowed disabled:opacity-50" style={{ background: brand.accent }}>{busy ? <Loader2 className="animate-spin" size={20} /> : <ShieldCheck size={20} />} 驗證 Discord 並完成簽署</button>
+            {needsReauth ? (
+              <div role="status" className="rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                <p>請保留此分頁。在新分頁登入受邀的 Discord 帳號後，回到這裡再按「送出簽署」。</p>
+                <button type="button" disabled={busy} onClick={() => void discordLogin(true)} className="mt-2 font-bold underline disabled:opacity-50">在新分頁重新登入 Discord</button>
+              </div>
+            ) : null}
+            <button type="submit" disabled={busy || !signaturesComplete} className="flex w-full items-center justify-center gap-2 rounded-2xl px-6 py-4 text-lg font-black text-white disabled:cursor-not-allowed disabled:opacity-50" style={{ background: brand.accent }}>{busy ? <Loader2 className="animate-spin" size={20} /> : <ShieldCheck size={20} />} 送出簽署</button>
           </form>
         ) : null}
 

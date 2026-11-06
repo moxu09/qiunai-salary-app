@@ -60,20 +60,24 @@ export async function GET(request) {
       if (demoStatus === "invited") demoStatus = "opened";
       return NextResponse.json({ ok: true, signing: demoSigning() });
     }
-    let includePrefill = false;
+    let discordId = "";
+    let discordAccess = "required";
     const authorization = request.headers.get("authorization") || "";
     if (/^Bearer\s+/i.test(authorization)) {
-      const user = await getAuthUserFromBearer(supabaseAdmin, request);
-      const signing = await getEmploymentSigning(token);
-      includePrefill = getDiscordIdFromUser(user) === signing.discordId;
+      try {
+        const user = await getAuthUserFromBearer(supabaseAdmin, request);
+        discordId = getDiscordIdFromUser(user);
+        discordAccess = "mismatch";
+      } catch (error) {
+        if (error.status !== 401) throw error;
+      }
     }
+    const signing = await getEmploymentSigning(token, { markOpened: true, authenticatedDiscordId: discordId });
     return NextResponse.json({
       ok: true,
-      signing: await getEmploymentSigning(token, {
-        markOpened: true,
-        includePrefill,
-      }),
-    });
+      signing,
+      discordAccess: discordId && discordId === signing.discordId ? "verified" : discordAccess,
+    }, { headers: { "Cache-Control": "private, no-store" } });
   } catch (error) {
     return responseError(error, "讀取簽署邀請失敗");
   }
