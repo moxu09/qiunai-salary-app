@@ -24,7 +24,8 @@ test("HR money requests require separate Manager and PIC decisions through any d
         ('deepnight','other-manager',true,'store_manager');
       insert into salary_requests values
         (1,'qiunai','staff','pending','administrative','reimbursement','代支報銷',null,null,null),
-        (2,'qiunai','staff','pending','administrative','administrative','離職申請書',null,null,null);
+        (2,'qiunai','staff','pending','administrative','administrative','離職申請書',null,null,null),
+        (3,'qiunai','staff','pending','administrative',null,'其他申請',null,null,null);
       insert into eip_workflow_requests values
         (1,'["manager","owner"]',0,'staff','qiunai','pending',null,null,null,null,null,null);
     `);
@@ -40,6 +41,7 @@ test("HR money requests require separate Manager and PIC decisions through any d
     await finalize("pic");
     await assert.rejects(() => finalize("manager"), /不可改寫/);
     await finalize("manager", 2);
+    await assert.rejects(() => finalize("manager", 3), /先由 Manager 初核/);
     await assert.rejects(() => initial("other-manager"), /由 Manager 初核/);
 
     const workflowFinalize = (who) => db.query("update eip_workflow_requests set status='approved', decided_by=$1, decided_at=now()", [who]);

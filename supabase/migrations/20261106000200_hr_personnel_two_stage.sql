@@ -42,7 +42,10 @@ declare
 begin
   money := coalesce(old.approval_category in ('reimbursement', 'welfare'), false)
     or coalesce(old.request_group = 'welfare', false)
-    or coalesce(old.request_type in ('查掛津貼', '代支報銷', '證照津貼申請書', '逾期補登單申請書'), false);
+    or coalesce(old.request_type in ('查掛津貼', '代支報銷', '證照津貼申請書', '逾期補登單申請書'), false)
+    or not (coalesce(old.approval_category in ('leave', 'suspension'), false)
+      or coalesce(old.approval_category = 'administrative' and
+        old.request_type in ('離職申請書', '留職停薪申請書', '過失報告書', '懲處決議書'), false));
   first_changed := (new.first_reviewed_by, new.first_reviewed_at, new.first_review_note)
     is distinct from (old.first_reviewed_by, old.first_reviewed_at, old.first_review_note);
   if not money then
@@ -92,7 +95,7 @@ create trigger hr_guard_salary_request_review
 create function public.hr_guard_two_stage_workspace_review() returns trigger
 language plpgsql security definer set search_path = '' as $$
 begin
-  if old.approval_steps <> '["manager","owner"]'::jsonb then return new; end if;
+  if old.approval_steps is distinct from '["manager","owner"]'::jsonb then return new; end if;
   if (new.approval_steps, new.applicant_discord_id, new.organization_code)
     is distinct from (old.approval_steps, old.applicant_discord_id, old.organization_code) then
     raise exception '不可變更已送出申請的簽核流程' using errcode = '23514';

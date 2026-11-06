@@ -22,6 +22,10 @@ alter table public.eip_workflow_templates add constraint eip_archived_template_d
 create function public.eip_keep_used_workflow_template() returns trigger
 language plpgsql security definer set search_path = '' as $$
 begin
+  if (old.is_monetary or new.name ~ '金錢|代支|報銷|報帳|款項|付款|收款|金額|津貼|補助|禮金|獎金|費用|核銷|薪資|發薪|退款|採購|預支|提領')
+    and not new.is_monetary then
+    raise exception '金錢相關表單必須使用 Manager 初核與 PIC 覆核' using errcode = '23514';
+  end if;
   if (new.fields, new.approver_role, new.approval_steps) is distinct from
      (old.fields, old.approver_role, old.approval_steps)
      and exists (select 1 from public.eip_workflow_requests
@@ -31,7 +35,7 @@ begin
   return new;
 end $$;
 revoke all on function public.eip_keep_used_workflow_template() from public, anon, authenticated;
-create trigger eip_keep_used_workflow_template before update of fields, approver_role, approval_steps
+create trigger eip_keep_used_workflow_template before update of name, fields, approver_role, approval_steps, is_monetary
   on public.eip_workflow_templates for each row execute function public.eip_keep_used_workflow_template();
 
 -- Lock the template while creating the request. The submitted fields must
@@ -42,6 +46,10 @@ declare
   template public.eip_workflow_templates%rowtype;
 begin
   if tg_table_name = 'eip_workflow_templates' then
+    if new.name ~ '金錢|代支|報銷|報帳|款項|付款|收款|金額|津貼|補助|禮金|獎金|費用|核銷|薪資|發薪|退款|採購|預支|提領'
+      and not new.is_monetary then
+      raise exception '金錢相關表單必須使用 Manager 初核與 PIC 覆核' using errcode = '23514';
+    end if;
     if new.approval_steps is null then
       new.approval_steps := case when new.approver_role = 'owner'
         then '["owner"]'::jsonb else '["manager"]'::jsonb end;
