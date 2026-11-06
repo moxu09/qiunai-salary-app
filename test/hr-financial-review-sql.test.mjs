@@ -38,6 +38,7 @@ test("HR money requests require separate Manager and PIC decisions through any d
     await initial("manager");
     await assert.rejects(() => finalize("manager"), /由另一位 PIC/);
     await finalize("pic");
+    await assert.rejects(() => finalize("manager"), /不可改寫/);
     await finalize("manager", 2);
     await assert.rejects(() => initial("other-manager"), /由 Manager 初核/);
 
@@ -46,5 +47,6 @@ test("HR money requests require separate Manager and PIC decisions through any d
     await db.exec("update eip_workflow_requests set approval_step_index=1, first_approved_by='manager', first_approved_at=now()");
     await assert.rejects(() => workflowFinalize("manager"), /由另一位 PIC/);
     await workflowFinalize("pic");
+    await assert.rejects(() => workflowFinalize("manager"), /不可改寫/);
   } finally { await db.close(); }
 });

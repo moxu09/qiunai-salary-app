@@ -61,6 +61,11 @@ begin
   ) then
     raise exception '金錢申請須由 Manager 初核' using errcode = '23514';
   end if;
+  if new.status is not distinct from old.status
+    and (new.reviewed_by, new.reviewed_at, new.review_result) is distinct from
+        (old.reviewed_by, old.reviewed_at, old.review_result) then
+    raise exception '不可改寫金錢申請的簽核結果' using errcode = '23514';
+  end if;
   if new.status is distinct from old.status then
     if old.status <> 'pending' or new.status not in ('approved','rejected') or new.reviewed_by is null
       or new.reviewed_at is null or new.reviewed_by = old.discord_id
@@ -103,6 +108,11 @@ begin
   elsif (new.first_approved_by, new.first_approved_at, new.first_approval_note)
     is distinct from (old.first_approved_by, old.first_approved_at, old.first_approval_note) then
     raise exception '不可修改已登記的初核紀錄' using errcode = '23514';
+  end if;
+  if new.status is not distinct from old.status
+    and (new.decided_by, new.decided_at, new.decision_note) is distinct from
+        (old.decided_by, old.decided_at, old.decision_note) then
+    raise exception '不可改寫金錢申請的簽核結果' using errcode = '23514';
   end if;
   if new.status is distinct from old.status then
     if old.status <> 'pending' or new.status not in ('approved','rejected') or new.decided_by is null
