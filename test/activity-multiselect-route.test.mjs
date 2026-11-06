@@ -48,7 +48,7 @@ async function routes(db, authorize = async () => ({ discordId: "staff" })) {
   async function load(file, names) {
     const source = (await fs.readFile(new URL(file, import.meta.url), "utf8"))
       .replace(/^import .*;\r?$/gm, "").replace(/^export /gm, "");
-    return new Function("ExcelJS", "NextResponse", "supabaseAdmin", "authorizeErpRequest",
+    return new Function("ExcelJS", "NextResponse", "supabaseAdmin", "requireHrPic",
       "groupActivityResponses", "getAuthUserFromRequest", "normalizeActivityOptionIds",
       source + "\nreturn {" + names.join(",") + "};")(
       ExcelJS, NextResponse, db, authorize, groupActivityResponses,

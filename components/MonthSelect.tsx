@@ -36,7 +36,7 @@ export default function MonthSelect({
 
   return (
     <div
-      className={`grid grid-cols-2 gap-2 ${className}`}
+      className={`hr-month-select grid grid-cols-2 gap-2 ${className}`}
       data-no-translate
     >
       <select

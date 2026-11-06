@@ -183,7 +183,7 @@ export default function StaffDeviceAuditPanel() {
 
   return (
     <section className="space-y-6">
-      <header className="rounded-[28px] bg-slate-900 p-7 text-white shadow-xl">
+      <header className="hr-device-audit-hero rounded-[28px] bg-slate-900 p-7 text-white shadow-xl">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <p className="text-xs font-black tracking-[0.18em] text-cyan-300">秋奈電競</p>

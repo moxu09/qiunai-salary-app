@@ -551,11 +551,6 @@ textarea {
   order: 4;
 }
 
-.qiunai-admin-shell .salary-pay-panel {
-  grid-column: 2;
-  order: 4;
-}
-
 .qiunai-admin-shell .salary-orders-table {
   grid-column: 1 / -1;
   order: 5;
@@ -616,11 +611,6 @@ textarea {
   .qiunai-admin-shell .salary-deduction-form {
     grid-column: 2;
     grid-row: 5;
-  }
-
-  .qiunai-admin-shell .salary-pay-panel {
-    grid-column: 2;
-    grid-row: 6;
   }
 
   .qiunai-admin-shell .salary-orders-table {
@@ -1750,8 +1740,8 @@ input.erp-login-icon-input[type][class] {
 .eip-collab-row{display:grid;grid-template-columns:125px 1fr auto;gap:14px;align-items:center;border-bottom:1px solid #f0f3f6;padding:14px 0;font-size:14px}
 .eip-collab-row:last-child{border:0}.eip-collab-date{color:#4782ad;font-size:12px;font-weight:700}.eip-collab-row strong{font-weight:700}.eip-collab-row small{color:#8a9bae}
 .eip-collab-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;padding-top:8px}
-.eip-collab-actions button{border:1px solid #e2edf5;border-radius:14px;background:#f9fcff;display:flex;align-items:center;gap:10px;padding:15px;text-align:left;color:#2d4964;font-weight:700;cursor:pointer}
-.eip-collab-actions button:hover,.eip-collab-template:hover,.eip-collab-tile:hover{border-color:#86bde3;background:#f0f9ff}.eip-collab-actions button svg:first-child{width:18px;color:#397eb2}.eip-collab-actions button svg:last-child{width:15px;margin-left:auto;color:#96a9b9}
+.eip-collab-actions :is(button,a){border:1px solid #e2edf5;border-radius:14px;background:#f9fcff;display:flex;align-items:center;gap:10px;padding:15px;text-align:left;color:#2d4964;font-weight:700;cursor:pointer}
+.eip-collab-actions :is(button,a):hover,.eip-collab-template:hover,.eip-collab-tile:hover{border-color:#86bde3;background:#f0f9ff}.eip-collab-actions :is(button,a) svg:first-child{width:18px;color:#397eb2}.eip-collab-actions :is(button,a) svg:last-child{width:15px;margin-left:auto;color:#96a9b9}
 .eip-collab-tile-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:18px}.eip-collab-tile{display:flex;flex-direction:column;align-items:flex-start;gap:9px;text-align:left;background:#f8fbff;border:1px solid #e2edf6;border-radius:14px;padding:18px;cursor:pointer}.eip-collab-tile svg{color:#4a8db8}.eip-collab-tile span{font-size:11px;color:#8da0b2}.eip-collab-tile strong{font-size:15px}
 .eip-collab-event{display:grid;grid-template-columns:170px 1fr;gap:22px;padding:22px 4px;border-bottom:1px solid #ebf0f5}.eip-collab-event:last-child{border:0}.eip-collab-event-time{color:#397ea9;font-weight:750;font-size:13px;border-left:3px solid #75bfe9;padding-left:14px}.eip-collab-event h3{margin:0 0 8px;font-weight:800;font-size:17px}.eip-collab-event p{white-space:pre-wrap;color:#6f8195;font-size:14px;margin:4px 0}
 .eip-collab-search{display:flex;align-items:center;gap:9px;color:#7d98ad;border:1px solid #dbe8f2;border-radius:12px;padding:10px 13px;margin:17px 0}.eip-collab-search input{border:0;outline:0;width:100%;font-size:14px;background:transparent}
@@ -1808,3 +1798,425 @@ input.erp-login-icon-input[type][class] {
 .eip-workspace-upload button{display:flex;align-items:center;justify-content:center;gap:7px;justify-self:start;padding:9px 13px;border:0;border-radius:9px;background:#247db4;color:white;font-weight:750;cursor:pointer}
 .eip-workspace-upload button:disabled{opacity:.5;cursor:not-allowed}
 .eip-workspace-upload p{margin:0;color:#7790a2;font-size:12px;line-height:1.6}
+
+/* Unified employee HR keeps the established portal navigation and pastel workspace. */
+.hr-unified{color:#3f2947}.hr-header-inner{max-width:1500px;margin:auto;padding:22px 32px;display:flex;align-items:center;justify-content:space-between;gap:16px}.hr-header-inner h1{font-size:25px;font-weight:900;margin:3px 0}.hr-header-inner p:last-child{font-size:13px;color:#856c8b}.hr-header-actions{display:flex;gap:10px}.hr-header-actions button,.hr-submit{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:10px 16px}.hr-loading{min-height:100vh;display:flex;align-items:center;justify-content:center;gap:15px;padding:25px}.hr-loading .hr-card{max-width:600px}.hr-brand-logos{display:flex;gap:14px;margin:16px 0}.hr-brand-logo{position:relative;width:64px;height:64px;border-radius:50%;padding:6px;background:white;border:2px solid #edcef3;box-shadow:0 3px 14px #bb9dcc33;flex:none}.hr-brand-logo img{width:100%;height:100%;object-fit:contain;border-radius:50%}.hr-brand-logo.is-inactive{filter:grayscale(1);opacity:.3;box-shadow:none}.hr-membership-dot{position:absolute;bottom:0;right:1px;width:12px;height:12px;background:#62c49e;border:2px solid white;border-radius:50%}.hr-brand-logo.is-inactive .hr-membership-dot{background:#8b8690}.hr-card{margin-bottom:22px;padding:26px;border:1px solid #eadff0;border-radius:28px;background:#fff;box-shadow:0 4px 20px #baa1ce0b;min-width:0}.hr-card h2{font-size:20px;font-weight:900;margin-bottom:17px}.hr-note{font-size:13px;line-height:1.9;color:#907895}.hr-error{padding:15px;background:#fff1f2;border:1px solid #fecdd3;color:#c43d61;border-radius:14px;font-size:14px;line-height:1.8;margin:12px 0;white-space:pre-wrap}.hr-success{padding:14px;background:#ecfdf5;color:#267e60;border-radius:14px;margin:14px 0}.hr-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;margin:20px 0}.hr-form-grid label,.hr-amount-label,.hr-order-tools label{display:flex;flex-direction:column;gap:8px;font-size:13px;font-weight:700;min-width:0}.hr-form-grid input,.hr-form-grid select,.hr-amount-label input,.hr-order-tools input,.hr-order-tools select{border:1px solid #eadcee;border-radius:13px;padding:12px;background:#fcfaff;color:#523859;min-width:0;width:100%}.hr-submit{margin-top:16px;min-height:46px}.hr-submit:disabled{opacity:.4;cursor:not-allowed}.hr-department-summary{display:flex;flex-wrap:wrap;gap:14px;margin:18px 0}.hr-department-summary>div{flex:1;min-width:180px;border-radius:16px;border:1px solid #f0e7f4;background:#fcfaff;padding:16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}.hr-department-summary strong{font-size:14px}.hr-department-summary span{font-size:13px}.hr-department-summary button{margin-left:auto;font-size:12px;padding:7px 10px}.hr-online{color:#22966f}.hr-wallet-totals{display:grid;grid-template-columns:1.5fr 1fr 1fr;gap:20px;padding:24px;border-radius:20px;background:linear-gradient(120deg,#faf0fc,#f2f3ff)}.hr-wallet-totals div{display:flex;flex-direction:column;gap:7px}.hr-wallet-totals small{color:#927594;font-size:12px}.hr-wallet-totals strong{font-size:26px;font-weight:900}.hr-wallet-totals div:first-child strong{font-size:34px;color:#9e5fa7}.hr-wallet-form{border-top:1px solid #f0e7f4;padding-top:8px}.hr-amount-label{margin:20px 0}.hr-amount-label small{font-size:12px;line-height:1.8;font-weight:400;color:#907895}.hr-allocation{padding:12px 18px;border-radius:16px;background:#faf7fd;margin:15px 0}.hr-allocation p{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:9px 0;font-size:13px;flex-wrap:wrap}.hr-allocation p:last-child{border-top:1px solid #e9e0ef;font-weight:800}.hr-allocation small{font-size:12px;color:#907895}.hr-history{margin-top:22px;border-top:1px solid #f0e7f4;padding-top:15px}.hr-history summary{font-weight:700;font-size:14px;cursor:pointer}.hr-table-scroll{overflow-x:auto;max-width:100%;margin-top:12px}.hr-table-scroll table{width:100%;border-collapse:collapse;white-space:nowrap;font-size:12px}.hr-table-scroll th{text-align:left;color:#907895;padding:13px;background:#faf7fd;font-weight:700}.hr-table-scroll td{padding:13px;border-bottom:1px solid #f1eaf5}.hr-table-scroll td small{display:block;white-space:normal;max-width:250px;color:#907895;margin-top:4px}.hr-inline{margin-left:12px;text-decoration:underline}.hr-page-title{margin:0 0 22px;padding:10px 0}.hr-page-title h1{font-size:25px;font-weight:900}.hr-page-title p{margin-top:8px;font-size:14px;color:#907895}.hr-order-tools{display:flex;gap:16px;align-items:flex-end;margin-top:20px;flex-wrap:wrap}.hr-order-tools label{flex:1;min-width:160px}.hr-order-tools button{padding:12px 16px}.hr-order-stats{display:flex;gap:15px;align-items:center;font-size:13px;color:#907895}.hr-order-stats strong{color:#8d5c9b}.hr-empty{text-align:center;padding:30px}.hr-unified .staff-main-column>.eip-collaboration{margin-top:0}.hr-unified .staff-portal-link{text-decoration:none}.hr-unified .staff-workspace-section{max-width:none;margin:0 0 0 264px;width:calc(100% - 264px)}
+@media(max-width:760px){.hr-header-inner{padding:18px}.hr-header-inner h1{font-size:21px}.hr-header-actions button{font-size:12px;padding:9px}.hr-card{padding:18px;border-radius:22px}.hr-form-grid{grid-template-columns:1fr}.hr-wallet-totals{grid-template-columns:1fr 1fr;padding:18px;gap:18px}.hr-wallet-totals>div:first-child{grid-column:1/-1}.hr-wallet-totals strong{font-size:22px}.hr-wallet-totals div:first-child strong{font-size:32px}.hr-brand-logos{margin:10px 0}.hr-brand-logo{width:56px;height:56px}.hr-department-summary>div{min-width:100%}.hr-header-actions{gap:7px}.hr-page-title h1{font-size:22px}}
+
+.hr-service-editor{flex-basis:100%;width:100%;border-top:1px solid #e9dfef;padding-top:12px;margin-top:8px;font-size:13px}.hr-service-editor summary{cursor:pointer;font-weight:700}
+.hr-form-grid textarea{width:100%;border:1px solid #eadcee;border-radius:13px;padding:12px;background:#fcfaff;color:#523859;min-width:0}
+
+@media(max-width:1023px){.hr-unified .staff-workspace-section{margin-left:0;width:100%}.hr-unified .staff-portal-brand{display:flex;align-items:center;gap:12px;padding:0 0 10px}.hr-unified .staff-portal-brand .staff-portal-eyebrow{display:none}.hr-unified .hr-brand-logos{margin:0}.hr-unified .hr-brand-logo{width:40px;height:40px;padding:3px}.hr-unified .staff-portal-name{margin:0}.hr-unified .staff-portal-nav{position:relative}}
+
+.hr-career-department{margin-top:20px;border-top:1px solid #eee4f4;padding-top:16px}.hr-career-department h3{font-weight:900;font-size:17px}.hr-progress{margin-top:15px}.hr-progress p{display:flex;justify-content:space-between;gap:15px;flex-wrap:wrap;font-size:12px;color:#907895}.hr-progress progress{width:100%;height:7px;margin-top:10px;accent-color:#ae69c5}
+
+/* HR controls override the legacy light-palette text and opacity rules. */
+.hr-unified button,
+.hr-unified a[role="button"] {
+  font-size: 14px !important;
+  font-weight: 800 !important;
+}
+
+.hr-unified :is(.qiunai-button, button.text-white, .eip-collab-form-actions button[type="submit"], .eip-workspace-upload button, .eip-messages-compose button, .eip-messages-launcher) {
+  background: linear-gradient(120deg, #a7165b, #6530a1) !important;
+  color: #fff !important;
+  border: 1px solid #76245e !important;
+  box-shadow: 0 4px 12px #65266524 !important;
+}
+
+.hr-unified :is(.qiunai-button, button.text-white, .eip-collab-form-actions button[type="submit"], .eip-workspace-upload button, .eip-messages-compose button, .eip-messages-launcher):hover:not(:disabled) {
+  background: linear-gradient(120deg, #861247, #50227e) !important;
+}
+
+.hr-unified :is(.qiunai-button, button.text-white, .eip-collab-form-actions button[type="submit"], .eip-workspace-upload button, .eip-messages-compose button, .eip-messages-launcher) :is(span, svg) {
+  color: inherit !important;
+}
+
+.hr-unified :is(.qiunai-soft-button, .eip-collab-refresh, button.bg-violet-50) {
+  background: #faf5ff !important;
+  color: #542466 !important;
+  border: 1px solid #a17db4 !important;
+}
+
+.hr-unified :is(.qiunai-soft-button, .eip-collab-refresh, button.bg-violet-50):hover:not(:disabled) {
+  background: #eee2f7 !important;
+  border-color: #70448b !important;
+}
+
+.hr-unified :is(.hr-inline, .eip-collab-panel-head button) {
+  color: #17547a !important;
+}
+
+.hr-unified :is(.eip-collab-metrics button span, .eip-collab-tile span, .eip-collab-template small, .eip-collab-document-list span, .eip-collab-document-list small, .eip-messages-contact-content small) {
+  color: #4e6177 !important;
+}
+
+.hr-unified summary {
+  color: #542466;
+  padding: 9px 12px;
+  border: 1px solid #c3b0cf;
+  border-radius: 10px;
+  background: #faf5ff;
+  font-weight: 800;
+}
+
+.hr-unified :is(button, a[role="button"], summary):focus-visible {
+  outline: 3px solid #6530a1 !important;
+  outline-offset: 3px;
+}
+
+.hr-unified button:disabled {
+  opacity: 1 !important;
+  color: #62556f !important;
+  background: #e7e2ed !important;
+  border: 1px solid #b8a9c4 !important;
+  box-shadow: none !important;
+  cursor: not-allowed;
+}
+
+.hr-unified button:disabled :is(span, svg) {
+  color: inherit !important;
+}
+
+/* HR mobile reflow: keep text inside cards rather than hiding overflowing text. */
+.hr-unified .hr-wallet-totals > div {
+  min-width: 0;
+}
+
+.hr-unified .hr-wallet-totals strong {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 760px) {
+  .hr-unified :is(h1, h2, h3, p, strong, small, label, a, summary, button) {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .hr-unified button {
+    width: auto;
+    max-width: 100%;
+    height: auto;
+    white-space: normal;
+  }
+
+  .hr-unified button svg {
+    flex-shrink: 0;
+  }
+
+  .hr-unified :is(.hr-submit, button.w-full) {
+    width: 100%;
+  }
+
+  .hr-header-inner {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 16px 14px !important;
+  }
+
+  .hr-header-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .hr-unified .staff-portal-nav {
+    margin-inline: 0;
+    width: 100%;
+    max-width: 100%;
+    padding: 12px;
+  }
+
+  .hr-unified .staff-portal-brand {
+    min-width: 0;
+  }
+
+  .hr-unified .hr-brand-logos {
+    flex-shrink: 0;
+  }
+
+  .hr-unified :is(.hr-card, .eip-collab-panel, .eip-collab-template, .eip-collab-tile) {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .hr-unified .hr-department-summary > div {
+    min-width: 0;
+    flex-basis: 100%;
+  }
+
+  .hr-department-summary button {
+    margin-left: 0;
+  }
+
+  .hr-wallet-totals {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    padding: 16px;
+  }
+
+  .hr-unified .hr-month-select {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .hr-unified .hr-month-select select {
+    min-width: 0 !important;
+    padding-inline: 10px !important;
+  }
+
+  .hr-order-tools {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .hr-order-tools label {
+    min-width: 0;
+  }
+
+  .hr-order-tools button {
+    width: 100%;
+  }
+
+  .hr-unified :is(.hr-table-scroll, .overflow-x-auto) {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    overflow-x: auto;
+  }
+
+  .hr-unified :is(td, th) {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .hr-unified .eip-collaboration {
+    padding-inline: 0;
+  }
+
+  .hr-unified .eip-collab-panel-head {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .hr-unified .eip-collab-panel-head button {
+    flex-shrink: 0;
+  }
+
+  .hr-unified .eip-collab-metrics {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .hr-unified .eip-collab-metrics button {
+    grid-template-columns: 24px minmax(0, 1fr);
+    min-width: 0;
+  }
+
+  .hr-unified .eip-collab-row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 6px;
+  }
+
+  .hr-unified .eip-collab-row small {
+    grid-column: auto;
+  }
+
+  .hr-unified .eip-collab-document-body {
+    min-width: 0;
+    padding: 18px;
+  }
+
+  .hr-unified .eip-collab-document-body > div {
+    overflow-wrap: anywhere;
+  }
+
+  .hr-download-card {
+    display: grid;
+    grid-template-columns: 46px minmax(0, 1fr);
+    gap: 12px;
+  }
+
+  .hr-download-card > div:first-child {
+    display: grid;
+    width: 46px;
+    height: 46px;
+    padding: 10px;
+    place-items: center;
+  }
+
+  .hr-unified .hr-download-card > button {
+    grid-column: 1 / -1;
+    width: 100%;
+    justify-content: center;
+  }
+
+  .hr-unified .eip-messages-launcher {
+    width: auto;
+  }
+
+  .hr-unified .eip-messages-heading {
+    min-width: 0;
+  }
+
+  .hr-unified .eip-messages-close,
+  .hr-unified .eip-messages-back {
+    width: 38px;
+    flex-shrink: 0;
+  }
+}
+
+.staff-mobile-menu-toggle {
+  display: none;
+}
+
+@media (max-width: 1023px) {
+  .hr-unified .staff-portal-nav {
+    margin-inline: 0;
+    width: 100%;
+    max-width: 100%;
+    overflow: visible;
+  }
+
+  .hr-unified .staff-mobile-menu-toggle {
+    display: flex;
+    width: 100%;
+    min-height: 44px !important;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border: 1px solid #b591d3;
+    border-radius: 12px !important;
+    background: #3a2259;
+    color: #fff !important;
+    text-align: left;
+  }
+
+  .staff-mobile-menu-chevron {
+    margin-left: auto;
+    transition: transform 160ms ease;
+  }
+
+  .is-mobile-open .staff-mobile-menu-chevron {
+    transform: rotate(180deg);
+  }
+
+  .hr-unified .staff-portal-menu {
+    display: none;
+    width: 100%;
+    min-width: 0;
+    max-height: 65vh;
+    max-height: 65dvh;
+    overflow-y: auto;
+    overflow-x: hidden;
+    overscroll-behavior: contain;
+    flex-direction: column;
+    gap: 12px;
+    padding-top: 12px;
+  }
+
+  .hr-unified .is-mobile-open .staff-portal-menu {
+    display: flex;
+  }
+
+  .hr-unified .staff-portal-group {
+    display: block;
+    width: 100%;
+    flex-shrink: 0;
+  }
+
+  .hr-unified .staff-portal-group-toggle {
+    width: 100%;
+    min-width: 0;
+    margin: 0 0 5px;
+    white-space: normal;
+    text-align: left;
+  }
+
+  .hr-unified .staff-portal-items {
+    flex-direction: column;
+  }
+
+  .hr-unified .staff-portal-items-collapse {
+    display: none;
+    max-width: none;
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+
+  .hr-unified .staff-portal-items-collapse.is-open {
+    display: block;
+  }
+
+  .hr-unified .staff-portal-link {
+    width: 100%;
+    white-space: normal;
+  }
+}
+
+/* Only the visible message launcher/panel may intercept page clicks. */
+.eip-messages{pointer-events:none}
+.eip-messages > *{pointer-events:auto}
+@media(max-width:760px){.hr-course-reader{padding-bottom:90px}}
+
+/* Published knowledge and courses share the existing HR theme palette. */
+.hr-course-note{color:var(--hr-muted,#52688c);font-size:14px;line-height:1.8;margin:12px 0}
+.hr-course-tools{display:flex;align-items:center;flex-wrap:wrap;gap:16px;margin-bottom:20px}
+.hr-course-tools .eip-collab-search{flex:1;min-width:min(100%,240px);margin:0}
+.hr-course-tools>label:last-child:not(.eip-collab-search){display:flex;align-items:center;gap:10px;font-size:14px;color:var(--hr-ink,#263e68)}
+.hr-course-tools select{min-height:44px;padding:8px 12px;border:1px solid var(--hr-border,#c5d9ef);border-radius:10px;background:var(--hr-paper,#fff);color:var(--hr-ink,#263e68);max-width:100%}
+.hr-course-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr));gap:18px}
+.hr-course-card{display:flex;flex-direction:column;align-items:stretch;gap:12px;min-width:0;padding:22px;border:1px solid var(--hr-border,#c5d9ef);border-radius:18px;background:var(--hr-paper,#fff);color:var(--hr-ink,#263e68);text-decoration:none;overflow-wrap:anywhere}
+.hr-course-card:hover{outline:2px solid var(--hr-accent,#365d9c);outline-offset:2px}
+.hr-course-card-meta{display:flex;align-items:center;gap:10px;font-size:13px;font-weight:750}
+.hr-course-category{font-size:12px;color:var(--hr-muted,#52688c)}
+.hr-course-card h3{font-size:20px;font-weight:850;line-height:1.6;margin:0}
+.hr-course-card p{color:var(--hr-muted,#52688c);font-size:14px;line-height:1.9;margin:0}
+.hr-course-card-footer{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-top:auto;padding-top:12px}
+.hr-course-card-footer small{font-size:12px;color:var(--hr-muted,#52688c)}
+.hr-course-card-footer strong{display:inline-flex;gap:7px;align-items:center;font-size:14px}
+.hr-course-reader{min-width:0;overflow-wrap:anywhere}
+.hr-course-reader-tools{display:flex;gap:12px;justify-content:space-between;align-items:center;flex-wrap:wrap;margin-bottom:20px}
+.hr-course-reader-tools a,.hr-course-reader-tools button,.hr-course-pagination a{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:10px 15px;border:1px solid var(--hr-border,#c5d9ef);border-radius:12px;background:var(--hr-soft,#edf5ff);color:var(--hr-ink,#263e68);font-weight:750;font-size:14px;text-decoration:none;cursor:pointer;white-space:normal}
+.hr-course-reader-tools button:disabled{background:var(--hr-disabled-bg,#e3e7ed);color:var(--hr-disabled-text,#435267);border-style:dashed;cursor:wait}
+.hr-course-heading h2{font-size:clamp(24px,4vw,34px);font-weight:900;line-height:1.5;margin:12px 0}
+.hr-course-heading>span,.hr-course-heading p{color:var(--hr-muted,#52688c);font-size:13px;line-height:1.8}
+.hr-course-layout{display:grid;grid-template-columns:minmax(180px,260px) minmax(0,1fr);align-items:start;gap:20px}
+.hr-course-layout .eip-collab-panel{margin:0;min-width:0}
+.hr-course-toc{position:sticky;top:20px;padding:18px!important;max-height:75vh;overflow:auto}
+.hr-course-toc summary{display:flex;align-items:center;gap:9px;cursor:pointer;font-size:16px;font-weight:850;min-height:44px}
+.hr-course-toc nav{display:grid;gap:6px;margin-top:12px}
+.hr-course-toc nav a{display:flex;align-items:baseline;gap:10px;min-height:44px;padding:12px;border-radius:10px;color:var(--hr-ink,#263e68);font-size:14px;line-height:1.6;text-decoration:none;border:1px solid transparent}
+.hr-course-toc nav a span{flex:none;font-weight:850}
+.hr-course-toc nav a[aria-current=page]{background:var(--hr-soft,#edf5ff);border-color:var(--hr-accent,#365d9c);font-weight:850}
+.hr-course-toc nav a:hover{border-color:var(--hr-border,#c5d9ef)}
+.hr-course-content{padding:clamp(18px,3vw,32px)!important;max-height:none!important}
+.hr-course-chapter{padding:20px 0 28px;border-bottom:1px solid var(--hr-border,#c5d9ef)}
+.hr-course-chapter:first-child{padding-top:0}
+.hr-course-chapter>span{font-size:12px;color:var(--hr-muted,#52688c)}
+.hr-course-content h3{font-size:23px;font-weight:850;line-height:1.6;margin:12px 0 18px}
+.hr-course-text{white-space:pre-wrap;line-height:2;font-size:16px;color:var(--hr-ink,#263e68);overflow-wrap:anywhere}
+.hr-course-pagination{display:flex;flex-wrap:wrap;justify-content:space-between;gap:12px;margin:24px 0}
+.hr-course-files{border-top:1px solid var(--hr-border,#c5d9ef);padding-top:16px;margin-top:20px}
+.hr-course-completion{margin-top:28px;padding:22px;border:1px solid var(--hr-border,#c5d9ef);border-radius:16px;background:var(--hr-soft,#edf5ff)}
+.hr-course-completion p{color:var(--hr-ink,#263e68);font-size:14px;line-height:1.9;margin:10px 0 18px}
+.hr-course-completion .qiunai-button{min-height:46px;min-width:120px;padding:12px 24px;font-weight:850;font-size:16px}
+.hr-course-reader :is(a,button,summary,select):focus-visible,.hr-knowledge-library :is(a,input,select):focus-visible{outline:3px solid var(--hr-accent,#365d9c);outline-offset:3px}
+@media(max-width:860px){.hr-course-layout{grid-template-columns:minmax(0,1fr)}.hr-course-toc{position:static;max-height:none}.hr-course-reader-tools{align-items:stretch}.hr-course-reader-tools>*{flex:1}.hr-course-content h3{font-size:21px}.hr-course-text{font-size:16px}}
+
+/* Service tools keep opaque surfaces and explicit button contrast in every HR theme. */
+.service-console{--hr-ink:#243348;--hr-muted:#53657b;--hr-border:#d7e2f1;--hr-soft:#edf2fb;--hr-accent:#2357b8;--hr-link:#2357b8;--svc-ink:#243348;--svc-muted:#53657b;--svc-accent:#2357b8;--svc-line:#d7e2f1;min-height:100vh;background:radial-gradient(ellipse at top right,#e5e7ff,transparent 55%),#f3f6fc;color:var(--svc-ink);padding:28px max(20px,calc((100vw - 1260px)/2));font-family:Arial,"Noto Sans TC",sans-serif}
+.service-store-deepnight{--svc-accent:#504399;background:radial-gradient(ellipse at top right,#e7e1fa,transparent 55%),#f2f3fb}
+.service-header,.service-brand,.service-toolbar,.service-tabs,.service-output>div{display:flex;align-items:center;gap:14px}.service-header{justify-content:space-between;flex-wrap:wrap}.service-header a,.service-console a{color:var(--svc-accent);text-decoration:underline;text-underline-offset:3px}.service-brand img{width:48px;height:48px;object-fit:contain;border-radius:50%;background:white;border:1px solid var(--svc-line)}.service-brand span{font-size:11px;letter-spacing:.12em;color:var(--svc-muted)}.service-brand h1{font-size:22px;font-weight:800;margin:2px 0}.service-hero{margin:28px 0 22px;padding:28px 34px;border:1px solid var(--svc-line);border-radius:24px;background:linear-gradient(110deg,#fff 40%,#e9edff);display:flex;align-items:center;justify-content:space-between;gap:20px}.service-hero h2{font-size:32px;font-weight:800;margin:8px 0}.service-hero p,.service-section-heading p{color:var(--svc-muted);line-height:1.7}.service-hero>svg{color:#5676b9;flex:none}.service-console button,.service-console input,.service-console select,.service-console textarea{font:inherit}.service-console button,.service-console select{min-height:44px;border-radius:11px;padding:10px 15px}.service-console button{background:var(--svc-accent);color:#fff;border:1px solid var(--svc-accent);font-weight:700;display:inline-flex;justify-content:center;align-items:center;gap:8px;cursor:pointer}.service-console button:disabled{background:#dbe1ea;color:#536173;border-color:#b9c3d2;cursor:default}.service-console input,.service-console select,.service-console textarea{background:#fff;color:#243348;border:1px solid #a7b7cb;border-radius:10px;padding:11px;max-width:100%;min-width:0}.service-console input::placeholder,.service-console textarea::placeholder{color:#627087;opacity:1}.service-console button:focus-visible,.service-console a:focus-visible,.service-console input:focus-visible,.service-console select:focus-visible,.service-console textarea:focus-visible{outline:3px solid #d16b00;outline-offset:3px}.service-toolbar{justify-content:space-between}.service-toolbar label{display:flex;align-items:center;gap:12px;font-weight:700}.service-tabs{border-bottom:1px solid var(--svc-line);margin:20px 0;flex-wrap:wrap;gap:6px}.service-tabs a{display:flex;align-items:center;gap:8px;padding:14px 18px;color:#43536c;text-decoration:none;border-bottom:3px solid transparent;font-weight:700}.service-tabs a[aria-current=page]{border-color:var(--svc-accent);color:var(--svc-accent)}.service-mobile-tabs{display:none}.service-card{padding:24px;background:#fff;border:1px solid var(--svc-line);border-radius:18px;box-shadow:0 3px 12px #30476a06;min-width:0}.service-card h2,.service-section-heading h2{font-size:22px;font-weight:800;margin:0 0 16px}.service-card h3{font-size:18px;font-weight:700;margin:0 0 12px}.service-card p{line-height:1.7;overflow-wrap:anywhere}.service-template-layout{display:grid;grid-template-columns:300px minmax(0,1fr);gap:20px}.service-template-list>select{width:100%;margin:14px 0}.service-search{display:flex;align-items:center;gap:6px}.service-search input{width:100%}.service-template-list>div{display:grid;gap:8px;max-height:68vh;overflow:auto}.service-template-list button{display:block;text-align:left;background:#f6f8fd;color:#30415c;border-color:#d7e2f1;padding:12px}.service-template-list button small{display:block;color:#5e6d85;font-weight:400;font-size:11px;margin-bottom:4px}.service-template-list button[aria-pressed=true]{background:#eaf0ff;color:#173e8c;border-color:#668ed5}.service-template-editor form{display:grid;gap:16px;margin-top:20px}.service-template-editor label{display:grid;gap:8px;font-weight:700;overflow-wrap:anywhere}.service-template-editor label input,.service-template-editor label textarea,.service-template-editor label select{width:100%;font-weight:400}.service-template-editor label textarea{min-height:100px}.service-eyebrow{font-size:12px;font-weight:700;color:var(--svc-accent)}.service-empty{padding:60px 10px;text-align:center;color:var(--svc-muted)}.service-output{border-top:1px solid var(--svc-line);margin-top:24px;padding-top:20px}.service-output textarea{width:100%;min-height:300px;margin-top:16px;line-height:1.7;white-space:pre-wrap;overflow-wrap:anywhere}.service-output>div{flex-wrap:wrap}.service-guide{display:grid;gap:16px}.service-guide-text{white-space:pre-wrap}.service-check{display:flex;align-items:flex-start;gap:12px;line-height:1.8;padding:10px 0;cursor:pointer}.service-check input{width:20px;height:20px;flex:none;margin-top:5px;accent-color:var(--svc-accent)}.service-resource{display:block;padding:12px 0;overflow-wrap:anywhere}.service-console .eip-collab-panel,.service-console .hr-course-card{background:#fff;color:#243348;border-color:#d7e2f1}.service-console .hr-course-note,.service-console .hr-course-card p,.service-console .hr-course-card small{color:#53657b}.service-console .hr-course-text{color:#243348}.service-console .hr-course-card h3{color:#243348}
+@media(max-width:760px){.service-console{padding:18px 14px}.service-brand{gap:8px}.service-brand img{width:36px;height:36px}.service-brand h1{font-size:19px}.service-brand span{font-size:9px}.service-header>a{font-size:13px}.service-hero{padding:22px;margin-top:20px}.service-hero h2{font-size:27px}.service-hero>svg{display:none}.service-toolbar{align-items:flex-end;gap:8px}.service-toolbar label{display:grid;gap:6px;min-width:0;flex:1}.service-toolbar select{width:100%}.service-tabs{display:none}.service-mobile-tabs{display:grid;gap:8px;margin:18px 0;font-weight:700}.service-mobile-tabs select{width:100%}.service-template-layout{grid-template-columns:minmax(0,1fr)}.service-card{padding:18px}.service-template-list>div{max-height:240px}.service-console button,.service-console input,.service-console select{font-size:16px}.service-hero p{font-size:14px}}
+/* Contain the legacy ERP's global important typography inside this namespace. */
+main.service-console{--qiunai-text:#243348;--qiunai-text-soft:#53657b;--qiunai-muted:#53657b;--qiunai-border-strong:#a7b7cb;padding:28px max(20px,calc((100vw - 1260px)/2))!important;background:radial-gradient(ellipse at top right,#e5e7ff,transparent 55%),#f3f6fc!important;color:#243348!important;font-size:16px}
+main.service-console.service-store-deepnight{background:radial-gradient(ellipse at top right,#e7e1fa,transparent 55%),#f2f3fb!important}
+.service-console button{min-height:44px!important;border-radius:11px!important;font-size:15px!important}
+.service-console button.qiunai-button{background:var(--svc-accent)!important;color:white!important}
+.service-console label{color:#243348!important;font-size:15px!important}
+.service-console :is(input:not([type=checkbox]),select,textarea){min-height:44px!important;border-radius:10px!important;border:1px solid #a7b7cb!important;background:#fff!important;color:#243348!important;font-size:16px!important;padding:11px!important}
+.service-console :is(input,select,textarea):focus-visible{outline:3px solid #d16b00!important;outline-offset:3px}
+.service-console h1{font-size:24px!important}.service-console h2{font-size:22px!important}.service-console h3{font-size:18px!important}.service-console .service-hero h2{font-size:32px!important}.service-console .service-output textarea{min-height:300px!important}
+@media(max-width:760px){main.service-console{padding:18px 14px!important}.service-console h1{font-size:19px!important}.service-console .service-hero h2{font-size:27px!important}.service-console button{font-size:16px!important}}
+
+.service-staff-directory{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(240px,100%),1fr));gap:10px;margin-top:18px}.service-staff-directory a{display:grid;gap:6px;border:1px solid var(--svc-line);border-radius:12px;padding:14px;min-height:70px;overflow-wrap:anywhere;text-decoration:none}.service-staff-directory a span{font-size:13px}

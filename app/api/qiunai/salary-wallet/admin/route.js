@@ -6,7 +6,7 @@ import {
   manuallyDepositSalaryWallet,
   settleSalaryWallet,
 } from "@/lib/salaryWallet";
-import { authorizeErpRequest } from "@/lib/erpAccess";
+import { ERP_OWNER_DISCORD_ID, authorizeErpRequest } from "@/lib/erpAccess";
 
 const walletConfig = {
   appKey: "qiunai",
@@ -86,7 +86,7 @@ export async function GET(request) {
 
     const { data, error } = await supabaseAdmin
       .from("salary_withdraw_requests")
-      .select("*")
+      .select("*,payout_bank:hr_bank_payout_details(bank_name,bank_account,bank_holder)")
       .eq("app_key", walletConfig.appKey)
       .order("requested_at", { ascending: false });
 
@@ -117,6 +117,16 @@ export async function POST(request) {
     const { discordId } = await requireAdmin(request);
     const body = await request.json();
     const action = String(body.action || "").trim();
+
+    if (
+      (action === "deposit-wallet" || action === "bulk-deposit-wallet") &&
+      discordId !== ERP_OWNER_DISCORD_ID
+    ) {
+      return NextResponse.json(
+        { ok: false, message: "只有帳套擁有者可以發送薪資到錢包" },
+        { status: 403 },
+      );
+    }
 
     if (action === "bulk-deposit-wallet") {
       const giftNames = await loadGiftNames();

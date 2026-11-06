@@ -30,7 +30,7 @@ type AuthLinkStatus = {
 type Props = {
   organization: Organization;
   mode?: "onboarding" | "profile";
-  nextPath?: "/staff" | "/admin";
+  nextPath?: string;
   embedded?: boolean;
 };
 
@@ -252,16 +252,16 @@ export default function ErpAuthLinkManager({
         </div>
         <div>
           <h2 className="text-lg font-black">
-            {mode === "onboarding" ? "連結其他登入方式" : "EIP 登入方式"}
+            {mode === "onboarding" ? "連結其他登入方式" : "HR 登入方式"}
           </h2>
-          <p className="mt-1 text-sm leading-6 opacity-70">
+          <p className="mt-1 text-sm leading-6 text-slate-500">
             Discord 是你的主要員工身分。Google 與電子郵件只會連結到同一個帳號，不會另外建立薪資或錢包。
           </p>
         </div>
       </div>
 
       {!status && !errorText ? (
-        <div className="mt-5 flex items-center gap-2 text-sm opacity-70">
+        <div className="mt-5 flex items-center gap-2 text-sm text-slate-500">
           <LoaderCircle className="animate-spin" size={18} />
           讀取登入方式中...
         </div>
@@ -282,7 +282,7 @@ export default function ErpAuthLinkManager({
                   <span className="text-lg font-black text-[#4285f4]">G</span>
                   Google / Gmail
                 </p>
-                <p className="mt-1 text-xs leading-5 opacity-65">
+                <p className="mt-1 text-xs leading-5 text-slate-500">
                   {status.googleReady
                     ? "已連結，可直接使用 Google 登入。"
                     : status.googleLinked
@@ -290,25 +290,25 @@ export default function ErpAuthLinkManager({
                       : "連結你的 Google 帳號作為快速登入方式。"}
                 </p>
               </div>
+              {status.googleReady ? <span className="hr-auth-linked-status inline-flex items-center justify-center gap-2 rounded-full border border-emerald-300 bg-emerald-50 px-4 py-2.5 text-sm font-bold text-emerald-700"><CheckCircle2 size={16} />已綁定</span> : (
               <button
                 type="button"
                 onClick={connectGoogle}
-                disabled={status.googleReady || Boolean(pending)}
+                disabled={Boolean(pending)}
                 className={
                   isQiunai
-                    ? "inline-flex items-center justify-center gap-2 rounded-full bg-[#4b2d5a] px-4 py-2.5 text-sm font-bold text-white disabled:bg-emerald-100 disabled:text-emerald-700"
-                    : "inline-flex items-center justify-center gap-2 rounded-full bg-sky-600 px-4 py-2.5 text-sm font-bold text-white disabled:bg-emerald-100 disabled:text-emerald-700"
+                    ? "inline-flex items-center justify-center gap-2 rounded-full bg-[#4b2d5a] px-4 py-2.5 text-sm font-bold text-white disabled:opacity-60"
+                    : "inline-flex items-center justify-center gap-2 rounded-full bg-sky-600 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-60"
                 }
               >
                 {pending === "google" ? (
                   <LoaderCircle className="animate-spin" size={16} />
-                ) : status.googleReady ? (
-                  <CheckCircle2 size={16} />
                 ) : (
                   <Link2 size={16} />
                 )}
-                {status.googleReady ? "已綁定" : "連結 Google"}
+                連結 Google
               </button>
+              )}
             </div>
           </div>
 
@@ -329,7 +329,7 @@ export default function ErpAuthLinkManager({
                 </span>
               ) : null}
             </div>
-            <p className="mt-1 text-xs leading-5 opacity-65">
+            <p className="mt-1 text-xs leading-5 text-slate-500">
               {status.emailConfirmationPending
                 ? `等待 ${status.email} 完成信箱驗證。你也可以重新設定。`
                 : status.emailReady
@@ -462,8 +462,8 @@ export default function ErpAuthLinkManager({
                 <CheckCircle2 size={18} />
               )}
               {status.googleReady || status.emailEnabled
-                ? "完成設定並進入 EIP"
-                : "暫時不要連結，進入 EIP"}
+                ? "完成設定並進入 HR"
+                : "暫時不要連結，進入 HR"}
             </button>
           ) : null}
         </div>

@@ -22,7 +22,7 @@ import { useErpAccess } from "@/lib/useErpAccess";
 
 const COMMON_ERP_ORIGIN =
   process.env.NEXT_PUBLIC_COMMON_ERP_ORIGIN ||
-  "https://salary.wearestilllhere.com";
+  "https://eip.wearestilllhere.com";
 const ERP_OWNER_DISCORD_ID = "847840193859682304";
 
 type AdminLink = {
@@ -116,6 +116,7 @@ export default function AdminShell({
     const receiveSession = async (event: MessageEvent) => {
       if (
         event.origin !== COMMON_ERP_ORIGIN ||
+        event.source !== window.parent ||
         event.data?.type !== "ERP_COMMON_SESSION"
       ) {
         return;

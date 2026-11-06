@@ -6,7 +6,6 @@ import { useEffect, useMemo, useState } from "react";
 import {
   Save,
   RefreshCw,
-  Gamepad2,
   Search,
   Trophy,
   Archive,
@@ -14,7 +13,6 @@ import {
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import AdminStaffWalletCard from "@/components/AdminStaffWalletCard";
-import { SERVICE_OPTIONS, type ServiceOption } from "@/lib/serviceOptions";
 import { useQiunaiAdminGuard } from "@/lib/useQiunaiAdminGuard";
 
 type Staff = {
@@ -38,24 +36,12 @@ type Staff = {
   updated_at: string;
 };
 
-type StaffService = {
-  id: string;
-  discord_id: string;
-  service_key: string;
-  service_name: string;
-  enabled: boolean;
-  created_at: string;
-  updated_at: string;
-};
-
 export default function AdminStaffPage() {
   const { adminLoading, isAdmin } = useQiunaiAdminGuard();
 
   const [loading, setLoading] = useState(true);
   const [staffList, setStaffList] = useState<Staff[]>([]);
-  const [staffServiceMap, setStaffServiceMap] = useState<
-    Record<string, string[]>
-  >({});
+  const [featuredKeyword, setFeaturedKeyword] = useState("");
   const [savingId, setSavingId] = useState<string | null>(null);
   const [archivingId, setArchivingId] = useState<string | null>(null);
   const [selectedStaffId, setSelectedStaffId] = useState<string | null>(null);
@@ -64,20 +50,6 @@ export default function AdminStaffPage() {
   const [keyword, setKeyword] = useState("");
   const [salarySort, setSalarySort] = useState("created_desc");
   const [showArchived, setShowArchived] = useState(false);
-
-  const groupedServices = useMemo(() => {
-    const groups: Record<string, ServiceOption[]> = {};
-
-    for (const service of SERVICE_OPTIONS) {
-      if (!groups[service.group]) {
-        groups[service.group] = [];
-      }
-
-      groups[service.group].push(service);
-    }
-
-    return groups;
-  }, []);
 
   const totals = useMemo(() => {
     const activeStaff = staffList.filter((staff) => staff.is_active);
@@ -166,26 +138,6 @@ export default function AdminStaffPage() {
       return;
     }
 
-    const { data: serviceData, error: serviceError } = await supabase
-      .from("qiunai_staff_services")
-      .select("*")
-      .eq("enabled", true);
-
-    if (serviceError) {
-      console.error("讀取員工可接遊戲失敗:", serviceError);
-      alert("讀取員工可接遊戲失敗，請確認 qiunai_staff_services 資料表已建立");
-    }
-
-    const nextServiceMap: Record<string, string[]> = {};
-
-    for (const row of (serviceData || []) as StaffService[]) {
-      if (!nextServiceMap[row.discord_id]) {
-        nextServiceMap[row.discord_id] = [];
-      }
-
-      nextServiceMap[row.discord_id].push(row.service_key);
-    }
-
     const nextStaffList = (staffData || []) as Staff[];
     setStaffList(nextStaffList);
     setSelectedStaffId((current) =>
@@ -193,7 +145,6 @@ export default function AdminStaffPage() {
         ? current
         : nextStaffList[0]?.id || null
     );
-    setStaffServiceMap(nextServiceMap);
     setLoading(false);
   }
 
@@ -269,28 +220,8 @@ export default function AdminStaffPage() {
     );
   }
 
-  function toggleLocalService(discordId: string, serviceKey: string) {
-    setStaffServiceMap((prev) => {
-      const current = prev[discordId] || [];
-
-      const next = current.includes(serviceKey)
-        ? current.filter((key) => key !== serviceKey)
-        : [...current, serviceKey];
-
-      return {
-        ...prev,
-        [discordId]: next,
-      };
-    });
-  }
-
   async function saveStaff(staff: Staff) {
     setSavingId(staff.id);
-    const selectedServices = staffServiceMap[staff.discord_id] || [];
-    const allowedServices = selectedServices.map((key) => {
-      const option = SERVICE_OPTIONS.find((item) => item.key === key);
-      return option ? `${option.group}${option.name}` : key;
-    });
 
     const { error: staffError } = await supabase
       .from("qiunai_staff")
@@ -302,7 +233,6 @@ export default function AdminStaffPage() {
         bank_name: staff.bank_name || null,
         bank_account: staff.bank_account || null,
         salary_channel_id: staff.salary_channel_id || null,
-        allowed_services: allowedServices,
         is_online: !!staff.is_online,
         can_take_order: !!staff.can_take_order,
         is_active: !!staff.is_active,
@@ -315,43 +245,6 @@ export default function AdminStaffPage() {
       alert("儲存員工資料失敗");
       setSavingId(null);
       return;
-    }
-
-    const { error: deleteError } = await supabase
-      .from("qiunai_staff_services")
-      .delete()
-      .eq("discord_id", staff.discord_id);
-
-    if (deleteError) {
-      console.error("清除可接遊戲失敗:", deleteError);
-      alert("員工資料已儲存，但可接遊戲更新失敗");
-      setSavingId(null);
-      return;
-    }
-
-    if (selectedServices.length > 0) {
-      const rows = selectedServices.map((key) => {
-        const option = SERVICE_OPTIONS.find((item) => item.key === key);
-
-        return {
-          discord_id: staff.discord_id,
-          service_key: key,
-          service_name: option ? `${option.group}｜${option.name}` : key,
-          enabled: true,
-          updated_at: new Date().toISOString(),
-        };
-      });
-
-      const { error: insertError } = await supabase
-        .from("qiunai_staff_services")
-        .insert(rows);
-
-      if (insertError) {
-        console.error("新增可接遊戲失敗:", insertError);
-        alert("員工資料已儲存，但可接遊戲新增失敗");
-        setSavingId(null);
-        return;
-      }
     }
 
     const { data: sessionData } = await supabase.auth.getSession();
@@ -511,8 +404,23 @@ export default function AdminStaffPage() {
               {featuredSaving ? "儲存中..." : "儲存金榜名單"}
             </button>
           </div>
+          <div className="mt-4 flex items-center gap-2 rounded-2xl border border-pink-100 bg-pink-50/60 px-3 py-2">
+            <Search size={17} className="shrink-0 text-pink-500" />
+            <input
+              value={featuredKeyword}
+              onChange={(event) => setFeaturedKeyword(event.target.value)}
+              placeholder="搜尋金榜陪陪名稱或 Discord ID"
+              aria-label="搜尋金榜陪陪"
+              className="min-w-0 flex-1 border-none bg-transparent p-0 text-sm outline-none focus:shadow-none"
+            />
+          </div>
           <div className="mt-4 flex flex-wrap gap-2">
-            {staffList.filter((staff) => staff.is_active).map((staff) => (
+            {staffList.filter((staff) => {
+              if (!staff.is_active) return false;
+              const query = featuredKeyword.trim().toLowerCase();
+              return !query || [staff.display_name, staff.real_name, staff.discord_name, staff.discord_id]
+                .filter(Boolean).join(" ").toLowerCase().includes(query);
+            }).map((staff) => (
               <label key={staff.discord_id} className={`flex cursor-pointer items-center gap-2 rounded-full border px-3 py-2 text-sm font-semibold transition ${
                 featuredIds.includes(staff.discord_id)
                   ? "border-amber-300 bg-amber-50 text-amber-800"
@@ -637,9 +545,6 @@ export default function AdminStaffPage() {
               {staffList
                 .filter((staff) => staff.id === selectedStaffId)
                 .map((staff) => {
-                  const selectedServices =
-                    staffServiceMap[staff.discord_id] || [];
-
                   return (
                     <div
                       key={staff.id}
@@ -789,70 +694,6 @@ export default function AdminStaffPage() {
                             updateLocalStaff(staff.id, "is_active", value)
                           }
                         />
-                      </div>
-
-                      <div className="mt-6 rounded-[28px] border border-pink-200/70 bg-white/55 p-5">
-                        <div className="flex items-center gap-2">
-                          <Gamepad2 className="text-pink-400" size={20} />
-                          <h3 className="font-black text-[#5b3768]">
-                            可接遊戲 / 服務
-                          </h3>
-                        </div>
-
-                        <p className="mt-2 text-sm leading-6 text-[#8b5a8f]">
-                          後台可協助員工調整可接項目。英雄聯盟若要接
-                          ARAM｜大神陪玩，需同時勾 ARAM 與大神陪玩。
-                        </p>
-
-                        <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                          {Object.entries(groupedServices).map(
-                            ([groupName, services]) => (
-                              <div
-                                key={groupName}
-                                className="rounded-[24px] border border-pink-100 bg-white/70 p-4"
-                              >
-                                <h4 className="font-black text-pink-500">
-                                  {groupName}
-                                </h4>
-
-                                <div className="mt-3 space-y-2">
-                                  {services.map((service) => (
-                                    <label
-                                      key={service.key}
-                                      className="flex cursor-pointer items-center justify-between gap-3 rounded-[18px] border border-pink-100 bg-white/70 px-3 py-2 transition hover:bg-pink-50"
-                                    >
-                                      <div className="flex items-center gap-3">
-                                        <input
-                                          type="checkbox"
-                                          checked={selectedServices.includes(
-                                            service.key
-                                          )}
-                                          onChange={() =>
-                                            toggleLocalService(
-                                              staff.discord_id,
-                                              service.key
-                                            )
-                                          }
-                                          className="h-5 w-5 accent-pink-400"
-                                        />
-
-                                        <span className="text-sm font-semibold text-[#6b4f71]">
-                                          {service.name}
-                                        </span>
-                                      </div>
-
-                                      {service.hint ? (
-                                        <span className="rounded-full bg-violet-100 px-2 py-1 text-xs font-semibold text-violet-500">
-                                          {service.hint}
-                                        </span>
-                                      ) : null}
-                                    </label>
-                                  ))}
-                                </div>
-                              </div>
-                            )
-                          )}
-                        </div>
                       </div>
 
                       <AdminStaffWalletCard

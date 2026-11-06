@@ -1,0 +1,31 @@
+begin;
+create temporary table hr_profile_verification(check_name text,passed boolean);
+do $test$
+declare actor text:='999999999999990002';
+begin
+ if exists(select 1 from qiunai_staff where discord_id=actor) or exists(select 1 from players where discord_id=actor) then raise exception '測試帳號已存在';end if;
+ insert into qiunai_staff(discord_id,display_name,is_active,salary_channel_id,allowed_services)values(actor,'Q name',true,'Q channel','["Q existing"]'::jsonb);
+ insert into players(discord_id,display_name,is_active,report_channel_id,allowed_services)values(actor,'D name',true,'D channel',array['D existing']);
+ insert into salary_public_profiles(app_key,discord_id,display_name,intro,invite_url)values('qiunai',actor,'Q name','Q intro','https://example.com/q'),('deepnight',actor,'D name','D intro','https://example.com/d');
+ perform hr_update_profile_atomic(actor,'{"_organizations":["qiunai","deepnight"],"real_name":"shared person","phone":"0900000000","gender":null,"birthday":"2000-01-01","bank_name":"shared bank","bank_account":"shared account","display_name":"must not overwrite","intro":"must not overwrite"}');
+ if (select real_name from players where discord_id=actor)<>'shared person' or (select real_name from qiunai_staff where discord_id=actor)<>'shared person' then raise exception '共用個資未同步';end if;
+ if (select display_name from players where discord_id=actor)<>'D name' or (select display_name from qiunai_staff where discord_id=actor)<>'Q name' or (select intro from salary_public_profiles where app_key='deepnight' and discord_id=actor)<>'D intro' then raise exception '共用資料覆蓋部門專屬設定';end if;
+ insert into hr_profile_verification values('shared identity does not overwrite department names or website profiles',true);
+ perform hr_update_profile_atomic(actor,'{"_organizations":["qiunai"],"real_name":"Q scope only","phone":"0900000000","gender":null,"birthday":"2000-01-01","bank_name":"shared bank","bank_account":"shared account"}');
+ if (select real_name from players where discord_id=actor)<>'shared person' or (select real_name from qiunai_staff where discord_id=actor)<>'Q scope only' then raise exception '共用個資更新超出已驗證的在職部門';end if;
+ insert into hr_profile_verification values('shared updates are limited to the verified active memberships',true);
+ perform hr_update_department_profile_atomic(actor,'qiunai','{"display_name":"Q new name","avatar_url":null,"intro":"Q new intro","note":"Q note","invite_url":"https://example.com/qnew"}');
+ if (select intro from salary_public_profiles where app_key='qiunai' and discord_id=actor)<>'Q new intro' or (select intro from salary_public_profiles where app_key='deepnight' and discord_id=actor)<>'D intro' or (select invite_url from salary_public_profiles where app_key='deepnight' and discord_id=actor)<>'https://example.com/d' then raise exception '官網資料跨部門覆蓋';end if;
+ if (select salary_channel_id from qiunai_staff where discord_id=actor)<>'Q channel' or (select report_channel_id from players where discord_id=actor)<>'D channel' then raise exception '填單區 ID 被修改';end if;
+ insert into hr_profile_verification values('website intro and invite URL update only the selected department; channel IDs preserved',true);
+ perform hr_update_services_atomic(actor,'qiunai','[{"key":"valorant_god","name":"特戰英豪大神陪玩","allowed":"特戰英豪大神陪玩","group":"特戰英豪"}]');
+ if (select allowed_services from players where discord_id=actor)<>array['D existing'] or (select allowed_services from qiunai_staff where discord_id=actor)<>'["特戰英豪大神陪玩"]'::jsonb then raise exception '服務資格跨部門覆蓋';end if;
+ insert into hr_profile_verification values('Qiunai service labels and DeepNight service keys stay independent',true);
+ perform hr_update_services_atomic(actor,'deepnight','[{"key":"valorant_entertain","name":"娛樂陪玩","allowed":"valorant_entertain","group":"特戰英豪"}]');
+ if (select allowed_services from players where discord_id=actor)<>array['valorant_entertain'] or (select category from players_services where discord_id=actor)<>'特戰英豪' then raise exception '深夜服務格式錯誤';end if;
+ insert into hr_profile_verification values('DeepNight keeps its existing service key and category format',true);
+ if has_function_privilege('anon','hr_update_department_profile_atomic(text,text,jsonb)','execute') or has_function_privilege('authenticated','hr_update_services_atomic(text,text,jsonb)','execute') then raise exception '權限過寬';end if;
+ insert into hr_profile_verification values('browser roles cannot directly modify department settings',true);
+end $test$;
+select * from hr_profile_verification;
+rollback;

@@ -32,9 +32,10 @@ function setup() {
       return {
         select() { return this; },
         eq(key, value) { filters.push([key, value]); return this; },
+        is(key, value) { filters.push([key, value]); return this; },
         maybeSingle() {
           const records = table === "eip_workspace_documents" ? documents : [{ discord_id: employee, is_active: true }];
-          return Promise.resolve({ data: records.find((row) => filters.every(([key, value]) => row[key] === value)) || null, error: null });
+          return Promise.resolve({ data: records.find((row) => filters.every(([key, value]) => (row[key] ?? null) === value)) || null, error: null });
         },
       };
     },
@@ -50,9 +51,7 @@ function setup() {
       if (!request.discordId) throw new Error("missing");
       return { discordId: request.discordId };
     },
-    getErpAccessByDiscordId: async (_db, _org, discordId) => ({
-      capabilities: { canViewAllAdmin: discordId === manager },
-    }),
+    getHrRole: async (_org, discordId) => discordId === manager ? "Manager" : "Staff",
     ADMIN_FILE_BUCKET: "salary-admin-files",
     decodedName: (name) => name,
     ensureAdminFileBucket: async () => {},
@@ -113,4 +112,11 @@ test("file size and per-document count are enforced before upload", async () => 
     files.push({ path: `qiunai/workspace/${documentId}/${index}--manual.pdf`, size: 5 });
   }
   assert.equal((await route.POST(post(manager, pdf))).status, 400);
+});
+
+test("course attachments can only use the audience-aware course route", async () => {
+  const { route, documents } = setup();
+  documents[0].service_course_links = { document_id: documentId };
+  assert.equal((await route.GET(get(manager, "&admin=1"))).status, 404);
+  assert.equal((await route.POST(post(manager, pdf))).status, 404);
 });

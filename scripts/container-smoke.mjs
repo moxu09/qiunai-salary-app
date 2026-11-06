@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import http from "node:http";
+import https from "node:https";
 
 const origin = process.env.SMOKE_ORIGIN || "http://127.0.0.1:3000";
 const revision = process.env.EXPECTED_REVISION;
@@ -18,7 +20,7 @@ for (let attempt = 0; attempt < 30; attempt += 1) {
 }
 assert.ok(ready, "容器未能啟動員工頁面");
 
-for (const path of ["/staff", "/admin/activities"]) {
+for (const path of ["/staff", "/personal/data", "/order/order.details", "/order/reward.details", "/resources/appearance", "/admin/activities"]) {
   const response = await read(path);
   assert.equal(response.status, 200, `${path} 載入失敗`);
   const html = await response.text();
@@ -36,13 +38,97 @@ for (const path of ["/staff", "/admin/activities"]) {
   console.log(`${path}: 頁面、${assets.length} 個資產及複選修正驗證通過`);
 }
 
+for(const path of ["/service/", "/service/templates", "/service/courses", "/service/flows/example", "/service/prices", "/service/broadcasts", "/collaboration/knowledge/qiunai/11111111-1111-4111-8111-111111111111"]){
+ const response=await read(path);assert.equal(response.status,200,`${path} 載入失敗`);
+ const html=await response.text();
+ const assets=[...new Set([...html.matchAll(/(?:src|href)="([^\"]*\/service\/assets\/_next\/static\/[^\"]+)"/g)].map(match=>match[1].replaceAll("&amp;","&")))];
+ assert.ok(assets.length>0,`${path} 缺少隔離後的靜態資產`);
+ for(const asset of assets)assert.equal((await read(asset)).status,200,`客服／課程資產載入失敗：${asset}`);
+}
 for (const path of [
+  "/api/hr/session",
+  "/service/api/catalog",
+  "/service/api/manual?department=qiunai",
+  "/service/api/desk/deepnight",
+  "/service/api/courses/qiunai/11111111-1111-4111-8111-111111111111",
+  "/api/hr/knowledge/qiunai/11111111-1111-4111-8111-111111111111",
+  "/api/hr/themes",
+  "/api/hr/wallet",
+  "/api/hr/accounts",
+  "/api/hr/orders?month=2026-11",
   "/api/qiunai/activities?admin=1",
   "/api/qiunai/activities/3df7cc5b-7dbb-4c72-8d42-9d338429ea0f/export",
 ]) {
   const response = await read(path);
   assert.ok([400, 401, 403].includes(response.status), "未登入的管理 API 應拒絕存取");
 }
-const logo = await read("/employment/deepnight-logo.png");
-assert.equal(logo.status, 200, "缺少公開圖片");
+for (const path of ["/api/hr/themes", "/api/hr/themes/purchase", "/api/hr/themes/payment/create", "/api/hr/themes/payment/cancel", "/api/hr/themes/orders/00000000-0000-4000-8000-000000001001"]) {
+  const response = await fetch(new URL(path, origin), { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({theme:"white",method:"asd",confirmed:true,requestId:"00000000-0000-4000-8000-000000001001"}), signal:AbortSignal.timeout(15000) });
+  assert.ok([400,401,403].includes(response.status), "未登入不能購買、套用或查詢主題付款");
+}
+for (const path of ["/employment/deepnight-logo.png", "/brand/xiaonai.png", "/brand/deepnight-gold.png", "/brand/qiunai-cloud-room.png", "/brand/deepnight-lounge.png", "/brand/halloween-2026.png"]) {
+  const image = await read(path);
+  assert.equal(image.status, 200, `品牌圖片載入失敗：${path}`);
+  assert.ok(image.headers.get("content-type")?.startsWith("image/"), `品牌圖片格式錯誤：${path}`);
+}
+for (const scene of ["qiunai-cloud-room", "deepnight-lounge", "halloween-2026"]) {
+  const image = await fetch(new URL(`/_next/image?url=%2Fbrand%2F${scene}.png&w=640&q=75`, origin), {
+    headers: { Accept: "image/webp" }, signal: AbortSignal.timeout(15000),
+  });
+  assert.equal(image.status, 200, `主題圖片最佳化失敗：${scene}`);
+  assert.equal(image.headers.get("content-type"), "image/webp", "手機主題圖片應使用 WebP");
+  assert.ok((await image.arrayBuffer()).byteLength < 400000, "手機主題圖片不應載入完整 PNG");
+}
+console.log("主題插畫與手機 WebP 圖片最佳化驗證通過。");
+// Exercise the actual HTTP authority through Next's production server. Its
+// internal NextRequest hostname can differ when running behind Railway's edge.
+async function readHost(hostname, path) {
+  return new Promise((resolve, reject) => {
+    const address = new URL(path, origin);
+    const client = address.protocol === "https:" ? https : http;
+    const request = client.get(address, { headers: { Host: hostname } }, (response) => {
+      let body = "";
+      response.setEncoding("utf8");
+      response.on("data", (chunk) => { body += chunk; });
+      response.on("end", () => resolve({ status: response.statusCode, body, location: response.headers.location }));
+    });
+    request.setTimeout(15000, () => request.destroy(Error("網域驗證逾時")));
+    request.on("error", reject);
+  });
+}
+for(const path of ["/admin/workspace","/admin/department/qiunai/workspace"]){
+ const workspace=await readHost("eip.wearestilllhere.com",path);
+ assert.equal(workspace.status,200,path);
+ assert.match(workspace.body,/<title>[^<]*協作工作台/);
+ assert.ok(!workspace.location,"協作工作台不可跳頁");
+}
+for(const path of ["/api/qiunai/workspace?admin=1","/api/deepnight/workspace?admin=1"]){
+ const workspace=await readHost("eip.wearestilllhere.com",path);
+ assert.equal(workspace.status,401,path);
+ assert.equal(JSON.parse(workspace.body).ok,false);
+}
+const adminEntry = await readHost("eip.wearestilllhere.com", "/admin");
+assert.equal(adminEntry.status, 200);
+assert.match(adminEntry.body, /正在確認兩店後台權限/);
+const anonymousAdminEntry = await readHost("eip.wearestilllhere.com", "/api/eip-admin-entry");
+assert.equal(anonymousAdminEntry.status, 401);
+const supervisor = await readHost("eip.wearestilllhere.com", "/");
+assert.equal(supervisor.status, 200, "主管網域入口載入失敗");
+assert.ok(supervisor.body.includes("<title>深夜不關燈 EIP</title>"), "主管網域必須顯示既有主管應用程式");
+console.log("主管 HTTP 網域已導向既有後台登入頁。");
+for (const [path, target] of [
+  ["/staff", "/collaboration/workspace"],
+  ["/", "/"],
+  ["/order/order.details?month=2026-11", "/order/order.details?month=2026-11"],
+]) {
+  const legacy = await readHost("qiunai.wearestilllhere.com", path);
+  assert.equal(legacy.status, 308, "舊秋奈員工入口應永久轉至 HR");
+  assert.equal(legacy.location, `https://hr.wearestilllhere.com${target}`, "舊入口轉址目的地不正確");
+}
+const oldSupervisor = await readHost("qiunai.wearestilllhere.com", "/admin/payroll?embedded=1");
+assert.equal(oldSupervisor.status, 308);
+assert.equal(oldSupervisor.location, "https://eip.wearestilllhere.com/admin/department/qiunai/payroll");
+const legacyApi = await readHost("qiunai.wearestilllhere.com", "/api/hr/session");
+assert.ok([400, 401, 403].includes(legacyApi.status), "舊網域 API 必須保留登入保護，不能轉址");
+console.log("舊秋奈員工頁已永久轉至 HR，API 保留原本驗證。");
 console.log(`容器驗證完成${revision ? `，版本 ${revision}` : ""}；未進行資料庫寫入、扣款或通知。`);

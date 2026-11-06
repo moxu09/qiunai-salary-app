@@ -101,10 +101,10 @@ test("thread reads and read receipts stay within the authenticated pair and orga
 });
 
 test("workbench stays selected and only sent messages expose the recipient's read state", () => {
-  const page = readFileSync(join(root, "app/staff/page.tsx"), "utf8");
+  const page = readFileSync(join(root, "components/UnifiedHrPortal.tsx"), "utf8");
   const widget = readFileSync(join(root, "components/StaffMessages.tsx"), "utf8");
-  assert.match(page, /useState<PortalTab>\("workspace"\)/);
-  assert.match(page, /<StaffPortalNav activeTab=\{activeTab\}/);
+  assert.match(page, /hrTabForPath\(pathname\)/);
+  assert.match(page, /<StaffPortalNav\s+activeTab=\{activeTab\}/);
   assert.match(widget, /document\.visibilityState === "visible"/);
   assert.match(widget, /message\.sender_discord_id === myDiscordId \? <span className="eip-messages-receipt"/);
   assert.match(widget, /message\.read_at \? "已讀" : "未讀"/);
@@ -127,10 +127,10 @@ test("long staff directories scroll inside the chat instead of hiding the compos
 
 test("chat stays mounted as a bottom-right pop-up across staff pages", () => {
   const css = readFileSync(join(root, "app/globals.css"), "utf8");
-  const page = readFileSync(join(root, "app/staff/page.tsx"), "utf8");
+  const page = readFileSync(join(root, "components/UnifiedHrPortal.tsx"), "utf8");
   const widget = readFileSync(join(root, "components/StaffMessages.tsx"), "utf8");
   assert.match(css, /\.eip-messages\s*\{[^}]*position:\s*fixed[^}]*right:\s*24px[^}]*bottom:\s*94px/s);
-  assert.match(page, /<StaffMessages organization="qiunai"[^>]*open=\{chatOpen\}/);
+  assert.match(page, /<StaffMessages\s+organization="hr"[^>]*open=\{chatOpen\}/);
   assert.doesNotMatch(page, /activeTab === "messages"\s*\?\s*<StaffMessages/);
   assert.match(widget, /eip-messages-launcher/);
   assert.match(widget, /unreadCount/);

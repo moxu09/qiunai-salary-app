@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { hrTabForPath } from "@/lib/hrRoutes.mjs";
 import { supabase } from "@/lib/supabase";
 
 export default function AuthCallbackPage() {
@@ -16,6 +17,7 @@ function CallbackInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [errorText, setErrorText] = useState("");
+  const [signingResume, setSigningResume] = useState(false);
 
   useEffect(() => {
     async function handleCallback() {
@@ -63,7 +65,7 @@ function CallbackInner() {
           ? requestedNext
           : requestedNext === "/admin"
             ? "/admin"
-            : "/staff";
+            : hrTabForPath(requestedNext) ? requestedNext : "/collaboration/workspace";
         const mode = searchParams.get("mode") || "";
         const method = searchParams.get("method") || "discord";
         const token = data.session.access_token;
@@ -100,6 +102,10 @@ function CallbackInner() {
           if (method !== "discord") {
             await supabase.auth.signOut();
             setErrorText("入職契約必須使用受邀的 Discord 帳號驗證。");
+            return;
+          }
+          if (mode === "resume-employment-signing") {
+            setSigningResume(true);
             return;
           }
           router.replace(destination);
@@ -171,6 +177,16 @@ function CallbackInner() {
     );
   }
 
+  if (signingResume) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-slate-100 px-4 text-slate-900">
+        <section className="max-w-lg rounded-3xl bg-white p-8 shadow-sm">
+          <h1 className="text-xl font-bold">Discord 登入完成</h1>
+          <p className="mt-3">請回到原本的契約分頁。已填的資料與簽名還在該分頁，可以繼續送出。</p>
+        </section>
+      </main>
+    );
+  }
   return <Loading text="登入確認中..." />;
 }
 

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { getAuthUserFromRequest } from "@/lib/salaryWallet";
+import { fetchAllRows } from "@/lib/fetchAllRows";
 import {
   getTaipeiMonthInput,
   monthInputToTaipeiRange,
@@ -9,27 +10,17 @@ import {
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const PAGE_SIZE = 1000;
-
-async function getAllMonthlyOrders(startIso, endIso) {
-  const rows = [];
-
-  for (let from = 0; ; from += PAGE_SIZE) {
-    const { data, error } = await supabaseAdmin
+async function getAllMonthlyOrders(startIso, endExclusiveIso) {
+  const { data, error } = await fetchAllRows(
+    supabaseAdmin
       .from("qiunai_salary_orders")
-      .select("discord_id, order_amount")
+      .select("id, discord_id, order_amount")
       .or("is_deleted.eq.false,is_deleted.is.null")
       .gte("order_finished_at", startIso)
-      .lte("order_finished_at", endIso)
-      .order("order_finished_at", { ascending: false })
-      .order("id", { ascending: false })
-      .range(from, from + PAGE_SIZE - 1);
-    if (error) throw error;
-
-    const page = data || [];
-    rows.push(...page);
-    if (page.length < PAGE_SIZE) return rows;
-  }
+      .lt("order_finished_at", endExclusiveIso),
+  );
+  if (error) throw error;
+  return data;
 }
 
 function validMonth(value) {
@@ -44,6 +35,7 @@ export async function GET(request) {
     const { discordId } = await getAuthUserFromRequest(supabaseAdmin, request);
     const month = validMonth(new URL(request.url).searchParams.get("month"));
     const { startIso, endIso } = monthInputToTaipeiRange(month);
+    const endExclusiveIso = new Date(new Date(endIso).getTime() + 1).toISOString();
 
     const [
       { data: staff, error: staffError },
@@ -51,19 +43,19 @@ export async function GET(request) {
       { data: servicePoints, error: servicePointsError },
     ] =
       await Promise.all([
-        supabaseAdmin
+        fetchAllRows(supabaseAdmin
           .from("qiunai_staff")
-          .select("discord_id")
-          .eq("is_active", true),
-        getAllMonthlyOrders(startIso, endIso),
-        supabaseAdmin
+          .select("id, discord_id")
+          .eq("is_active", true)),
+        getAllMonthlyOrders(startIso, endExclusiveIso),
+        fetchAllRows(supabaseAdmin
           .from("customer_service_order_points")
-          .select("points")
+          .select("id, points")
           .eq("app_key", "qiunai")
           .eq("discord_id", discordId)
           .like("order_id", "manual:%")
           .gte("served_at", startIso)
-          .lte("served_at", endIso),
+          .lt("served_at", endExclusiveIso)),
       ]);
 
     if (staffError) throw staffError;

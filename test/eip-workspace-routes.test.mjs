@@ -56,6 +56,7 @@ function setup({ multistage = false } = {}) {
       const query = {
         select(_columns, options) { selectedOptions = options || {}; return this; },
         eq(key, value) { filters.push([key, value]); return this; },
+        is(key, value) { filters.push([key, value]); return this; },
         gte(key, value) { filters.push([key, { gte: value }]); return this; },
         lt(key, value) { filters.push([key, { lt: value }]); return this; },
         order() { return this; },
@@ -66,7 +67,7 @@ function setup({ multistage = false } = {}) {
         then(resolve, reject) {
           const rows = (records[table] || []).filter((item) => filters.every(([key, value]) =>
             value && typeof value === "object" && "gte" in value ? item[key] >= value.gte :
-              value && typeof value === "object" && "lt" in value ? item[key] < value.lt : item[key] === value));
+              value && typeof value === "object" && "lt" in value ? item[key] < value.lt : (item[key] ?? null) === value));
           calls.push({ table, filters: [...filters], range, selectedOptions });
           const visible = range ? rows.slice(range[0], range[1] + 1) : rowLimit ? rows.slice(0, rowLimit) : rows;
           return Promise.resolve({ data: selectedOptions.head ? null : visible, count: selectedOptions.count === "exact" ? rows.length : null, error: null }).then(resolve, reject);
@@ -101,10 +102,7 @@ function setup({ multistage = false } = {}) {
       if (!request.discordId) throw new Error("missing");
       return { discordId: request.discordId };
     },
-    getErpAccessByDiscordId: async (_db, _org, discordId) => ({
-      role: discordId === owner ? "super_admin" : discordId === manager ? "store_manager" : "employee",
-      capabilities: { canViewAllAdmin: discordId === owner || discordId === manager },
-    }),
+    getHrRole: async (_org, discordId) => discordId === owner ? "PIC" : discordId === manager ? "Manager" : "Staff",
     Response: { json: (body, options = {}) => ({ body, status: options.status || 200 }) },
     console, Date, URL, String, Number, Object, Array, Set,
   };

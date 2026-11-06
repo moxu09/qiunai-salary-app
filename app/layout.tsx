@@ -1,6 +1,10 @@
 import { Geist, Geist_Mono } from "next/font/google";
 import AppLanguageProvider from "@/components/AppLanguageProvider";
+import HrThemeProvider from "@/components/HrThemeProvider";
 import "./globals.css";
+import "./hr-themes.css";
+import './course-management.css';
+import './service-workspace.css';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -13,8 +17,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata = {
-  title: "秋奈電競 EIP",
-  description: "秋奈電競企業資訊入口系統",
+  title: "秋奈 × 深夜 HR",
+  description: "秋奈電競與深夜不關燈員工 HR",
   icons: {
     icon: "/favicon.ico",
   },
@@ -31,7 +35,7 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        {children}
+        <HrThemeProvider>{children}</HrThemeProvider>
         <AppLanguageProvider />
       </body>
     </html>

@@ -1,6 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
+import { HrHalloweenNavDecorations, HrSidebarArtwork } from "@/components/HrThemeProvider";
+import { HR_ROUTES } from "@/lib/hrRoutes.mjs";
 import {
   BadgeCheck,
   BriefcaseBusiness,
@@ -9,6 +12,7 @@ import {
   Coins,
   Cpu,
   FolderDown,
+  Palette,
   FileText,
   Gift,
   HandCoins,
@@ -19,6 +23,8 @@ import {
   WalletCards,
   CalendarHeart,
   LayoutDashboard,
+  Menu,
+  X,
   CalendarDays,
   BookOpenText,
   type LucideIcon,
@@ -45,7 +51,8 @@ export type PortalTab =
   | "approval-leave"
   | "approval-suspension"
   | "activities"
-  | "downloads";
+  | "downloads"
+  | "appearance";
 
 type PortalGroup = {
   title: string;
@@ -59,11 +66,11 @@ const groups: ReadonlyArray<PortalGroup> = [
     icon: MessageSquareText,
     items: [
       ["workspace", "工作台", LayoutDashboard],
-      ["messages", "員工訊息", MessageSquareText],
       ["calendar", "團隊日程", CalendarDays],
       ["documents", "共享文件", FileText],
       ["knowledge", "知識庫", BookOpenText],
       ["workflows", "流程中心", ClipboardCheck],
+      ["activities", "活動報名", CalendarHeart],
     ],
   },
   {
@@ -97,14 +104,9 @@ const groups: ReadonlyArray<PortalGroup> = [
     ],
   },
   {
-    title: "活動",
-    icon: CalendarHeart,
-    items: [["activities", "活動報名", CalendarHeart]],
-  },
-  {
     title: "資源",
     icon: FolderDown,
-    items: [["downloads", "App 下載", FolderDown]],
+    items: [["downloads", "App 下載", FolderDown], ["appearance", "外觀主題", Palette]],
   },
 ];
 
@@ -114,6 +116,7 @@ type StaffPortalNavProps = {
   employeeName: string;
   company: string;
   showDeviceAudit?: boolean;
+  brand?: React.ReactNode;
 };
 
 export default function StaffPortalNav({
@@ -122,40 +125,63 @@ export default function StaffPortalNav({
   employeeName,
   company,
   showDeviceAudit = false,
+  brand,
 }: StaffPortalNavProps) {
+  const [mobileOpen, setMobileOpen] = useState(false);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() =>
-    Object.fromEntries(groups.map((group) => [group.title, true]))
+    Object.fromEntries(groups.map((group) => [group.title, true])),
   );
 
   function toggleGroup(title: string) {
     setOpenGroups((current) => ({
       ...current,
-      [title]: !current[title],
+      [title]: !(current[title] ?? true),
     }));
   }
 
   return (
-    <aside className="staff-portal-nav">
+    <aside className={`staff-portal-nav${mobileOpen ? " is-mobile-open" : ""}`}>
       <div className="staff-portal-brand">
-        <p className="staff-portal-eyebrow">EIP｜員工端</p>
-        <p className="staff-portal-company">{company}</p>
+        <p className="staff-portal-eyebrow">HR｜員工端</p>
+        {brand || <p className="staff-portal-company">{company}</p>}
         <p className="staff-portal-name">{employeeName}</p>
       </div>
 
-      <nav className="staff-portal-menu">
-        {[...groups, ...(showDeviceAudit ? [{
-          title: "稽核",
-          icon: Cpu,
-          items: [["device-audit", "電腦稽核", Cpu]] as const,
-        }] : [])].map(({ title, icon: GroupIcon, items }) => {
-          const isOpen = openGroups[title];
+      <button
+        type="button"
+        className="staff-mobile-menu-toggle"
+        aria-label={mobileOpen ? "收合功能選單" : "展開功能選單"}
+        aria-expanded={mobileOpen}
+        aria-controls="staff-portal-menu"
+        onClick={() => {
+          if (!mobileOpen)
+            setOpenGroups(Object.fromEntries(groups.map((group) => [group.title, false])));
+          setMobileOpen((current) => !current);
+        }}
+      >
+        {mobileOpen ? <X size={19} /> : <Menu size={19} />}
+        <span>功能選單</span>
+        <ChevronDown size={17} className="staff-mobile-menu-chevron" />
+      </button>
+
+      <nav id="staff-portal-menu" className="staff-portal-menu" aria-label="員工功能選單">
+        {[
+          ...groups,
+          ...(showDeviceAudit
+            ? [
+                {
+                  title: "稽核",
+                  icon: Cpu,
+                  items: [["device-audit", "電腦稽核", Cpu]] as const,
+                },
+              ]
+            : []),
+        ].map(({ title, icon: GroupIcon, items }, groupIndex) => {
+          const isOpen = openGroups[title] ?? true;
           const regionId = `staff-portal-${title}`;
 
           return (
-            <section
-              key={title}
-              className={`staff-portal-group ${isOpen ? "is-open" : ""}`}
-            >
+            <section key={title} className={`staff-portal-group ${isOpen ? "is-open" : ""}`}>
               <button
                 type="button"
                 className="staff-portal-group-title staff-portal-group-toggle"
@@ -165,43 +191,40 @@ export default function StaffPortalNav({
               >
                 <GroupIcon className="staff-portal-group-icon" size={17} />
                 <span>{title}</span>
-                <ChevronDown
-                  size={15}
-                  className="staff-portal-chevron ml-auto"
-                />
+                <ChevronDown size={15} className="staff-portal-chevron ml-auto" />
               </button>
 
               <div
                 id={regionId}
-                className={`staff-portal-items-collapse ${
-                  isOpen ? "is-open" : ""
-                }`}
+                className={`staff-portal-items-collapse ${isOpen ? "is-open" : ""}`}
               >
                 <div className="staff-portal-items-inner">
                   <div className="staff-portal-items">
                     {items.map(([tab, label, Icon]) => (
-                      <button
+                      <Link
                         key={tab}
-                        type="button"
-                        onClick={() => {
+                        href={HR_ROUTES[tab]}
+                        onClick={(event) => {
+                          event.preventDefault();
+                          setMobileOpen(false);
                           onSelect(tab);
                           window.scrollTo({ top: 0, behavior: "smooth" });
                         }}
-                        className={`staff-portal-link ${
-                          activeTab === tab ? "is-active" : ""
-                        }`}
+                        className={`staff-portal-link ${activeTab === tab ? "is-active" : ""}`}
                       >
                         <Icon size={18} />
                         <span>{label}</span>
-                      </button>
+                      </Link>
                     ))}
                   </div>
                 </div>
               </div>
+              <HrHalloweenNavDecorations index={groupIndex} />
             </section>
           );
         })}
       </nav>
+      <HrSidebarArtwork />
     </aside>
   );
 }
