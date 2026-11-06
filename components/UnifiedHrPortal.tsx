@@ -10,6 +10,8 @@ import { HrThemeBanner, HrAppearancePanel, HrThemeDecorations } from "@/componen
 import HrCareerPanel from "@/components/HrCareerPanel";
 import StaffPortalNav, { type PortalTab } from "@/components/StaffPortalNav";
 import StaffCollaboration from "@/components/StaffCollaboration";
+import AdminWorkspaceManager from "@/components/AdminWorkspaceManager";
+import AdminActivityManager from "@/components/AdminActivityManager";
 import StaffMessages from "@/components/StaffMessages";
 import HrPortalPanel from "@/components/HrPortalPanel";
 import ActivityPortal from "@/components/ActivityPortal";
@@ -28,7 +30,7 @@ type Staff = Record<string, unknown> & {
   avatar_url?: string;
   is_online?: boolean;
 };
-type Department = { key: DepartmentKey; staff: Staff };
+type Department = { key: DepartmentKey; staff: Staff; hrRole: "PIC" | "Manager" | "Staff" };
 type Session = { discordId: string; departments: Department[]; financeErpUrl?: string };
 type Entry = {
   id: string;
@@ -174,6 +176,7 @@ export default function UnifiedHrPortal() {
   const [chatOpen, setChatOpen] = useState(activeTab === "messages");
   const [hrMonth, setHrMonth] = useState(getTaipeiMonthInput());
   const [canAudit, setCanAudit] = useState(false);
+  const [managedDepartment, setManagedDepartment] = useState<DepartmentKey | null>(null);
   const init = useCallback(async () => {
     setLoading(true);
     setError("");
@@ -223,7 +226,10 @@ export default function UnifiedHrPortal() {
   }
   function select(tab: string) {
     const next = HR_ROUTES[tab as keyof typeof HR_ROUTES];
-    if (next) router.push(next);
+    if (next) {
+      setManagedDepartment(null);
+      router.push(next);
+    }
   }
   if (loading)
     return (
@@ -253,6 +259,15 @@ export default function UnifiedHrPortal() {
   const collaboration = ["workspace", "calendar", "documents", "knowledge", "workflows"].includes(
     activeTab,
   );
+  const adminSection = activeTab === "calendar" ? "event" : activeTab === "documents" || activeTab === "knowledge" ? "document" : activeTab === "workflows" ? "decision" : "overview";
+  const managingActivities = activeTab === "activities";
+  const managers = session.departments.filter((d) =>
+    d.hrRole === "PIC" || (!managingActivities && d.hrRole === "Manager"),
+  );
+  const managing = managers.find((d) => d.key === managedDepartment);
+  const managementLabel = activeTab === "documents" ? "新增／管理共享文件" : activeTab === "knowledge" ? "管理知識庫與課程" :
+    activeTab === "calendar" ? "新增／管理日程" : activeTab === "workflows" ? "管理表單與簽核" :
+    managingActivities ? "管理活動" : "管理工作台";
   const personnel =
     activeTab === "profile" ||
     activeTab === "admin-service" ||
@@ -266,7 +281,7 @@ export default function UnifiedHrPortal() {
           <div>
             <p className="staff-portal-eyebrow">WE ARE STILL HERE · HR</p>
             <h1>員工工作台</h1>
-            <p>{employeeName}</p>
+            <p>{employeeName} · {session.departments.map((d) => `${nameOf(d.key)} ${d.hrRole || "Staff"}`).join("／")}</p>
           </div>
           <div className="hr-header-actions">
             <button className="qiunai-soft-button" onClick={() => void init()}>
@@ -293,7 +308,18 @@ export default function UnifiedHrPortal() {
           <div className="staff-main-column min-w-0">
             <HrThemeBanner />
             {activeTab === "appearance" ? <HrAppearancePanel /> : null}
-            {collaboration ? (
+            {(collaboration || managingActivities) && managers.length ? (
+              <Card title={managementLabel}>
+                {managing ? <button type="button" className="qiunai-soft-button" onClick={() => setManagedDepartment(null)}>返回工作台檢視</button> : null}
+                {managers.map((d) => <button key={d.key} type="button" aria-pressed={managing?.key === d.key} className="qiunai-soft-button" onClick={() => setManagedDepartment(d.key)}>{managementLabel} · {nameOf(d.key)}</button>)}
+              </Card>
+            ) : null}
+            {(collaboration || managingActivities) && managing ? (
+              managingActivities
+                ? <AdminActivityManager key={managing.key} organization={managing.key} />
+                : <AdminWorkspaceManager key={`${managing.key}:${activeTab}`} organization={managing.key} initialSection={adminSection} initialDocumentType={activeTab === "documents" ? "document" : "knowledge"} />
+            ) : null}
+            {collaboration && !managing ? (
               <StaffCollaboration
                 organization="hr"
                 section={
@@ -330,7 +356,7 @@ export default function UnifiedHrPortal() {
             {["orders", "tips", "bonuses", "deductions"].includes(activeTab) ? (
               <OrdersPanel tab={activeTab} primary={session.discordId} />
             ) : null}
-            {activeTab === "activities" ? (
+            {activeTab === "activities" && !managing ? (
               <>
                 <div className="hr-page-title">
                   <h1>活動報名</h1>
@@ -465,7 +491,7 @@ function DepartmentStatus({ departments }: { departments: Department[] }) {
         method: "PATCH",
         body: JSON.stringify({ action: "set-online", isOnline: value }),
       });
-      setStaff((old) => old.map((d) => (d.key === key ? { key, staff: result.staff } : d)));
+      setStaff((old) => old.map((d) => (d.key === key ? { ...d, staff: result.staff } : d)));
       await hrFetch(`/api/${key}/public-profile`, {
         method: "POST",
         body: JSON.stringify({ isOnline: value }),

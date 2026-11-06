@@ -61,7 +61,7 @@ const blank = () => ({
   options: [{ label: "", note: "" }] as FormOption[],
 });
 
-export default function AdminActivityManager() {
+export default function AdminActivityManager({ organization = "qiunai" }: { organization?: "qiunai" | "deepnight" }) {
   const [activities, setActivities] = useState<Activity[]>([]);
   const [form, setForm] = useState(blank);
   const [loading, setLoading] = useState(true);
@@ -71,7 +71,7 @@ export default function AdminActivityManager() {
 
   const request = useCallback(async (method = "GET", body?: object, suffix = "?admin=1") => {
     const { data } = await supabase.auth.getSession();
-    const response = await fetch(`/api/qiunai/activities${suffix}`, {
+    const response = await fetch(`/api/${organization}/activities${suffix}`, {
       method,
       headers: {
         Authorization: `Bearer ${data.session?.access_token || ""}`,
@@ -83,7 +83,7 @@ export default function AdminActivityManager() {
     const payload = await response.json().catch(() => ({}));
     if (!response.ok || !payload.ok) throw new Error(payload.message || "活動操作失敗");
     return payload;
-  }, []);
+  }, [organization]);
   const load = useCallback(async () => {
     setLoading(true);
     try {
@@ -192,7 +192,7 @@ export default function AdminActivityManager() {
   }
   async function download(activity: Activity) {
     const { data } = await supabase.auth.getSession();
-    const response = await fetch(`/api/qiunai/activities/${activity.id}/export`, {
+    const response = await fetch(`/api/${organization}/activities/${activity.id}/export`, {
       headers: { Authorization: `Bearer ${data.session?.access_token || ""}` },
     });
     if (!response.ok) {
@@ -302,10 +302,10 @@ export default function AdminActivityManager() {
             </button>
           </div>
           <div className="mt-3 space-y-3">
-            <label className="flex items-center gap-2 text-sm font-bold text-slate-700">
+            {organization === "qiunai" ? <label className="flex items-center gap-2 text-sm font-bold text-slate-700">
               <input type="checkbox" checked={form.allowMultipleOptions} onChange={(e) => setField("allowMultipleOptions", e.target.checked)} />
               允許複選活動選項
-            </label>
+            </label> : null}
             <p className="text-xs text-slate-500">未勾選時為單選；僅影響參與分類，參與狀態仍為單選。</p>
             {form.options.map((option, index) => (
               <div key={index} className="grid gap-2 sm:grid-cols-[1fr_1.5fr_auto]">
@@ -407,14 +407,14 @@ export default function AdminActivityManager() {
                   >
                     <Pencil size={14} />編輯
                   </button>
-                  <button
+                  {organization === "qiunai" ? <button
                     type="button"
                     onClick={() => void download(activity)}
                     className="inline-flex items-center gap-1 rounded-xl bg-emerald-50 px-3 py-2 text-xs font-black text-emerald-700"
                   >
                     <Download size={14} />
                     下載 Excel
-                  </button>
+                  </button> : null}
                   <button
                     type="button"
                   onClick={() => print(activity.id)}

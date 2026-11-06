@@ -1,3 +1,5 @@
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { personnelProgress } from "@/lib/hrPersonnelProgress.mjs";
 import { privateCourseCatalog } from "@/lib/service/courses";
 import { hrAuth, hrFail } from "@/lib/hrServer";
 import { hrSource, annotate } from "@/lib/hrUpstream";
@@ -18,12 +20,20 @@ export async function GET(request) {
         ),
       );
     }
+    const personnel = await supabaseAdmin.from("salary_requests")
+      .select("id,organization_code,request_type,approval_category,request_group,status,created_at,review_result,reviewed_at,first_reviewed_at,first_review_note")
+      .eq("discord_id", discordId).in("organization_code", departments.map((department) => department.key))
+      .order("created_at", { ascending: false }).limit(100);
+    if (personnel.error) throw personnel.error;
     const result = {
       ok: true,
       events: [],
       documents: [],
       templates: [],
       requests: [],
+      personnelRequests: personnel.data.map((item) => ({
+        ...item, organization: item.organization_code, stage: personnelProgress(item).stage,
+      })),
       workflowTargetHours: 48,
       workflowStagesEnabled: false,
     };
@@ -53,6 +63,7 @@ export async function POST(request) {
   try {
     const { departments } = await hrAuth(request);
     const body = await request.json();
+    if (body?.kind !== "request") throw Object.assign(Error("此入口只受理員工申請"), { status: 400 });
     const key = body.organization;
     if (!departments.some((d) => d.key === key))
       throw Object.assign(Error("無權向此部門提出申請"), { status: 403 });

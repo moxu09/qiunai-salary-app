@@ -14,7 +14,7 @@ const clean = (value, max = 5000) =>
     .slice(0, max);
 
 async function requireAdmin(request) {
-  return authorizeErpRequest(supabaseAdmin, request, "deepnight", "canViewAllAdmin");
+  return authorizeErpRequest(supabaseAdmin, request, "deepnight", "canAssignPrivilegedRoles");
 }
 
 function parseOptions(value) {
@@ -205,7 +205,7 @@ export async function GET(request) {
   } catch (error) {
     return NextResponse.json(
       { ok: false, message: error?.message || "讀取活動失敗" },
-      { status: 400 },
+      { status: error?.status || 400 },
     );
   }
 }
@@ -257,7 +257,7 @@ export async function POST(request) {
   } catch (error) {
     return NextResponse.json(
       { ok: false, message: error?.message || "發布活動失敗" },
-      { status: 400 },
+      { status: error?.status || 400 },
     );
   }
 }
@@ -413,7 +413,7 @@ export async function PATCH(request) {
   } catch (error) {
     return NextResponse.json(
       { ok: false, message: error?.message || "更新活動失敗" },
-      { status: 400 },
+      { status: error?.status || 400 },
     );
   }
 }
@@ -435,7 +435,7 @@ export async function DELETE(request) {
   } catch (error) {
     return NextResponse.json(
       { ok: false, message: error?.message || "刪除活動失敗" },
-      { status: 400 },
+      { status: error?.status || 400 },
     );
   }
 }

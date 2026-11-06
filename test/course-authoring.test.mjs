@@ -5,7 +5,7 @@ import {PGlite} from '@electric-sql/pglite';
 import {validateCourse,learnerSettings,audienceMatches,courseChapters} from '../lib/courseRules.mjs';
 const actor='123456789012345678',manager='223456789012345678',other='323456789012345678';
 const course=()=>({title:'訓練課程',category:'客服',isPublished:true,chapters:[{id:'one',title:'第一章',body:'請閱讀'},{id:'two',title:'第二章',body:'請確認'}],audience:{kind:'all_staff',ids:[]},requirements:{allChapters:true,minimumSeconds:15,approval:false,passScore:80},quiz:[{id:'q1',question:'正確答案',options:['是','否'],correct:0}]});
-async function fixture(){const db=new PGlite();await db.exec(`create role anon;create role authenticated;create role service_role bypassrls;create table erp_role_assignments(organization_code text,discord_id text,is_active boolean,role text);create table admins(discord_id text,is_active boolean);create table qiunai_admins(discord_id text,is_active boolean);create table qiunai_staff(discord_id text,is_active boolean);create table players(discord_id text,is_active boolean);insert into qiunai_staff values('${actor}',true),('${manager}',true),('${other}',true);insert into players values('${actor}',true);insert into erp_role_assignments values('qiunai','${manager}',true,'store_manager');`);for(const file of ['20260929_eip_workspace.sql','20261103000300_knowledge_course_completions.sql','20261103000400_private_service_courses.sql','20261103000500_service_content_versions.sql','20261103000600_course_authoring.sql'])await db.exec((await readFile(new URL('../supabase/migrations/'+file,import.meta.url),'utf8')).replace('create extension if not exists pgcrypto;',''));return db;}
+async function fixture(){const db=new PGlite();await db.exec(`create role anon;create role authenticated;create role service_role bypassrls;create table erp_role_assignments(organization_code text,discord_id text,is_active boolean,role text);create table admins(discord_id text,is_active boolean);create table qiunai_admins(discord_id text,is_active boolean);create table qiunai_staff(discord_id text,is_active boolean);create table players(discord_id text,is_active boolean);insert into qiunai_staff values('${actor}',true),('${manager}',true),('${other}',true);insert into players values('${actor}',true);insert into erp_role_assignments values('qiunai','${manager}',true,'store_manager');`);for(const file of ['20260929_eip_workspace.sql','20260929_eip_workflow_two_stage.sql','20261103000300_knowledge_course_completions.sql','20261103000400_private_service_courses.sql','20261103000500_service_content_versions.sql','20261103000600_course_authoring.sql','20261106000100_hr_workspace_management.sql'])await db.exec((await readFile(new URL('../supabase/migrations/'+file,import.meta.url),'utf8')).replace('create extension if not exists pgcrypto;',''));return db;}
 const save=async(db,data=course(),id=null,version=null)=>(await db.query('select save_managed_course($1,$2,$3,$4,$5) result',['qiunai',manager,id,version,validateCourse(data)])).rows[0].result;
 const learn=async(db,c,action,input={},employee=actor)=>(await db.query('select course_learning_atomic($1,$2,$3,$4,$5,$6) result',['qiunai',c.id,employee,c.version,action,input])).rows[0].result;
 async function satisfy(db,c,employee=actor){for(const chapter of ['one','two'])await learn(db,c,'read',{chapter},employee);await learn(db,c,'heartbeat',{},employee);await db.query('update course_learning_progress set last_seen=clock_timestamp()-interval \'16 seconds\' where discord_id=$1',[employee]);await learn(db,c,'heartbeat',{},employee);await learn(db,c,'quiz',{answers:{q1:0}},employee);}
@@ -85,3 +85,22 @@ test('approval requires a different manager and current version; rejection is re
  await assert.rejects(()=>learn(db,c,'approve',{employee:actor},manager),/已處理/);
  for(const role of ['anon','authenticated']){await db.exec('set role '+role);await assert.rejects(()=>learn(db,c,'complete'),/permission denied/);await assert.rejects(()=>db.exec('select * from course_learning_progress'),/permission denied/);await db.exec('reset role');}
 }finally{await db.close();}});
+
+test("course archive is department-scoped, checks manager and version, and prevents republishing", async () => {
+ const db = await fixture();
+ try {
+  const c = await save(db);
+  const archive = async (person, version) => (await db.query(
+    "select archive_hr_course('qiunai', $1, $2, $3) as archived", [person, c.id, version],
+  )).rows[0].archived;
+  await assert.rejects(() => archive(actor, c.version), /沒有管理課程/);
+  assert.equal(await archive(manager, c.version + 1), false);
+  assert.equal(await archive(manager, c.version), true);
+  assert.equal(await archive(manager, c.version), false);
+  const saved = (await db.query("select version, archived_at from eip_workspace_documents")).rows[0];
+  assert.equal(saved.version, c.version + 1);
+  assert.ok(saved.archived_at);
+  await assert.rejects(() => save(db, course(), c.id, saved.version), /課程已移除/);
+  await assert.rejects(() => learn(db, c, "heartbeat"), /未發布/);
+ } finally { await db.close(); }
+});

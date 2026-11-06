@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 
 export async function GET(request, { params }) {
   try {
-    await authorizeErpRequest(supabaseAdmin, request, "qiunai", "canViewAllAdmin");
+    await authorizeErpRequest(supabaseAdmin, request, "qiunai", "canAssignPrivilegedRoles");
     const { id } = await params;
     const { data: activity, error } = await supabaseAdmin.from("qiunai_activities").select("id,title,starts_at,allow_not_attending,allow_distance,allow_multiple_options").eq("id", id).maybeSingle();
     if (error) throw error;
@@ -80,6 +80,6 @@ export async function GET(request, { params }) {
     const safeName = activity.title.replace(/[\\/:*?"<>|]/g, "-").slice(0, 80);
     return new NextResponse(buffer, { headers: { "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "Content-Disposition": `attachment; filename*=UTF-8''${encodeURIComponent(`${safeName}-活動回覆名單.xlsx`)}`, "Cache-Control": "no-store" } });
   } catch (error) {
-    return NextResponse.json({ ok: false, message: error?.message || "產生 Excel 失敗" }, { status: 400 });
+    return NextResponse.json({ ok: false, message: error?.message || "產生 Excel 失敗" }, { status: error?.status || 400 });
   }
 }

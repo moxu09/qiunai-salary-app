@@ -1,4 +1,6 @@
 import test from "node:test";
+import { personnelProgress } from "../lib/hrPersonnelProgress.mjs";
+import { getHrRole } from "../lib/erpRoles.js";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { runInNewContext } from "node:vm";
@@ -9,6 +11,7 @@ const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const organization = JSON.parse(readFileSync(join(root, "package.json"), "utf8")).name.startsWith("qiunai") ? "qiunai" : "deepnight";
 const employee = "employee";
 const manager = "manager";
+const pic = "pic";
 const resignationReviewer = "resignation-reviewer";
 
 function setup() {
@@ -28,6 +31,7 @@ function setup() {
       const query = {
         select(_columns, nextOptions = {}) { options = nextOptions; return this; },
         eq(key, value) { filters.push([key, value]); return this; },
+        is(key, value) { filters.push([key, value]); return this; },
         gte(key, value) { filters.push([key, { gte: value }]); return this; },
         lt(key, value) { filters.push([key, { lt: value }]); return this; },
         order() { return this; },
@@ -38,7 +42,7 @@ function setup() {
           const matching = (table === "salary_requests" ? rows : []).filter((row) => filters.every(([key, value]) => {
             if (value && typeof value === "object" && "gte" in value) return row[key] >= value.gte;
             if (value && typeof value === "object" && "lt" in value) return row[key] < value.lt;
-            return row[key] === value;
+            return (row[key] ?? null) === value;
           }));
           if (patch && matching.length) { Object.assign(matching[0], patch); updates.push({ filters: [...filters], patch }); }
           return { data: options.head ? null : page ? matching.slice(page[0], page[1] + 1) : matching, count: options.count === "exact" ? matching.length : null, error: null };
@@ -56,19 +60,23 @@ function setup() {
   const context = {
     supabaseAdmin,
     getAuthUserFromRequest: async (_db, request) => ({ discordId: request.discordId }),
-    getErpAccessByDiscordId: async (_db, _org, discordId) => ({ capabilities: {
-      canReviewAll: discordId === manager,
+    getErpAccessByDiscordId: async (_db, _org, discordId) => ({ role: discordId === pic ? "super_admin" : discordId === manager ? "store_manager" : "employee", capabilities: {
+      canReviewAll: discordId === manager || discordId === pic,
       canReviewResignations: discordId === resignationReviewer,
     }, assignment: { display_name: "管理員" } }),
     getTaipeiMonthInput: () => "2026-09",
     signRequestAttachments: async (items) => items,
     removeRequestImages: async (paths) => { removed.push(paths); },
     uploadRequestImages: async () => [],
+    personnelProgress, getHrRole,
+    Response: { json: (body, options = {}) => ({ body, status: options.status || 200 }) },
     NextResponse: { json: (body, options = {}) => ({ body, status: options.status || 200 }) },
     URL, Date, String, Number, Object, Array, Set, Map, Promise, console,
     process: { env: {} },
   };
-  runInNewContext(`${source}\nthis.handlers = { GET, PATCH };`, context);
+  const reviewSource = readFileSync(join(root, "lib/hrPersonnelReview.js"), "utf8")
+    .replace(/^import .*;$/gm, "").replaceAll("export ", "");
+  runInNewContext(`${reviewSource}\n${source}\nthis.handlers = { GET, PATCH };`, context);
   return { handlers: context.handlers, rows, updates, removed };
 }
 
@@ -104,13 +112,18 @@ test("approval decisions reject self-signing, missing rejection reason and repea
   const self = await handlers.PATCH(patch(manager, { id: "self-request", status: "approved" }));
   assert.match(self.body.message, /不能簽核自己的申請/);
   assert.equal((await handlers.PATCH(patch(manager, { id: "old-pending", status: "rejected", reviewResult: " " }))).status, 400);
+  assert.equal((await handlers.PATCH(patch(pic, { id: "old-pending", status: "approved" }))).status, 403);
   assert.equal(updates.length, 0);
   assert.equal(removed.length, 0);
   const approved = await handlers.PATCH(patch(manager, { id: "old-pending", status: "approved" }));
   assert.equal(approved.status, 200);
-  assert.equal(approved.body.request.status, "approved");
-  assert.equal(removed.length, 1);
-  assert.equal((await handlers.PATCH(patch(manager, { id: "old-pending", status: "approved" }))).status, 400);
+  assert.equal(approved.body.request.status, "pending");
+  assert.equal(approved.body.advanced, true);
+  assert.equal(removed.length, 0);
+  assert.equal((await handlers.PATCH(patch(manager, { id: "old-pending", status: "approved" }))).status, 403);
+  assert.equal((await handlers.PATCH(patch(pic, { id: "old-pending", status: "approved" }))).status, 200);
+  assert.equal(rows[0].status, "approved");
+  assert.equal((await handlers.PATCH(patch(pic, { id: "old-pending", status: "approved" }))).status, 409);
   assert.equal(removed.length, 1);
   assert.ok(updates[0].filters.some(([key, value]) => key === "status" && value === "pending"));
 });

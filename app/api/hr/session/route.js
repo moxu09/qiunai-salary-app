@@ -1,6 +1,7 @@
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { hrAuth, hrFail } from "@/lib/hrServer";
-import { ERP_OWNER_DISCORD_ID } from "@/lib/erpRoles";
+import { ERP_OWNER_DISCORD_ID, getHrRole } from "@/lib/erpRoles";
+import { getErpAccessByDiscordId } from "@/lib/erpAccess";
 export const dynamic = "force-dynamic";
 export async function GET(request) {
   try {
@@ -14,7 +15,9 @@ export async function GET(request) {
         departments.map((d) => d.key),
       );
     if (error) throw error;
-    departments.forEach((d) => {
+    await Promise.all(departments.map(async (d) => {
+      const access = await getErpAccessByDiscordId(supabaseAdmin, d.key, discordId);
+      d.hrRole = getHrRole(access.role);
       const profile = profiles.find((p) => p.app_key === d.key);
       d.staff = {
         ...d.staff,
@@ -24,7 +27,7 @@ export async function GET(request) {
         note: profile?.note || d.staff.public_note || "",
         invite_url: profile?.invite_url || "",
       };
-    });
+    }));
     return Response.json(
       {
         ok: true,

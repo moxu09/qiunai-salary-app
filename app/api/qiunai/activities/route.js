@@ -10,7 +10,7 @@ const MAX_OPTIONS = 20;
 const clean = (value, max = 5000) => String(value ?? "").trim().slice(0, max);
 
 async function requireAdmin(request) {
-  return authorizeErpRequest(supabaseAdmin, request, "qiunai", "canViewAllAdmin");
+  return authorizeErpRequest(supabaseAdmin, request, "qiunai", "canAssignPrivilegedRoles");
 }
 
 function parseOptions(value) {
@@ -113,7 +113,7 @@ export async function GET(request) {
     }));
     return NextResponse.json({ ok: true, activities: result, staff: { nickname: staff.display_name || staff.discord_name, realName: staff.real_name, phone: staff.phone } });
   } catch (error) {
-    return NextResponse.json({ ok: false, message: error?.message || "讀取活動失敗" }, { status: 400 });
+    return NextResponse.json({ ok: false, message: error?.message || "讀取活動失敗" }, { status: error?.status || 400 });
   }
 }
 
@@ -148,7 +148,7 @@ export async function POST(request) {
     }
     return NextResponse.json({ ok: true, activity: data });
   } catch (error) {
-    return NextResponse.json({ ok: false, message: error?.message || "發布活動失敗" }, { status: 400 });
+    return NextResponse.json({ ok: false, message: error?.message || "發布活動失敗" }, { status: error?.status || 400 });
   }
 }
 
@@ -274,7 +274,7 @@ export async function PATCH(request) {
     }
     throw new Error("活動操作不正確");
   } catch (error) {
-    return NextResponse.json({ ok: false, message: error?.message || "更新活動失敗" }, { status: 400 });
+    return NextResponse.json({ ok: false, message: error?.message || "更新活動失敗" }, { status: error?.status || 400 });
   }
 }
 
@@ -289,6 +289,6 @@ export async function DELETE(request) {
     if (error) throw error;
     return NextResponse.json({ ok: true });
   } catch (error) {
-    return NextResponse.json({ ok: false, message: error?.message || "刪除活動失敗" }, { status: 400 });
+    return NextResponse.json({ ok: false, message: error?.message || "刪除活動失敗" }, { status: error?.status || 400 });
   }
 }

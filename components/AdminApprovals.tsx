@@ -25,6 +25,10 @@ type Row = {
   reviewer_name?: string | null;
   reviewer_discord_id?: string | null;
   reviewed_at?: string | null;
+  first_reviewed_at?: string | null;
+  first_review_note?: string | null;
+  stage?: "initial" | "final" | "general";
+  canReview?: boolean;
   form_data?: { details?: string; attachments?: Attachment[] };
 };
 
@@ -94,8 +98,8 @@ export default function AdminApprovals({ apiPath, embedded = false, onPendingCha
       });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload.message || "簽核失敗");
-      setNotice(payload.warning || (status === "approved" ? "申請已核准" : "申請已駁回"));
-      if (rows.length === 1 && page > 1) setPage((current) => current - 1);
+      setNotice(payload.warning || (payload.advanced ? "Manager 初核通過，已送交 PIC 覆核" : status === "approved" ? "申請已核准" : "申請已駁回"));
+      if (!payload.advanced && rows.length === 1 && page > 1) setPage((current) => current - 1);
       else await load();
       setResult((current) => { const next = { ...current }; delete next[id]; return next; });
       window.dispatchEvent(new Event("erp-notifications-changed"));
@@ -151,21 +155,22 @@ export default function AdminApprovals({ apiPath, embedded = false, onPendingCha
                     <AttachmentGallery attachments={row.form_data?.attachments} />
                   </div>
                   <span className={`h-fit rounded-full px-3 py-1 text-xs font-black ${row.status === "approved" ? "bg-emerald-50 text-emerald-700" : row.status === "rejected" ? "bg-rose-50 text-rose-700" : "bg-amber-50 text-amber-700"}`}>
-                    {row.status === "approved" ? "已核准" : row.status === "rejected" ? "已駁回" : "待簽核"}
+                    {row.status === "approved" ? "已核准" : row.status === "rejected" ? "已駁回" : row.stage === "initial" ? "待 Manager 初核" : row.stage === "final" ? "待 PIC 覆核" : "待簽核"}
                   </span>
                 </div>
-                {row.status === "pending" ? (
+                {row.first_reviewed_at ? <p className="mt-3 text-sm text-slate-600">Manager 初核通過 · {new Date(row.first_reviewed_at).toLocaleString("zh-TW", { timeZone: "Asia/Taipei" })}{row.first_review_note ? ` · ${row.first_review_note}` : ""}</p> : null}
+                {row.status === "pending" && row.canReview !== false ? (
                   <div className="mt-4 grid gap-3 md:grid-cols-[1fr_auto_auto]">
                     <input value={result[row.id] || ""} onChange={(event) => setResult((current) => ({ ...current, [row.id]: event.target.value }))} placeholder="簽核說明；駁回時必填原因" />
-                    <button disabled={busy !== null} onClick={() => void review(row.id, "approved")} className="rounded-xl bg-emerald-500 px-5 py-2 font-black text-white disabled:opacity-50">核准</button>
+                    <button disabled={busy !== null} onClick={() => void review(row.id, "approved")} className="rounded-xl bg-emerald-500 px-5 py-2 font-black text-white disabled:opacity-50">{row.stage === "initial" ? "初核通過" : row.stage === "final" ? "覆核通過" : "核准"}</button>
                     <button disabled={busy !== null} onClick={() => void review(row.id, "rejected")} className="rounded-xl bg-rose-500 px-5 py-2 font-black text-white disabled:opacity-50">駁回</button>
                   </div>
-                ) : (
+                ) : row.status !== "pending" ? (
                   <div className="mt-4 rounded-xl bg-slate-50 p-3 text-sm text-slate-600">
                     <p>簽核結果：{row.review_result || "-"}</p>
                     <p className="mt-1 font-bold text-slate-700">簽核人：{row.reviewer_name || "未知簽核人"}{row.reviewer_discord_id ? `（${row.reviewer_discord_id}）` : ""}</p>
                   </div>
-                )}
+                ) : null}
               </article>
             ))
           ) : (

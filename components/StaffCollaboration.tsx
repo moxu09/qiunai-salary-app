@@ -13,18 +13,25 @@ type Event = { id: string; title: string; details: string; location: string; sta
 type Document = { organization?: "qiunai" | "deepnight"; id: string; document_type: "document" | "knowledge"; category: string; title: string; body: string; version: number; updated_at: string };
 type Field = { key: string; label: string; type: "text" | "textarea" | "date" | "choice"; required: boolean; options: string[] };
 type Template = { organization?: "qiunai" | "deepnight"; id: string; name: string; description: string; fields: Field[]; approver_role: "manager" | "owner"; approval_steps?: string[] };
-type Submission = { organization?: "qiunai" | "deepnight"; id: string; template_id: string; status: "pending" | "approved" | "rejected"; created_at: string; decided_at: string | null; decision_note: string | null; form_data: Record<string, string>; approval_steps?: string[]; approval_step_index?: number; first_approved_at?: string | null };
+type Submission = { template?: {name: string; approver_role: string} | null; organization?: "qiunai" | "deepnight"; id: string; template_id: string; status: "pending" | "approved" | "rejected"; created_at: string; decided_at: string | null; decision_note: string | null; form_data: Record<string, string>; approval_steps?: string[]; approval_step_index?: number; first_approved_at?: string | null };
 type AuditEntry = { new_status: "pending" | "approved" | "rejected"; actor_discord_id: string; note: string | null; created_at: string; step_index?: number | null };
 type ExistingAnnouncement = { id: string; title: string; created_at: string; requires_signature?: boolean; signature?: { status: string } | null };
 type ExistingRequest = { id: string; request_type: string; status: string; application_date: string };
-type Data = { serviceCoursesUnavailable?: boolean; events: Event[]; documents: Document[]; templates: Template[]; requests: Submission[] };
+type PersonnelRequest = {
+  id: string; organization: "qiunai" | "deepnight"; request_type: string;
+  status: string; created_at: string; stage: "initial" | "final" | "general";
+  first_reviewed_at?: string | null; first_review_note?: string | null; reviewed_at?: string | null; review_result?: string | null;
+};
+type Data = { personnelRequests?: PersonnelRequest[]; serviceCoursesUnavailable?: boolean; events: Event[]; documents: Document[]; templates: Template[]; requests: Submission[] };
 type Props = { organization: "qiunai" | "deepnight" | "hr"; section: Section; employeeName: string; onSelect: (tab: string) => void; workspaceActions?: ReactNode };
 const emptyData: Data = { events: [], documents: [], templates: [], requests: [] };
 const time = (value: string) => new Intl.DateTimeFormat("zh-TW", { timeZone: "Asia/Taipei", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(value));
 const statusLabel: Record<string, string> = { pending: "待簽核", approved: "已核准", rejected: "未通過" };
 const pendingStage = (item: Submission) => item.approval_steps?.length === 2
-  ? Number(item.approval_step_index || 0) === 0 ? "等待店經理初審" : "等待最高管理員複審"
-  : "等待管理員簽核";
+  ? Number(item.approval_step_index || 0) === 0 ? "等待 Manager 初核（第 1／2 關）" : "等待 PIC 覆核（第 2／2 關）"
+  : (item.approval_steps?.[0] || item.template?.approver_role) === "owner" ? "等待 PIC 簽核" : "等待管理員簽核";
+const departmentLabel = (key: "qiunai" | "deepnight") => key === "qiunai" ? "秋奈" : "深夜";
+
 
 export default function StaffCollaboration({ organization, section, employeeName, onSelect, workspaceActions }: Props) {
   const [data, setData] = useState<Data>(emptyData);
@@ -63,14 +70,14 @@ export default function StaffCollaboration({ organization, section, employeeName
     try {
       setLoading(true);
       const result = await authorizedFetch("GET");
-      setData({ serviceCoursesUnavailable: result.serviceCoursesUnavailable === true, events: result.events || [], documents: result.documents || [], templates: result.templates || [], requests: result.requests || [] });
+      setData({ serviceCoursesUnavailable: result.serviceCoursesUnavailable === true, events: result.events || [], documents: result.documents || [], templates: result.templates || [], requests: result.requests || [], personnelRequests: result.personnelRequests || [] });
       setReferenceTime(Date.now());
       setWorkflowTargetHours(Number(result.workflowTargetHours || 48));
       setWorkflowStagesEnabled(result.workflowStagesEnabled === true);
       if (section === "workspace") {
         const [announcements, hr] = await Promise.allSettled([
           authorizedFetch("GET", undefined, "announcements"),
-          authorizedFetch("GET", undefined, "hr"),
+          authorizedFetch("GET", undefined, organization === "hr" ? "personnel" : "hr"),
         ]);
         setExistingAnnouncements(announcements.status === "fulfilled" ? announcements.value.announcements || [] : []);
         setExistingRequests(hr.status === "fulfilled" ? hr.value.requests || [] : []);
@@ -135,7 +142,7 @@ export default function StaffCollaboration({ organization, section, employeeName
           <div className="eip-collab-columns">
             <div className="eip-collab-panel">
               <div className="eip-collab-panel-head"><h2>我的工作進度</h2><button onClick={() => go("workflows")}>查看所有申請 <ArrowRight size={15} /></button></div>
-              {data.requests.slice(0, 4).map((item) => <button type="button" className="eip-collab-action-row" key={item.id} onClick={() => { void showRequestHistory(item.id); go("workflows"); }}><span><strong>{data.templates.find((entry) => entry.id === item.template_id)?.name || "流程申請"}</strong><small>{time(item.created_at)}</small></span><span className={`eip-collab-status ${item.status}`}>{item.status === "pending" && referenceTime - new Date(item.created_at).getTime() >= workflowTargetHours * 3600000 ? "超時待處理" : statusLabel[item.status]}</span></button>)}
+              {data.requests.slice(0, 4).map((item) => <button type="button" className="eip-collab-action-row" key={item.id} onClick={() => { void showRequestHistory(item.id); go("workflows"); }}><span><strong>{data.templates.find((entry) => entry.id === item.template_id)?.name || item.template?.name || "流程申請"}</strong><small>{time(item.created_at)}</small></span><span className={`eip-collab-status ${item.status}`}>{item.status === "pending" && referenceTime - new Date(item.created_at).getTime() >= workflowTargetHours * 3600000 ? "超時待處理" : statusLabel[item.status]}</span></button>)}
               {!data.requests.length ? <p className="eip-collab-empty">還沒有申請紀錄，可從流程中心發起。</p> : null}
             </div>
             <div className="eip-collab-panel">
@@ -197,8 +204,13 @@ export default function StaffCollaboration({ organization, section, employeeName
       </div> : null}
       {!loading && section === "workflows" ? <div className="eip-collab-columns">
         <div className="eip-collab-panel">
-          <div className="eip-collab-panel-head"><h2>發起申請</h2><span>依團隊流程送出</span></div>
-          {data.templates.length ? data.templates.map((item) => <button className="eip-collab-template" key={item.id} onClick={() => { setSelectedTemplate(item); setAnswers({}); }}><ClipboardCheck size={20} /><span><strong>{item.name}</strong><small>{item.description || "填寫表單並送交簽核"}{workflowStagesEnabled && item.approval_steps?.length === 2 ? " · 經理初審後由最高管理員複審" : ""}</small></span><ArrowRight size={16} /></button>) : <p className="eip-collab-empty">目前沒有可發起的新流程。既有行政與福利申請仍可從左側「簽核」操作。</p>}
+          <div className="eip-collab-panel-head"><h2>提出新申請</h2></div>
+          <p className="eip-collab-helper">選擇部門已開放的表單，填好送出後會交給相應的簽核人。送出後可在「我的申請」查看目前關卡和結果。</p>
+          <div className="eip-collab-actions">
+            <Link href="/personal/administrative.service">行政申請（含代支報銷、津貼）</Link>
+            <Link href="/personal/welfare">福利申請</Link>
+          </div>
+          {data.templates.length ? data.templates.map((item) => <button className="eip-collab-template" key={item.id} onClick={() => { setSelectedTemplate(item); setAnswers({}); }}><ClipboardCheck size={20} /><span><strong>{item.name}</strong><small>{item.description || "填寫表單並送交簽核"}{workflowStagesEnabled && item.approval_steps?.length === 2 ? " · Manager 初核後由 PIC 覆核" : ""}</small></span><ArrowRight size={16} /></button>) : <p className="eip-collab-empty">目前沒有已開放的自訂表單。</p>}
           {selectedTemplate ? <form className="eip-collab-form" onSubmit={(event) => void submit(event)}>
             <h3>{selectedTemplate.name}</h3>
             <p>{selectedTemplate.description}</p>
@@ -211,9 +223,19 @@ export default function StaffCollaboration({ organization, section, employeeName
           </form> : null}
         </div>
         <div className="eip-collab-panel">
-          <div className="eip-collab-panel-head"><h2>我的申請</h2><span>{data.requests.length} 筆</span></div>
-          {data.requests.length ? data.requests.map((item) => <div className="eip-collab-request" key={item.id}><span className={`eip-collab-status ${item.status}`}>{item.status === "pending" && referenceTime - new Date(item.created_at).getTime() >= workflowTargetHours * 3600000 ? "超時待處理" : statusLabel[item.status]}</span><strong>{data.templates.find((template) => template.id === item.template_id)?.name || "流程申請"}</strong><small>{time(item.created_at)}</small>{item.status === "pending" ? <p>{workflowStagesEnabled ? pendingStage(item) : "等待管理員簽核"} · 待辦處理目標：送出後 {workflowTargetHours} 小時。</p> : null}{item.decision_note ? <p>簽核備註：{item.decision_note}</p> : null}<button type="button" className="eip-collab-inline-action" onClick={() => void showRequestHistory(item.id)}>查看處理歷程</button></div>) : <p className="eip-collab-empty">尚無新流程申請紀錄。</p>}
-          {requestHistory ? <section className="eip-collab-history"><h3>申請處理歷程</h3><p><span>1</span> 已送出申請 · {time(requestHistory.item.created_at)}</p>{requestHistory.audit.map((entry, index) => <p key={index}><span>{index + 2}</span> {entry.new_status === "pending" ? `第 ${Number(entry.step_index ?? 0) + 1} 關初審通過` : statusLabel[entry.new_status]} · {time(entry.created_at)}{entry.note ? ` · ${entry.note}` : ""}</p>)}{requestHistory.item.status === "pending" ? <p><span>…</span> {workflowStagesEnabled ? pendingStage(requestHistory.item) : "等待管理員簽核"}</p> : null}<button type="button" onClick={() => setRequestHistory(null)}>關閉</button></section> : null}
+          <div className="eip-collab-panel-head"><h2>我的申請</h2><span>{data.requests.length + (data.personnelRequests?.length || 0)} 筆</span></div>
+          {data.personnelRequests?.map((item) => (
+            <article className="eip-collab-request" key={`personnel:${item.id}`}>
+              <span className={`eip-collab-status ${item.status}`}>{statusLabel[item.status] || item.status}</span>
+              <strong>{departmentLabel(item.organization)}｜{item.request_type}</strong>
+              <small>已送出 · {time(item.created_at)}</small>
+              {item.first_reviewed_at ? <p>Manager 初核通過 · {time(item.first_reviewed_at)}{item.first_review_note ? ` · ${item.first_review_note}` : ""}</p> : null}
+              {item.status === "pending" ? <p>{item.stage === "initial" ? "等待 Manager 初核（第 1／2 關）" : item.stage === "final" ? "等待 PIC 覆核（第 2／2 關）" : "等待管理員簽核"}</p> : null}
+              {item.reviewed_at ? <p>{statusLabel[item.status] || item.status} · {time(item.reviewed_at)}{item.review_result ? ` · ${item.review_result}` : ""}</p> : null}
+            </article>
+          ))}
+          {data.requests.length ? data.requests.map((item) => <div className="eip-collab-request" key={item.id}><span className={`eip-collab-status ${item.status}`}>{item.status === "pending" && referenceTime - new Date(item.created_at).getTime() >= workflowTargetHours * 3600000 ? "超時待處理" : statusLabel[item.status]}</span><strong>{data.templates.find((template) => template.id === item.template_id)?.name || item.template?.name || "流程申請"}</strong><small>{time(item.created_at)}</small>{item.status === "pending" ? <p>{workflowStagesEnabled ? pendingStage(item) : "等待管理員簽核"} · 待辦處理目標：送出後 {workflowTargetHours} 小時。</p> : null}{item.decision_note ? <p>簽核備註：{item.decision_note}</p> : null}<button type="button" className="eip-collab-inline-action" onClick={() => void showRequestHistory(item.id)}>查看處理歷程</button></div>)  : !data.personnelRequests?.length ? <p className="eip-collab-empty">尚無申請紀錄。</p> : null}
+          {requestHistory ? <section className="eip-collab-history"><h3>申請處理歷程</h3><p><span>1</span> 已送出申請 · {time(requestHistory.item.created_at)}</p>{requestHistory.audit.map((entry, index) => <p key={index}><span>{index + 2}</span> {entry.new_status === "pending" ? `第 ${Number(entry.step_index ?? 0) + 1} 關初核通過` : statusLabel[entry.new_status]} · {time(entry.created_at)}{entry.note ? ` · ${entry.note}` : ""}</p>)}{requestHistory.item.status === "pending" ? <p><span>…</span> {workflowStagesEnabled ? pendingStage(requestHistory.item) : "等待管理員簽核"}</p> : null}<button type="button" onClick={() => setRequestHistory(null)}>關閉</button></section> : null}
         </div>
       </div> : null}
     </section>

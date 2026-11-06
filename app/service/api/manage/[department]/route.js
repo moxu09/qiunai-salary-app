@@ -12,7 +12,7 @@ export async function GET(request,context){
  try{
   const {department}=await context.params;await courseManager(request,department);
   const [documents,links,staff,reviews,channels]=await Promise.all([
-   checked(supabaseAdmin.from('eip_workspace_documents').select('id,title,category,body,version,updated_at,is_published').eq('organization_code',department).eq('document_type','knowledge').order('updated_at',{ascending:false}).limit(500)),
+   checked(supabaseAdmin.from('eip_workspace_documents').select('id,title,category,body,version,updated_at,is_published').eq('organization_code',department).eq('document_type','knowledge').is('archived_at',null).order('updated_at',{ascending:false}).limit(500)),
    checked(supabaseAdmin.from('service_course_links').select('*').eq('organization_code',department)),
    allRows(()=>supabaseAdmin.from(SERVICE_STORES[department].staff).select('discord_id,discord_name,display_name').or('is_active.is.null,is_active.eq.true').order('discord_id')),
    allRows(()=>supabaseAdmin.from('course_learning_progress').select('document_id,discord_id,document_version,read_chapters,study_seconds,quiz_score,review_status,review_note,reviewed_at').eq('organization_code',department).order('document_id').order('discord_id').order('document_version')),
@@ -44,4 +44,20 @@ export async function PATCH(request,context){
   const result=await checked(supabaseAdmin.rpc('course_learning_atomic',{p_org:department,p_id:input.id,p_actor:actor.discordId,p_version:input.version,p_action:input.action,p_input:{employee:input.employee,note:input.note,serviceAuthorized:link.audience?.kind==='service'},p_source:'hr'}));
   return Response.json({ok:true,...result},{headers:{'Cache-Control':'no-store'}});
  }catch(error){return courseFailure(error);}
+}
+
+export async function DELETE(request, context) {
+  try {
+    const { department } = await context.params;
+    const actor = await courseManager(request, department);
+    const { id, version } = await readBody(request);
+    if (!uuid.test(id) || !Number.isSafeInteger(version) || version < 1) {
+      throw new CourseError("課程編號或版本不正確");
+    }
+    const archived = await checked(supabaseAdmin.rpc("archive_hr_course", {
+      p_org: department, p_actor: actor.discordId, p_id: id, p_version: version,
+    }));
+    if (!archived) throw new CourseError("課程已更新或移除，請重新整理", 409);
+    return Response.json({ ok: true }, { headers: { "Cache-Control": "no-store" } });
+  } catch (error) { return courseFailure(error); }
 }
