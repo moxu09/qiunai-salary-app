@@ -1,7 +1,7 @@
 import ExcelJS from "exceljs";
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { authorizeErpRequest } from "@/lib/erpAccess";
+import { requireHrPic } from "@/lib/hrAccess";
 import { groupActivityResponses } from "@/lib/qiunaiActivityGroups";
 
 export const runtime = "nodejs";
@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 
 export async function GET(request, { params }) {
   try {
-    await authorizeErpRequest(supabaseAdmin, request, "qiunai", "canAssignPrivilegedRoles");
+    await requireHrPic(request);
     const { id } = await params;
     const { data: activity, error } = await supabaseAdmin.from("qiunai_activities").select("id,title,starts_at,allow_not_attending,allow_distance,allow_multiple_options").eq("id", id).maybeSingle();
     if (error) throw error;

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { authorizeErpRequest } from "@/lib/erpAccess";
+import { requireHrPic } from "@/lib/hrAccess";
 import { getAuthUserFromRequest } from "@/lib/salaryWallet";
 
 export const dynamic = "force-dynamic";
@@ -14,7 +14,7 @@ const clean = (value, max = 5000) =>
     .slice(0, max);
 
 async function requireAdmin(request) {
-  return authorizeErpRequest(supabaseAdmin, request, "deepnight", "canAssignPrivilegedRoles");
+  return requireHrPic(request);
 }
 
 function parseOptions(value) {

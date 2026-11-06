@@ -2,7 +2,7 @@ import { personnelInbox, reviewHrPersonnelRequest } from "@/lib/hrPersonnelRevie
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { getAuthUserFromRequest } from "@/lib/salaryWallet";
-import { getErpAccessByDiscordId } from "@/lib/erpAccess";
+import { getHrRole } from "@/lib/hrAccess";
 import { getTaipeiMonthInput } from "@/lib/taipeiTime";
 import {
   removeRequestImages,
@@ -40,9 +40,7 @@ async function getStaff(discordId) {
 }
 
 async function requireAdmin(discordId) {
-  const access = await getErpAccessByDiscordId(supabaseAdmin, ORG, discordId);
-  if (!access.capabilities.canReviewAll) throw new Error("你沒有簽核申請的權限");
-  return access.assignment || access.legacyAdmin;
+  if ((await getHrRole(ORG, discordId)) === "Staff") throw Object.assign(Error("你沒有簽核申請的權限"), { status: 403 });
 }
 
 function reviewerName(admin) {
@@ -105,8 +103,8 @@ export async function GET(request) {
     const selectedMonth = url.searchParams.get("month") || getTaipeiMonthInput();
     const range = monthRange(selectedMonth);
     const adminMode = url.searchParams.get("mode") === "admin";
-    if (adminMode) await requireAdmin(discordId);
     if (adminMode && url.searchParams.get("view") === "inbox") return personnelInbox(request, ORG);
+    if (adminMode) await requireAdmin(discordId);
     const query = supabaseAdmin.from("salary_requests").select("*").eq("organization_code", ORG).gte("application_date", range.start.slice(0, 10)).lt("application_date", range.end.slice(0, 10)).order("created_at", { ascending: false });
     if (!adminMode) query.eq("discord_id", discordId);
     const [{ data: requests, error }, { data: announcements }, salary] = await Promise.all([
@@ -135,7 +133,7 @@ export async function GET(request) {
     }));
     return NextResponse.json({ ok: true, requests: await signRequestAttachments(requestsWithReviewer), announcements: announcements || [], priorMonthSalary: salary, welfareEligible: salary === null ? null : salary > 5000 });
   } catch (error) {
-    return NextResponse.json({ ok: false, message: friendlyError(error, "讀取申請資料失敗") }, { status: 400 });
+    return NextResponse.json({ ok: false, message: friendlyError(error, "讀取申請資料失敗") }, { status: error.status || 400 });
   }
 }
 

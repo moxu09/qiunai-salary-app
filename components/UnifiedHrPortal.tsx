@@ -9,6 +9,7 @@ import { HR_DEPARTMENTS, HR_ROUTES, hrTabForPath, allocateWithdrawal } from "@/l
 import { HrThemeBanner, HrAppearancePanel, HrThemeDecorations } from "@/components/HrThemeProvider";
 import HrCareerPanel from "@/components/HrCareerPanel";
 import StaffPortalNav, { type PortalTab } from "@/components/StaffPortalNav";
+import HrMemberManager from "@/components/HrMemberManager";
 import StaffCollaboration from "@/components/StaffCollaboration";
 import AdminWorkspaceManager from "@/components/AdminWorkspaceManager";
 import AdminActivityManager from "@/components/AdminActivityManager";
@@ -31,7 +32,7 @@ type Staff = Record<string, unknown> & {
   is_online?: boolean;
 };
 type Department = { key: DepartmentKey; staff: Staff; hrRole: "PIC" | "Manager" | "Staff" };
-type Session = { discordId: string; departments: Department[]; financeErpUrl?: string };
+type Session = { discordId: string; departments: Department[]; canManageHrMembers?: boolean; financeErpUrl?: string };
 type Entry = {
   id: string;
   discord_id?: string;
@@ -307,6 +308,14 @@ export default function UnifiedHrPortal() {
           />
           <div className="staff-main-column min-w-0">
             <HrThemeBanner />
+            {activeTab === "workspace" && session.canManageHrMembers ? (
+              <Card title="HR 成員管理">
+                <details>
+                  <summary>新增／移除 Manager</summary>
+                  <HrMemberManager departments={departments} request={hrFetch} />
+                </details>
+              </Card>
+            ) : null}
             {activeTab === "appearance" ? <HrAppearancePanel /> : null}
             {(collaboration || managingActivities) && managers.length ? (
               <Card title={managementLabel}>

@@ -1,6 +1,5 @@
 import test from "node:test";
 import { personnelProgress } from "../lib/hrPersonnelProgress.mjs";
-import { getHrRole } from "../lib/erpRoles.js";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { runInNewContext } from "node:vm";
@@ -60,15 +59,12 @@ function setup() {
   const context = {
     supabaseAdmin,
     getAuthUserFromRequest: async (_db, request) => ({ discordId: request.discordId }),
-    getErpAccessByDiscordId: async (_db, _org, discordId) => ({ role: discordId === pic ? "super_admin" : discordId === manager ? "store_manager" : "employee", capabilities: {
-      canReviewAll: discordId === manager || discordId === pic,
-      canReviewResignations: discordId === resignationReviewer,
-    }, assignment: { display_name: "管理員" } }),
+    getHrRole: async (_org, discordId) => discordId === pic ? "PIC" : discordId === manager ? "Manager" : "Staff",
     getTaipeiMonthInput: () => "2026-09",
     signRequestAttachments: async (items) => items,
     removeRequestImages: async (paths) => { removed.push(paths); },
     uploadRequestImages: async () => [],
-    personnelProgress, getHrRole,
+    personnelProgress,
     Response: { json: (body, options = {}) => ({ body, status: options.status || 200 }) },
     NextResponse: { json: (body, options = {}) => ({ body, status: options.status || 200 }) },
     URL, Date, String, Number, Object, Array, Set, Map, Promise, console,

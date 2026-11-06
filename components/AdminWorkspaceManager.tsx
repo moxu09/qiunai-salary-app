@@ -356,7 +356,7 @@ export default function AdminWorkspaceManager({ organization, initialSection = "
         const currentStep = Math.min(Number(item.approval_step_index || 0), steps.length - 1);
         const stepRole = steps[currentStep];
         const canAct = actorId !== item.applicant_discord_id && actorId !== item.first_approved_by &&
-          (stepRole === "owner" ? actorRole === "super_admin" : steps.length === 2 ? workflowStagesEnabled && actorRole === "store_manager" : actorRole === "store_manager" || actorRole === "super_admin");
+          (stepRole === "owner" ? actorRole === "PIC" : steps.length === 2 ? workflowStagesEnabled && actorRole === "Manager" : actorRole === "Manager" || actorRole === "PIC");
         const values = item.form_data && typeof item.form_data === "object" ? Object.entries(item.form_data as Record<string, unknown>) : [];
         return <article className="eip-collab-admin-item" key={item.id}>
           <span>{String(item.created_at || "").slice(0, 16).replace("T", " ")} · {String(item.status === "pending" ? (observedAt - new Date(String(item.created_at)).getTime() >= workflowTargetHours * 3600000 ? `超過 ${workflowTargetHours} 小時未處理` : "待簽核") : item.status === "approved" ? "已核准" : "已退回")}</span>

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { authorizeErpRequest } from "@/lib/erpAccess";
+import { requireHrPic } from "@/lib/hrAccess";
 import { getAuthUserFromRequest } from "@/lib/salaryWallet";
 import { normalizeActivityOptionIds } from "@/lib/activityOptionSelection";
 
@@ -10,7 +10,7 @@ const MAX_OPTIONS = 20;
 const clean = (value, max = 5000) => String(value ?? "").trim().slice(0, max);
 
 async function requireAdmin(request) {
-  return authorizeErpRequest(supabaseAdmin, request, "qiunai", "canAssignPrivilegedRoles");
+  return requireHrPic(request);
 }
 
 function parseOptions(value) {

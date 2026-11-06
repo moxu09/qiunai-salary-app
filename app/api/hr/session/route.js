@@ -1,7 +1,7 @@
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { hrAuth, hrFail } from "@/lib/hrServer";
-import { ERP_OWNER_DISCORD_ID, getHrRole } from "@/lib/erpRoles";
-import { getErpAccessByDiscordId } from "@/lib/erpAccess";
+import { ERP_OWNER_DISCORD_ID } from "@/lib/erpRoles";
+import { getHrRole } from "@/lib/hrAccess";
 export const dynamic = "force-dynamic";
 export async function GET(request) {
   try {
@@ -16,8 +16,7 @@ export async function GET(request) {
       );
     if (error) throw error;
     await Promise.all(departments.map(async (d) => {
-      const access = await getErpAccessByDiscordId(supabaseAdmin, d.key, discordId);
-      d.hrRole = getHrRole(access.role);
+      d.hrRole = await getHrRole(d.key, discordId);
       const profile = profiles.find((p) => p.app_key === d.key);
       d.staff = {
         ...d.staff,
@@ -33,6 +32,7 @@ export async function GET(request) {
         ok: true,
         discordId,
         departments,
+        canManageHrMembers: discordId === ERP_OWNER_DISCORD_ID,
         ...(discordId === ERP_OWNER_DISCORD_ID
           ? { financeErpUrl: "https://finance-erp-production.up.railway.app/erp" }
           : {}),

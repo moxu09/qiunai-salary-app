@@ -51,9 +51,7 @@ function setup() {
       if (!request.discordId) throw new Error("missing");
       return { discordId: request.discordId };
     },
-    getErpAccessByDiscordId: async (_db, _org, discordId) => ({
-      capabilities: { canViewAllAdmin: discordId === manager },
-    }),
+    getHrRole: async (_org, discordId) => discordId === manager ? "Manager" : "Staff",
     ADMIN_FILE_BUCKET: "salary-admin-files",
     decodedName: (name) => name,
     ensureAdminFileBucket: async () => {},

@@ -102,10 +102,7 @@ function setup({ multistage = false } = {}) {
       if (!request.discordId) throw new Error("missing");
       return { discordId: request.discordId };
     },
-    getErpAccessByDiscordId: async (_db, _org, discordId) => ({
-      role: discordId === owner ? "super_admin" : discordId === manager ? "store_manager" : "employee",
-      capabilities: { canViewAllAdmin: discordId === owner || discordId === manager },
-    }),
+    getHrRole: async (_org, discordId) => discordId === owner ? "PIC" : discordId === manager ? "Manager" : "Staff",
     Response: { json: (body, options = {}) => ({ body, status: options.status || 200 }) },
     console, Date, URL, String, Number, Object, Array, Set,
   };

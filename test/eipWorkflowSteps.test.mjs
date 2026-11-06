@@ -19,26 +19,26 @@ test("only the supported one- and two-stage sequences can be configured", () => 
 });
 
 test("two-stage approval does not complete at the first step and requires separate roles", () => {
-  assert.throws(() => decide(base, "super_admin", "owner"), /店經理/);
-  const first = decide(base, "store_manager", "manager", "approved", "符合規定");
+  assert.throws(() => decide(base, "PIC", "owner"), /Manager/);
+  const first = decide(base, "Manager", "manager", "approved", "符合規定");
   assert.equal(first.completed, false);
   assert.equal(first.patch.approval_step_index, 1);
   assert.equal(first.patch.status, undefined);
   const secondRequest = { ...base, approval_step_index: 1, first_approved_by: "manager" };
-  assert.throws(() => decide(secondRequest, "store_manager", "manager"), /最高管理員/);
-  assert.throws(() => decide(secondRequest, "super_admin", "manager"), /同一人/);
-  const final = decide(secondRequest, "super_admin", "owner", "approved", "複審通過");
+  assert.throws(() => decide(secondRequest, "Manager", "manager"), /PIC/);
+  assert.throws(() => decide(secondRequest, "PIC", "manager"), /同一人/);
+  const final = decide(secondRequest, "PIC", "owner", "approved", "複審通過");
   assert.equal(final.completed, true);
   assert.equal(final.patch.status, "approved");
   assert.equal(final.filters.first_approved_by, "manager");
 });
 
 test("rejecting either stage requires a reason; a terminal request cannot be decided again", () => {
-  assert.throws(() => decide(base, "store_manager", "manager", "rejected"), /原因/);
-  const rejected = decide(base, "store_manager", "manager", "rejected", "資料不齊");
+  assert.throws(() => decide(base, "Manager", "manager", "rejected"), /原因/);
+  const rejected = decide(base, "Manager", "manager", "rejected", "資料不齊");
   assert.equal(rejected.patch.status, "rejected");
-  assert.throws(() => decide({ ...base, status: "approved" }, "store_manager", "manager"), /已處理/);
-  assert.throws(() => decide({ ...base, applicant_discord_id: "manager" }, "store_manager", "manager"), /自己的申請/);
+  assert.throws(() => decide({ ...base, status: "approved" }, "Manager", "manager"), /已處理/);
+  assert.throws(() => decide({ ...base, applicant_discord_id: "manager" }, "Manager", "manager"), /自己的申請/);
 });
 
 test("migration snapshots old templates and audits intermediate stage transitions", () => {

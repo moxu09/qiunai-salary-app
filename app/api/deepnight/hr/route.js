@@ -1,5 +1,8 @@
 import { personnelInbox, reviewHrPersonnelRequest } from "@/lib/hrPersonnelReview";
 import { hrSource } from "@/lib/hrUpstream";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { getAuthUserFromRequest } from "@/lib/salaryWallet";
+import { getHrRole } from "@/lib/hrAccess";
 import { hrFail } from "@/lib/hrServer";
 
 export const dynamic = "force-dynamic";
@@ -9,6 +12,12 @@ export async function GET(request) {
     return personnelInbox(request, "deepnight");
   }
   try {
+    if (url.searchParams.get("mode") === "admin") {
+      const { discordId } = await getAuthUserFromRequest(supabaseAdmin, request);
+      if ((await getHrRole("deepnight", discordId)) === "Staff") {
+        throw Object.assign(Error("你沒有簽核申請的權限"), { status: 403 });
+      }
+    }
     return Response.json(await hrSource(request, "deepnight", `hr${url.search}`));
   } catch (error) { return hrFail(error); }
 }
