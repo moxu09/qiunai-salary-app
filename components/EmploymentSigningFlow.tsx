@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CheckCircle2, FileSignature, Loader2, RotateCcw, ShieldCheck } from "lucide-react";
+import type { Session } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 
 type Organization = "deepnight" | "qiunai";
@@ -31,6 +32,41 @@ const BRAND = {
   deepnight: { name: "深夜不關燈", accent: "#2563eb", soft: "#eff6ff" },
   qiunai: { name: "秋奈電競", accent: "#db2777", soft: "#fdf2f8" },
 };
+
+async function waitForSigningSession(request: Promise<Session | null>) {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      request,
+      new Promise<null>((resolve) => { timer = setTimeout(() => resolve(null), 3_000); }),
+    ]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function fetchSigningInvitation(url: string, session: Session | null) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 12_000);
+  try {
+    const response = await fetch(url, {
+      cache: "no-store",
+      headers: session ? { Authorization: `Bearer ${session.access_token}` } : undefined,
+      signal: controller.signal,
+    });
+    const data = await response.json().catch(() => ({}));
+    if (controller.signal.aborted) throw new Error("邀請讀取逾時");
+    if (!response.ok || !data.signing) throw new Error(data.message || "讀取簽署邀請失敗");
+    return data;
+  } catch (error) {
+    if (controller.signal.aborted || error instanceof TypeError) {
+      throw new Error("暫時無法連上簽署服務，請重試。");
+    }
+    throw error;
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
 function ageFromBirthday(value: string) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
@@ -144,6 +180,7 @@ export default function EmploymentSigningFlow({ token, organization }: { token: 
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const invitationLoad = useRef(0);
   const [reachedBottom, setReachedBottom] = useState(false);
   const loadedPages = useRef(new Set<number>());
   const [confirmed, setConfirmed] = useState(false);
@@ -169,38 +206,62 @@ export default function EmploymentSigningFlow({ token, organization }: { token: 
   );
 
   const loadInvitation = useCallback(async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    const response = await fetch(`${apiPath}?token=${encodeURIComponent(token)}`, {
-      cache: "no-store",
-      headers: session ? { Authorization: `Bearer ${session.access_token}` } : undefined,
-    });
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok || !data.signing) throw new Error(data.message || "讀取簽署邀請失敗");
-    const nextSigning = data.signing as Signing;
-    setSigning(nextSigning);
-    setDiscordAccess(data.discordAccess === "verified" || data.discordAccess === "mismatch"
-      ? data.discordAccess
-      : "required");
-    if (data.discordAccess === "verified" && nextSigning.prefill) {
-      const prefill = nextSigning.prefill;
-      setForm((current) => ({
-        ...current,
-        realName: prefill.real_name || current.realName,
-        gender: prefill.gender || current.gender,
-        birthday: prefill.birthday || current.birthday,
-        bankName: prefill.bank_name || current.bankName,
-        bankAccount: prefill.bank_account || current.bankAccount,
-      }));
+    const loadId = ++invitationLoad.current;
+    const sessionRequest = supabase.auth.getSession().then(({ data, error }) => error ? null : data.session, () => null);
+    const url = `${apiPath}?token=${encodeURIComponent(token)}`;
+
+    function applyInvitation(data: { signing: Signing; discordAccess?: DiscordAccess }) {
+      if (invitationLoad.current !== loadId) return;
+      const { signing: nextSigning, discordAccess: access } = data;
+      setSigning(nextSigning);
+      setDiscordAccess(access === "verified" || access === "mismatch" ? access : "required");
+      if (access === "verified" && nextSigning.prefill) {
+        const prefill = nextSigning.prefill;
+        setForm((current) => ({
+          ...current,
+          realName: current.realName || prefill.real_name || "",
+          gender: current.gender || prefill.gender || "",
+          birthday: current.birthday || prefill.birthday || "",
+          bankName: current.bankName || prefill.bank_name || "",
+          bankAccount: current.bankAccount || prefill.bank_account || "",
+        }));
+      }
+      if (["signed", "activated"].includes(nextSigning.status)) setStage("complete");
+      else if (nextSigning.status === "read") setStage("form");
     }
-    if (["signed", "activated"].includes(nextSigning.status)) setStage("complete");
-    else if (nextSigning.status === "read") setStage("form");
+
+    const session = await waitForSigningSession(sessionRequest);
+    applyInvitation(await fetchSigningInvitation(url, session));
+    if (!session) {
+      // A slow browser session can finish after the public invitation is visible.
+      void sessionRequest.then(async (lateSession) => {
+        if (lateSession && invitationLoad.current === loadId) {
+          applyInvitation(await fetchSigningInvitation(url, lateSession));
+        }
+      }).catch(() => {});
+    }
   }, [apiPath, token]);
 
-  useEffect(() => {
-    void Promise.resolve().then(loadInvitation).catch((requestError) => {
+  const openInvitation = useCallback(async () => {
+    setLoading(true);
+    setError("");
+    try {
+      await loadInvitation();
+    } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "讀取簽署邀請失敗");
-    }).finally(() => setLoading(false));
+    } finally {
+      setLoading(false);
+    }
   }, [loadInvitation]);
+
+  useEffect(() => {
+    let active = true;
+    void Promise.resolve().then(() => { if (active) return openInvitation(); });
+    return () => {
+      active = false;
+      invitationLoad.current += 1;
+    };
+  }, [openInvitation]);
 
   function update(name: keyof typeof form, value: string) {
     setForm((current) => ({ ...current, [name]: value }));
@@ -301,7 +362,7 @@ export default function EmploymentSigningFlow({ token, organization }: { token: 
   }
 
   if (loading) return <main className="flex min-h-screen items-center justify-center bg-slate-50"><Loader2 className="animate-spin text-slate-500" size={36} /></main>;
-  if (error && !signing) return <main className="flex min-h-screen items-center justify-center bg-slate-50 px-4"><div className="max-w-lg rounded-3xl border border-rose-200 bg-white p-8 text-center shadow-xl"><h1 className="text-2xl font-black text-rose-700">無法開啟簽署文件</h1><p className="mt-4 leading-7 text-slate-600">{error}</p></div></main>;
+  if (error && !signing) return <main className="flex min-h-screen items-center justify-center bg-slate-50 px-4"><div className="max-w-lg rounded-3xl border border-rose-200 bg-white p-8 text-center shadow-xl"><h1 className="text-2xl font-black text-rose-700">無法開啟簽署文件</h1><p className="mt-4 leading-7 text-slate-600">{error}</p><button type="button" onClick={() => void openInvitation()} className="mt-6 rounded-xl bg-slate-900 px-5 py-3 font-bold text-white">重新讀取</button></div></main>;
 
   return (
     <main className="min-h-screen bg-slate-100 px-4 py-8 text-slate-900 sm:px-6">
