@@ -73,6 +73,7 @@ export default function HrDocumentSigning({ documentKey }: { documentKey: Key })
   const [needsLogin, setNeedsLogin] = useState(false);
   const [signedAt, setSignedAt] = useState<string | null>(null);
   const [depositRequired, setDepositRequired] = useState(false);
+  const [existingStaffWaiver, setExistingStaffWaiver] = useState(false);
   const [depositPaidAt, setDepositPaidAt] = useState<string | null>(null);
   const [pdfUrl, setPdfUrl] = useState("");
   const [pdfOpened, setPdfOpened] = useState(false);
@@ -86,6 +87,7 @@ export default function HrDocumentSigning({ documentKey }: { documentKey: Key })
       const info = await (await request(endpoint)).json();
       setSignedAt(info.signedAt);
       setDepositRequired(Boolean(info.depositRequired));
+      setExistingStaffWaiver(info.existingStaffWaiver === true);
       setDepositPaidAt(info.depositPaidAt || null);
       if (info.prefill) {
         const { identity: storedIdentity, nationalId, ...fields } = info.prefill;
@@ -286,8 +288,9 @@ export default function HrDocumentSigning({ documentKey }: { documentKey: Key })
                   </> : null}
                 </div>
                 {!nda ? <label className="flex items-center gap-2">
-                  <input type="checkbox" checked={age !== null && !minor} disabled />
-                  {minor ? "履約保證金不適用於未成年乙方" : "成年乙方須於簽署後繳交 NT$1,000 履約保證金"}
+                  <input type="checkbox" checked={age !== null && !minor && !existingStaffWaiver} disabled />
+                  {existingStaffWaiver ? "12/01 前已在職，免繳履約保證金" :
+                    minor ? "履約保證金不適用於未成年乙方" : "新入職的成年乙方須於簽署後繳交 NT$1,000 履約保證金"}
                 </label> : null}
                 <SignaturePad label={nda ? "資訊接受方手寫簽名" : "乙方手寫簽名"} onChange={setSignatureDataUrl} />
                 {minor ? <div className="space-y-4 rounded-xl border border-slate-200 p-4">

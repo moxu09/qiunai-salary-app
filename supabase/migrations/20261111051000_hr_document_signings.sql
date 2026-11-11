@@ -50,6 +50,68 @@ alter table public.hr_contract_profiles enable row level security;
 revoke all on public.hr_document_signings, public.hr_contract_profiles from public, anon, authenticated, service_role;
 grant select on public.hr_document_signings, public.hr_contract_profiles to service_role;
 
+create table public.hr_contract_deposit_waivers (
+  organization_code text not null check (organization_code in ('qiunai', 'deepnight')),
+  staff_id text not null,
+  discord_id text not null check (discord_id ~ '^[0-9]{15,22}$'),
+  primary key (organization_code, staff_id)
+);
+create index hr_contract_deposit_waivers_discord_idx on public.hr_contract_deposit_waivers(discord_id);
+alter table public.hr_contract_deposit_waivers enable row level security;
+revoke all on public.hr_contract_deposit_waivers from public, anon, authenticated, service_role;
+
+create function public.hr_track_contract_deposit_waiver()
+returns trigger language plpgsql security definer set search_path = '' as $$
+declare
+  org text := case when tg_table_name = 'players' then 'deepnight' else 'qiunai' end;
+begin
+  if statement_timestamp() >= timestamptz '2026-12-01 00:00:00+08' then return null; end if;
+  if tg_op <> 'INSERT' then
+    delete from public.hr_contract_deposit_waivers
+    where organization_code = org and staff_id = old.id::text;
+  end if;
+  if tg_op = 'DELETE' then return null; end if;
+  if org = 'deepnight' then
+    if new.guild_id::text is distinct from '1501098191813214312' then return null; end if;
+  end if;
+  if new.is_active is distinct from false
+    and new.created_at < timestamptz '2026-12-01 00:00:00+08'
+    and new.discord_id ~ '^[0-9]{15,22}$' then
+    insert into public.hr_contract_deposit_waivers(organization_code, staff_id, discord_id)
+    values (org, new.id::text, new.discord_id)
+    on conflict (organization_code, staff_id) do update set discord_id = excluded.discord_id;
+  end if;
+  return null;
+end;
+$$;
+revoke all on function public.hr_track_contract_deposit_waiver()
+  from public, anon, authenticated, service_role;
+
+-- Track roster changes until midnight Taipei time, then keep that roster for both stores.
+create trigger hr_track_contract_waiver_qiunai
+  after insert or delete or update of id, discord_id, created_at, is_active on public.qiunai_staff
+  for each row execute function public.hr_track_contract_deposit_waiver();
+create trigger hr_track_contract_waiver_deepnight
+  after insert or delete or update of id, discord_id, created_at, is_active, guild_id on public.players
+  for each row execute function public.hr_track_contract_deposit_waiver();
+
+insert into public.hr_contract_deposit_waivers(organization_code, staff_id, discord_id)
+select 'qiunai', id::text, discord_id from public.qiunai_staff
+where is_active is distinct from false and created_at < timestamptz '2026-12-01 00:00:00+08'
+  and discord_id ~ '^[0-9]{15,22}$'
+union all
+select 'deepnight', id::text, discord_id from public.players
+where guild_id::text = '1501098191813214312' and is_active is distinct from false
+  and created_at < timestamptz '2026-12-01 00:00:00+08' and discord_id ~ '^[0-9]{15,22}$';
+
+create function public.hr_contract_existing_staff_waiver(p_discord_id text)
+returns boolean language sql stable security definer set search_path = '' as $$
+  select exists (select 1 from public.hr_contract_deposit_waivers where discord_id = p_discord_id);
+$$;
+revoke all on function public.hr_contract_existing_staff_waiver(text)
+  from public, anon, authenticated, service_role;
+grant execute on function public.hr_contract_existing_staff_waiver(text) to service_role;
+
 create function public.hr_claim_document_signing(p_discord_id text, p_document_key text, p_org text, p_attempt uuid)
 returns uuid language sql security definer set search_path = '' as $$
   insert into public.hr_document_signings as signing (discord_id, document_key, organization_code, attempt_id)
@@ -98,6 +160,7 @@ begin
     if p_profile->>'birthday' is null
       or v_deposit_required is distinct from (
         (p_profile->>'birthday')::date <= ((p_signed_at at time zone 'Asia/Taipei')::date - interval '18 years')::date
+        and not public.hr_contract_existing_staff_waiver(p_discord_id)
       ) then raise exception '履約保證金適用狀態不符'; end if;
     if p_source_sha256 <> 'abca0bf344776cd05038efe701b93f3c2577c8da38990c0f91fa4347668b2afe' then
       raise exception '契約原稿版本不符';
