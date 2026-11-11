@@ -81,7 +81,7 @@ function ageFromBirthday(value: string) {
   return age;
 }
 
-function SignaturePad({ label, onChange }: { label: string; onChange: (value: string) => void }) {
+export function SignaturePad({ label, onChange }: { label: string; onChange: (value: string) => void }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const drawing = useRef(false);
   const hasInk = useRef(false);

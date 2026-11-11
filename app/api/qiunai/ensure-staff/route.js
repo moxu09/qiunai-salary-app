@@ -172,6 +172,7 @@ export async function POST(request) {
         avatar_url: avatarUrl,
         display_name: displayName,
         real_name: onboarding.real_name || null,
+        phone: onboarding.phone || null,
         gender: onboarding.gender || null,
         birthday: onboarding.birthday || null,
         bank_name: onboarding.bank_name || null,

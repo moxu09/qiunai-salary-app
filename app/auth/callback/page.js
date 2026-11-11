@@ -60,7 +60,8 @@ function CallbackInner() {
 
         const requestedNext = searchParams.get("next") || "";
         const signingDestination =
-          /^\/employment-sign\/[A-Za-z0-9_-]{40,100}$/.test(requestedNext);
+          /^\/employment-sign\/[A-Za-z0-9_-]{40,100}$/.test(requestedNext) ||
+          /^\/collaboration\/contract-signing\?document=(employment-v22|manager-nda)$/.test(requestedNext);
         const destination = signingDestination
           ? requestedNext
           : requestedNext === "/admin"

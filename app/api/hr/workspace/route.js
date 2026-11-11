@@ -2,11 +2,13 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { personnelProgress } from "@/lib/hrPersonnelProgress.mjs";
 import { privateCourseCatalog } from "@/lib/service/courses";
 import { hrAuth, hrFail } from "@/lib/hrServer";
+import { getHrSigningTasks } from "@/lib/hrDocumentSigning";
 import { hrSource, annotate } from "@/lib/hrUpstream";
 export const dynamic = "force-dynamic";
 export async function GET(request) {
   try {
-    const { departments, discordId } = await hrAuth(request);
+    const auth = await hrAuth(request);
+    const { departments, discordId } = auth;
     const url = new URL(request.url);
     if (url.searchParams.has("audit")) {
       const key = url.searchParams.get("department");
@@ -27,6 +29,7 @@ export async function GET(request) {
     if (personnel.error) throw personnel.error;
     const result = {
       ok: true,
+      signingTasks: await getHrSigningTasks(auth),
       events: [],
       documents: [],
       templates: [],

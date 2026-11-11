@@ -22,7 +22,7 @@ type PersonnelRequest = {
   status: string; created_at: string; stage: "initial" | "final" | "general";
   first_reviewed_at?: string | null; first_review_note?: string | null; reviewed_at?: string | null; review_result?: string | null;
 };
-type Data = { personnelRequests?: PersonnelRequest[]; serviceCoursesUnavailable?: boolean; events: Event[]; documents: Document[]; templates: Template[]; requests: Submission[] };
+type Data = { signingTasks?: { key: string; title: string; href: string }[]; personnelRequests?: PersonnelRequest[]; serviceCoursesUnavailable?: boolean; events: Event[]; documents: Document[]; templates: Template[]; requests: Submission[] };
 type Props = { organization: "qiunai" | "deepnight" | "hr"; section: Section; employeeName: string; onSelect: (tab: string) => void; workspaceActions?: ReactNode };
 const emptyData: Data = { events: [], documents: [], templates: [], requests: [] };
 const time = (value: string) => new Intl.DateTimeFormat("zh-TW", { timeZone: "Asia/Taipei", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(value));
@@ -70,7 +70,7 @@ export default function StaffCollaboration({ organization, section, employeeName
     try {
       setLoading(true);
       const result = await authorizedFetch("GET");
-      setData({ serviceCoursesUnavailable: result.serviceCoursesUnavailable === true, events: result.events || [], documents: result.documents || [], templates: result.templates || [], requests: result.requests || [], personnelRequests: result.personnelRequests || [] });
+      setData({ signingTasks: result.signingTasks || [], serviceCoursesUnavailable: result.serviceCoursesUnavailable === true, events: result.events || [], documents: result.documents || [], templates: result.templates || [], requests: result.requests || [], personnelRequests: result.personnelRequests || [] });
       setReferenceTime(Date.now());
       setWorkflowTargetHours(Number(result.workflowTargetHours || 48));
       setWorkflowStagesEnabled(result.workflowStagesEnabled === true);
@@ -147,6 +147,9 @@ export default function StaffCollaboration({ organization, section, employeeName
             </div>
             <div className="eip-collab-panel">
               <div className="eip-collab-panel-head"><h2>需要我處理</h2><button onClick={() => go("profile")}>前往公告 <ArrowRight size={15} /></button></div>
+              {data.signingTasks?.map((task) => <Link className="eip-collab-action-row" key={task.key} href={task.href}>
+                <span><strong>{task.title}</strong><small>待簽署</small></span><ArrowRight size={16} />
+              </Link>)}
               {existingAnnouncements.filter((item) => item.requires_signature && item.signature?.status !== "signed").slice(0, 4).map((item) => <button type="button" className="eip-collab-action-row" key={item.id} onClick={() => go("profile")}><span><strong>{item.title}</strong><small>公告待簽署</small></span><ArrowRight size={16} /></button>)}
               {!existingAnnouncements.some((item) => item.requires_signature && item.signature?.status !== "signed") ? <p className="eip-collab-empty">目前沒有需要簽署的公告。</p> : null}
             </div>

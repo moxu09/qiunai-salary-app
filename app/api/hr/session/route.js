@@ -2,6 +2,7 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { hrAuth, hrFail } from "@/lib/hrServer";
 import { ERP_OWNER_DISCORD_ID } from "@/lib/erpRoles";
 import { getHrRole } from "@/lib/hrAccess";
+import { getHrContractProfile } from "@/lib/hrDocumentSigning";
 export const dynamic = "force-dynamic";
 export async function GET(request) {
   try {
@@ -32,6 +33,7 @@ export async function GET(request) {
         ok: true,
         discordId,
         departments,
+        contractProfile: await getHrContractProfile(discordId),
         canManageHrMembers: discordId === ERP_OWNER_DISCORD_ID,
         ...(discordId === ERP_OWNER_DISCORD_ID
           ? { financeErpUrl: "https://finance-erp-production.up.railway.app/erp" }
