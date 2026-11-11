@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import Link from "next/link";
+import HrSigningPdfReader from "@/components/HrSigningPdfReader";
 import HrContractDeposit from "@/components/HrContractDeposit";
 import { SignaturePad } from "@/components/EmploymentSigningFlow";
 import { HR_PAYMENT_QR_MAX_BYTES, HR_QR_PROVIDERS, HR_SIGNER_IDENTITIES, HR_SIGNING_DOCUMENTS, taipeiSigningAge } from "@/lib/hrSigningDocuments.mjs";
@@ -25,6 +26,12 @@ const fieldLabels: Record<Field, string> = {
 };
 const inputClass = "mt-1 block w-full rounded-lg border border-slate-300 bg-white p-3 text-slate-900";
 const actionClass = "rounded-lg bg-slate-900 px-4 py-2 font-bold text-white disabled:opacity-50";
+const identityCards = [
+  { identity: "tw", title: "台灣本國人", description: "使用台灣身分證及本國銀行帳戶", position: "left" },
+  { identity: "cn_hk_mo", title: "中國大陸、香港、澳門", description: "使用身分證明文件及支付寶或微信收款碼", position: "center" },
+  { identity: "foreign", title: "外國人", description: "使用護照或居留證及加密貨幣錢包", position: "right" },
+] as const;
+
 const lineBankCode = "824";
 const lineBankInvitation = "https://www.linebank.com.tw/R/mgm-portal?campaignId=3&uid=bfXxqI";
 
@@ -45,7 +52,8 @@ async function request(url: string, options?: RequestInit) {
   ]).finally(() => clearTimeout(timer));
   if (!session) throw Object.assign(Error("請先使用 Discord 登入"), { status: 401 });
   const response = await fetch(url, {
-    ...options, cache: "no-store", signal: AbortSignal.timeout(35_000),
+    ...options, cache: "no-store", signal: options?.signal
+      ? AbortSignal.any([options.signal, AbortSignal.timeout(35_000)]) : AbortSignal.timeout(35_000),
     headers: { Authorization: `Bearer ${session.access_token}`, ...options?.headers },
   });
   if (!response.ok) {
@@ -76,7 +84,12 @@ export default function HrDocumentSigning({ documentKey }: { documentKey: Key })
   const [existingStaffWaiver, setExistingStaffWaiver] = useState(false);
   const [depositPaidAt, setDepositPaidAt] = useState<string | null>(null);
   const [pdfUrl, setPdfUrl] = useState("");
-  const [pdfOpened, setPdfOpened] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+  const [reachedEnd, setReachedEnd] = useState(false);
+  const [detailsReady, setDetailsReady] = useState(false);
+  const [readerVersion, setReaderVersion] = useState(0);
+  const markEnd = useCallback(() => setReachedEnd(true), []);
+  const agreementText = nda ? "我已詳閱並同意簽署保密協議" : "我已詳閱並同意簽署承攬合約";
   const age = taipeiSigningAge(form.birthday);
   const minor = !nda && age !== null && age < 18;
 
@@ -91,20 +104,21 @@ export default function HrDocumentSigning({ documentKey }: { documentKey: Key })
       setDepositPaidAt(info.depositPaidAt || null);
       if (info.prefill) {
         const { identity: storedIdentity, nationalId, ...fields } = info.prefill;
-        setForm({ ...defaultForm, ...fields });
+        setForm({ ...defaultForm, ...fields, nationalId: nda ? nationalId || "" : "" });
         if (Object.hasOwn(HR_SIGNER_IDENTITIES, storedIdentity)) {
           setPrefilledId({ identity: storedIdentity, value: nationalId || "" });
         }
         setSameBankHolder(!fields.bankHolder || fields.bankHolder === fields.realName);
       }
       setNeedsLogin(false);
+      setLoaded(true);
     } catch (caught) {
       setNeedsLogin((caught as { status?: number })?.status === 401);
       setError(caught instanceof Error ? caught.message : "讀取待簽文件失敗");
     } finally {
       setLoading(false);
     }
-  }, [endpoint]);
+  }, [endpoint, nda]);
 
   useEffect(() => { void Promise.resolve().then(load); }, [load]);
   useEffect(() => () => { if (pdfUrl) URL.revokeObjectURL(pdfUrl); }, [pdfUrl]);
@@ -132,7 +146,6 @@ export default function HrDocumentSigning({ documentKey }: { documentKey: Key })
     try {
       const response = await request(`${endpoint}&view=${signedAt ? "signed" : "source"}`);
       setPdfUrl(URL.createObjectURL(await response.blob()));
-      setPdfOpened(true);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "無法開啟 PDF");
     } finally {
@@ -142,7 +155,7 @@ export default function HrDocumentSigning({ documentKey }: { documentKey: Key })
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (busy || !identity) return;
+    if (busy || !confirmed || !detailsReady || (!nda && !identity)) return;
     setBusy(true);
     setError("");
     try {
@@ -166,7 +179,7 @@ export default function HrDocumentSigning({ documentKey }: { documentKey: Key })
       }
       const response = await request(endpoint, {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ identity, realName, nationalId, contact, confirmed, signatureDataUrl, ...details }),
+        body: JSON.stringify({ ...(!nda ? { identity } : {}), realName, nationalId, contact, confirmed, signatureDataUrl, ...details }),
       });
       const signed = await response.json();
       setSignedAt(signed.signedAt);
@@ -183,10 +196,48 @@ export default function HrDocumentSigning({ documentKey }: { documentKey: Key })
   }
 
   function input(field: Field, type = "text", max = 50) {
-    const label = field === "nationalId" && identity ? HR_SIGNER_IDENTITIES[identity].idLabel :
+    const label = field === "nationalId" && nda ? "證件號碼" :
+      field === "nationalId" && identity ? HR_SIGNER_IDENTITIES[identity].idLabel :
       nda && field === "contact" ? "聯絡電話" : fieldLabels[field];
     return <label>{label}<input className={inputClass} type={type} maxLength={max}
       required value={form[field]} onChange={(event) => setForm({ ...form, [field]: event.target.value })} /></label>;
+  }
+
+  function moveTo(id: string) {
+    requestAnimationFrame(() => {
+      const target = window.document.getElementById(id);
+      target?.focus({ preventScroll: true });
+      target?.scrollIntoView({ block: "start" });
+    });
+  }
+
+  function chooseIdentity(value: Identity) {
+    setIdentity(value);
+    setForm({ ...form, nationalId: value === prefilledId?.identity ? prefilledId.value : "" });
+    setPaymentQr(null);
+    setSignatureDataUrl("");
+    setGuardianSignatureDataUrl("");
+    setReachedEnd(false);
+    setConfirmed(false);
+    setDetailsReady(false);
+    setReaderVersion(readerVersion + 1);
+    setError("");
+    moveTo("hr-signing-reader");
+  }
+
+  function continueToSignature(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!nda && age === null) return setError("西元出生年月日不正確");
+    if (!nda && identity === "foreign" && form.walletAddress.trim() !== form.confirmWalletAddress.trim()) {
+      return setError("兩次輸入的錢包地址不一致");
+    }
+    if (minor && form.guardianName.normalize("NFKC").replace(/\s/g, "").toLowerCase() ===
+      form.realName.normalize("NFKC").replace(/\s/g, "").toLowerCase()) {
+      return setError("法定代理人姓名不可與乙方本人相同");
+    }
+    setError("");
+    setDetailsReady(true);
+    moveTo("hr-signing-signature");
   }
 
   return (
@@ -194,41 +245,58 @@ export default function HrDocumentSigning({ documentKey }: { documentKey: Key })
       <section className="mx-auto max-w-3xl space-y-5 rounded-2xl border border-slate-200 bg-white p-5 sm:p-8">
         <Link className="text-sm font-bold underline" href="/collaboration/workspace">返回 HR 工作台</Link>
         <h1 className="text-2xl font-black">{document.title}</h1>
-        {error ? <p role="alert" className="rounded-lg bg-rose-50 p-3 text-rose-800">{error}</p> : null}
+        {error && !confirmed ? <p role="alert" className="rounded-lg bg-rose-50 p-3 text-rose-800">{error}</p> : null}
         {loading ? <p role="status">正在讀取簽署待辦…</p> : null}
         {!loading && needsLogin ? <button className={actionClass} disabled={busy} onClick={() => void login()}>使用 Discord 登入</button> : null}
-        {!loading && !needsLogin && error && !signedAt && !pdfOpened && !form.realName ? (
+        {!loading && !needsLogin && error && !loaded ? (
           <button className={actionClass} disabled={busy} onClick={() => void load()}>重新讀取</button>
         ) : null}
-        {!loading && !needsLogin && (!error || pdfOpened || form.realName || signedAt) ? (
+        {!loading && !needsLogin && loaded ? (
           <>
             {signedAt ? <p role="status">已完成簽署</p> : null}
             {signedAt && depositRequired && !nda ? <HrContractDeposit request={request} paidAt={depositPaidAt} /> : null}
-            {!signedAt ? <label className="block">簽署身分
-              <select className={inputClass} value={identity} disabled={busy} onChange={(event) => {
-                const value = event.target.value as Identity | "";
-                setIdentity(value);
-                setForm({ ...form, nationalId: value === prefilledId?.identity ? prefilledId.value : "" });
-                setPaymentQr(null);
-                setSignatureDataUrl("");
-                setGuardianSignatureDataUrl("");
-                setConfirmed(false);
-                setError("");
-              }}>
-                <option value="">請選擇簽署身分</option>
-                {Object.entries(HR_SIGNER_IDENTITIES).map(([value, { title }]) =>
-                  <option key={value} value={value}>{title}</option>)}
-              </select>
-            </label> : null}
-            <button type="button" className={actionClass} disabled={busy || (!signedAt && !identity)} onClick={() => void openPdf()}>
-              {signedAt ? "開啟已簽署 PDF" : "讀取完整 PDF"}
-            </button>
-            {pdfUrl ? <div className="space-y-2">
-              <a className="inline-block font-bold underline" href={pdfUrl} target="_blank" rel="noreferrer">在新分頁閱讀 PDF</a>
-              <iframe className="h-96 w-full rounded-lg border border-slate-200" title={document.title} src={pdfUrl} />
+            {!signedAt && !nda && !identity ? <section aria-label="選擇簽署身分">
+              <h2 className="mb-3 text-lg font-bold">選擇簽署身分</h2>
+              <div className="grid gap-3 sm:grid-cols-3">
+                {identityCards.map((card) => <button key={card.identity} type="button"
+                  className="flex items-center gap-3 overflow-hidden rounded-2xl border border-slate-200 p-2 text-left hover:border-violet-500 focus-visible:outline-2 focus-visible:outline-violet-600 sm:block"
+                  onClick={() => chooseIdentity(card.identity)}>
+                  <span aria-hidden="true" className="block aspect-square w-20 shrink-0 rounded-xl bg-cover sm:w-full"
+                    style={{ backgroundImage: "url('/employment/signing-identity-cards.webp')",
+                      backgroundSize: "300% 100%", backgroundPosition: card.position }} />
+                  <span className="block p-2"><strong className="block text-base">{card.title}</strong>
+                    <span className="mt-1 block text-sm leading-relaxed text-slate-600">{card.description}</span></span>
+                </button>)}
+              </div>
+            </section> : null}
+            {!signedAt && identity && !nda ? <div className="flex items-center justify-between gap-4">
+              <p className="font-semibold">{identityCards.find((card) => card.identity === identity)?.title}</p>
+              <button type="button" className="text-sm font-bold underline" onClick={() => {
+                setIdentity(""); setConfirmed(false); setDetailsReady(false); setReachedEnd(false);
+              }}>重新選擇身分</button>
             </div> : null}
-            {!signedAt && pdfOpened && identity ? (
-              <form key={identity} onSubmit={submit} className="space-y-5">
+            {signedAt ? <>
+              <button type="button" className={actionClass} disabled={busy} onClick={() => void openPdf()}>開啟已簽署 PDF</button>
+              {pdfUrl ? <div className="space-y-2">
+                <a className="inline-block font-bold underline" href={pdfUrl} target="_blank" rel="noreferrer">在新分頁開啟 PDF</a>
+                <iframe className="h-96 w-full rounded-lg border border-slate-200" title={document.title} src={pdfUrl} />
+              </div> : null}
+            </> : null}
+            {!signedAt && (nda || identity) && !confirmed ? (
+              <HrSigningPdfReader key={readerVersion} url={`${endpoint}&view=source`} title={document.title} request={request} onLastPage={markEnd}>
+                {reachedEnd ? <button type="button" className={actionClass} onClick={() => {
+                  setConfirmed(true); moveTo("hr-signing-details");
+                }}>{agreementText}</button> : null}
+              </HrSigningPdfReader>
+            ) : null}
+            {!signedAt && confirmed && !detailsReady ? (
+              <form id="hr-signing-details" tabIndex={-1} onSubmit={continueToSignature} className="scroll-mt-5 space-y-5">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <h2 className="text-lg font-bold">填寫簽署資料</h2>
+                  <button type="button" className="text-sm font-bold underline" onClick={() => {
+                    setConfirmed(false); setReachedEnd(false); moveTo("hr-signing-reader");
+                  }}>返回閱讀文件</button>
+                </div>
                 <div className="grid gap-4 sm:grid-cols-2">
                   {input("realName")}{input("nationalId", "text", 30)}{input("contact", "text", 30)}
                   {nda ? input("address", "text", 150) : input("birthday", "date", 10)}
@@ -268,7 +336,7 @@ export default function HrDocumentSigning({ documentKey }: { documentKey: Key })
                       {Object.entries(HR_QR_PROVIDERS).map(([value, title]) => <option key={value} value={value}>{title}</option>)}
                     </select></label>
                     <label className="sm:col-span-2">上傳收款碼<input type="file" className={inputClass}
-                      required accept="image/png,image/jpeg" onChange={(event) => {
+                      required={!paymentQr} accept="image/png,image/jpeg" onChange={(event) => {
                         const file = event.target.files?.[0] || null;
                         if (file && (file.size > HR_PAYMENT_QR_MAX_BYTES || !["image/png", "image/jpeg"].includes(file.type))) {
                           event.target.value = "";
@@ -278,7 +346,7 @@ export default function HrDocumentSigning({ documentKey }: { documentKey: Key })
                         }
                         setPaymentQr(file);
                         setError("");
-                      }} /><span className="text-sm text-slate-600">PNG 或 JPEG，最大 768 KB。</span></label>
+                      }} /><span className="text-sm text-slate-600">{paymentQr ? paymentQr.name : "PNG 或 JPEG，最大 768 KB。"}</span></label>
                   </> : null}
                   {!nda && identity === "foreign" ? <>
                     <label className="sm:col-span-2">加密貨幣通路<input className={inputClass} required maxLength={60}
@@ -292,13 +360,25 @@ export default function HrDocumentSigning({ documentKey }: { documentKey: Key })
                   {existingStaffWaiver ? "12/01 前已在職，免繳履約保證金" :
                     minor ? "履約保證金不適用於未成年乙方" : "新入職的成年乙方須於簽署後繳交 NT$1,000 履約保證金"}
                 </label> : null}
-                <SignaturePad label={nda ? "資訊接受方手寫簽名" : "乙方手寫簽名"} onChange={setSignatureDataUrl} />
-                {minor ? <div className="space-y-4 rounded-xl border border-slate-200 p-4">
-                  <div className="grid gap-4 sm:grid-cols-2">{input("guardianName")}{input("guardianContact", "text", 70)}</div>
-                  <SignaturePad label="法定代理人手寫簽名" onChange={setGuardianSignatureDataUrl} />
+                {minor ? <div className="grid gap-4 rounded-xl border border-slate-200 p-4 sm:grid-cols-2">
+                  {input("guardianName")}{input("guardianContact", "text", 70)}
                 </div> : null}
-                <label className="flex items-center gap-2"><input type="checkbox" required checked={confirmed}
-                  onChange={(event) => setConfirmed(event.target.checked)} /> 我已詳閱完整文件並同意以電子方式簽署</label>
+                {error ? <p role="alert" className="text-sm text-rose-800">{error}</p> : null}
+                <button className={actionClass}>下一步：手寫簽名</button>
+              </form>
+            ) : null}
+            {!signedAt && detailsReady ? (
+              <form id="hr-signing-signature" tabIndex={-1} onSubmit={submit} className="scroll-mt-5 space-y-5">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <h2 className="text-lg font-bold">手寫簽名</h2>
+                  <button type="button" className="text-sm font-bold underline" disabled={busy} onClick={() => {
+                    setDetailsReady(false); setSignatureDataUrl(""); setGuardianSignatureDataUrl("");
+                    setError(""); moveTo("hr-signing-details");
+                  }}>返回修改資料</button>
+                </div>
+                <SignaturePad label={nda ? "資訊接受方手寫簽名" : "乙方手寫簽名"} onChange={setSignatureDataUrl} />
+                {minor ? <SignaturePad label="法定代理人手寫簽名" onChange={setGuardianSignatureDataUrl} /> : null}
+                {error ? <p role="alert" className="text-sm text-rose-800">{error}</p> : null}
                 <button className={actionClass} disabled={busy || !confirmed || !signatureDataUrl || (minor && !guardianSignatureDataUrl)}>
                   {busy ? "處理中…" : "確認送出簽署"}
                 </button>
