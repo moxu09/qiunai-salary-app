@@ -53,7 +53,7 @@ begin
   if cardinality(added_players) > 0
     and cardinality(public.employment_contract_v22_order_blockers(added_players)) > 0 then
     raise exception using errcode = 'EC022',
-      message = '請先到 HR／EIP 待辦完成新版合約 v2.2 簽署，才能接新單。';
+      message = '請先到 HR／EIP 待辦完成新版合約 v2.2 簽署及適用的保證金繳款，才能接新單。';
   end if;
   return new;
 end;

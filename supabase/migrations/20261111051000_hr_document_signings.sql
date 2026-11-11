@@ -14,6 +14,8 @@ create table public.hr_document_signings (
   source_sha256 text,
   evidence_hmac text,
   signer_identity text check (signer_identity in ('tw', 'cn_hk_mo', 'foreign')),
+  deposit_required boolean not null default false,
+  deposit_paid_at timestamptz,
   unique (discord_id, document_key)
 );
 
@@ -75,6 +77,7 @@ returns void language plpgsql security definer set search_path = '' as $$
 declare
   signing public.hr_document_signings%rowtype;
   identity_type text := p_profile->>'signer_identity';
+  v_deposit_required boolean := coalesce((p_profile->>'deposit_required')::boolean, false);
 begin
   if identity_type is null or identity_type not in ('tw', 'cn_hk_mo', 'foreign') then
     raise exception '請選擇簽署身分';
@@ -92,17 +95,22 @@ begin
       where public.hr_salary_reviewer_role(dept.code, p_discord_id) = 'Manager'
     ) then raise exception '只有現任 Manager 可以簽署此保密協議'; end if;
   else
+    if p_profile->>'birthday' is null
+      or v_deposit_required is distinct from (
+        (p_profile->>'birthday')::date <= ((p_signed_at at time zone 'Asia/Taipei')::date - interval '18 years')::date
+      ) then raise exception '履約保證金適用狀態不符'; end if;
     if p_source_sha256 <> 'abca0bf344776cd05038efe701b93f3c2577c8da38990c0f91fa4347668b2afe' then
       raise exception '契約原稿版本不符';
     end if;
     insert into public.employment_contract_signings (
-      organization_code, discord_id, discord_name, token_hash, contract_version, status,
+      id, organization_code, discord_id, discord_name, token_hash, contract_version, status,
       expires_at, opened_at, read_confirmed_at, signed_at, form_data, signed_pdf_path,
       signed_pdf_sha256, contract_sha256, evidence_hmac, signer_auth_user_id
     ) values (
-      signing.organization_code, p_discord_id, p_discord_name, p_token_hash, 'v2.2', 'signed',
+      p_id, signing.organization_code, p_discord_id, p_discord_name, p_token_hash, 'v2.2',
+      case when v_deposit_required then 'signing' else 'signed' end,
       p_signed_at + interval '7 days', signing.started_at, p_signed_at, p_signed_at,
-      p_profile - 'national_id_encrypted', p_pdf_path, p_pdf_sha256, p_source_sha256, p_evidence_hmac, p_auth_user_id
+      p_profile - 'national_id_encrypted' - 'deposit_required', p_pdf_path, p_pdf_sha256, p_source_sha256, p_evidence_hmac, p_auth_user_id
     );
     insert into public.hr_contract_profiles(discord_id, national_id_encrypted, signer_identity, bank_holder, bank_code, payout_channel)
     values (p_discord_id, p_profile->>'national_id_encrypted', identity_type,
@@ -133,7 +141,8 @@ begin
   end if;
 
   update public.hr_document_signings set signer_identity = identity_type, signed_at = p_signed_at, signed_pdf_path = p_pdf_path,
-    signed_pdf_sha256 = p_pdf_sha256, source_sha256 = p_source_sha256, evidence_hmac = p_evidence_hmac
+    signed_pdf_sha256 = p_pdf_sha256, source_sha256 = p_source_sha256, evidence_hmac = p_evidence_hmac,
+    deposit_required = signing.document_key = 'employment-v22' and v_deposit_required
   where id = p_id;
 end;
 $$;

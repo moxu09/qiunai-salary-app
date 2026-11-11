@@ -157,7 +157,7 @@ export async function POST(request) {
       return json(
         {
           ok: false,
-          message: "尚未完成入職契約簽署，請先使用面試通過私訊中的連結完成簽署。",
+        message: "請先完成入職契約簽署及適用的履約保證金繳款，再開通員工資料。",
         },
         403
       );

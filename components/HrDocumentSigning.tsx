@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import Link from "next/link";
+import HrContractDeposit from "@/components/HrContractDeposit";
 import { SignaturePad } from "@/components/EmploymentSigningFlow";
 import { HR_PAYMENT_QR_MAX_BYTES, HR_QR_PROVIDERS, HR_SIGNER_IDENTITIES, HR_SIGNING_DOCUMENTS, taipeiSigningAge } from "@/lib/hrSigningDocuments.mjs";
 import receivingBanks from "@/lib/taiwanReceivingBanks.json";
@@ -63,7 +64,6 @@ export default function HrDocumentSigning({ documentKey }: { documentKey: Key })
   const [prefilledId, setPrefilledId] = useState<{ identity: Identity; value: string } | null>(null);
   const [paymentQr, setPaymentQr] = useState<File | null>(null);
   const [sameBankHolder, setSameBankHolder] = useState(true);
-  const [depositApplies, setDepositApplies] = useState(true);
   const [signatureDataUrl, setSignatureDataUrl] = useState("");
   const [guardianSignatureDataUrl, setGuardianSignatureDataUrl] = useState("");
   const [confirmed, setConfirmed] = useState(false);
@@ -72,6 +72,8 @@ export default function HrDocumentSigning({ documentKey }: { documentKey: Key })
   const [error, setError] = useState("");
   const [needsLogin, setNeedsLogin] = useState(false);
   const [signedAt, setSignedAt] = useState<string | null>(null);
+  const [depositRequired, setDepositRequired] = useState(false);
+  const [depositPaidAt, setDepositPaidAt] = useState<string | null>(null);
   const [pdfUrl, setPdfUrl] = useState("");
   const [pdfOpened, setPdfOpened] = useState(false);
   const age = taipeiSigningAge(form.birthday);
@@ -83,6 +85,8 @@ export default function HrDocumentSigning({ documentKey }: { documentKey: Key })
     try {
       const info = await (await request(endpoint)).json();
       setSignedAt(info.signedAt);
+      setDepositRequired(Boolean(info.depositRequired));
+      setDepositPaidAt(info.depositPaidAt || null);
       if (info.prefill) {
         const { identity: storedIdentity, nationalId, ...fields } = info.prefill;
         setForm({ ...defaultForm, ...fields });
@@ -156,13 +160,16 @@ export default function HrDocumentSigning({ documentKey }: { documentKey: Key })
           if (walletAddress.trim() !== confirmWalletAddress.trim()) throw Error("兩次輸入的錢包地址不一致");
           payout = { cryptoChannel, walletAddress, confirmWalletAddress };
         }
-        details = { birthday, depositApplies, ...payout, ...(minor ? { guardianName, guardianContact, guardianSignatureDataUrl } : {}) };
+        details = { birthday, ...payout, ...(minor ? { guardianName, guardianContact, guardianSignatureDataUrl } : {}) };
       }
       const response = await request(endpoint, {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ identity, realName, nationalId, contact, confirmed, signatureDataUrl, ...details }),
       });
-      setSignedAt((await response.json()).signedAt);
+      const signed = await response.json();
+      setSignedAt(signed.signedAt);
+      setDepositRequired(Boolean(signed.depositRequired));
+      setDepositPaidAt(signed.depositPaidAt || null);
       setPdfUrl("");
       setSignatureDataUrl("");
       setGuardianSignatureDataUrl("");
@@ -194,6 +201,7 @@ export default function HrDocumentSigning({ documentKey }: { documentKey: Key })
         {!loading && !needsLogin && (!error || pdfOpened || form.realName || signedAt) ? (
           <>
             {signedAt ? <p role="status">已完成簽署</p> : null}
+            {signedAt && depositRequired && !nda ? <HrContractDeposit request={request} paidAt={depositPaidAt} /> : null}
             {!signedAt ? <label className="block">簽署身分
               <select className={inputClass} value={identity} disabled={busy} onChange={(event) => {
                 const value = event.target.value as Identity | "";
@@ -278,9 +286,8 @@ export default function HrDocumentSigning({ documentKey }: { documentKey: Key })
                   </> : null}
                 </div>
                 {!nda ? <label className="flex items-center gap-2">
-                  <input type="checkbox" checked={!minor && depositApplies} disabled={minor}
-                    onChange={(event) => setDepositApplies(event.target.checked)} />
-                  {minor ? "履約保證金不適用於未成年乙方" : "履約保證金適用"}
+                  <input type="checkbox" checked={age !== null && !minor} disabled />
+                  {minor ? "履約保證金不適用於未成年乙方" : "成年乙方須於簽署後繳交 NT$1,000 履約保證金"}
                 </label> : null}
                 <SignaturePad label={nda ? "資訊接受方手寫簽名" : "乙方手寫簽名"} onChange={setSignatureDataUrl} />
                 {minor ? <div className="space-y-4 rounded-xl border border-slate-200 p-4">
