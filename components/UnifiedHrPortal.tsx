@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { LogOut, RefreshCw, WalletCards, Save, UserRound, LockKeyhole, Landmark, ArrowUpRight } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { linkedWithdrawalPlan, withdrawalBalances, withdrawalSourceAmounts } from "@/lib/hrLinkedWallet.mjs";
+import { HR_SIGNER_IDENTITIES } from "@/lib/hrSigningDocuments.mjs";
 import { HR_DEPARTMENTS, HR_ROUTES, hrTabForPath, allocateWithdrawal } from "@/lib/hrRoutes.mjs";
 import { HrThemeBanner, HrAppearancePanel, HrThemeDecorations } from "@/components/HrThemeProvider";
 import HrCareerPanel from "@/components/HrCareerPanel";
@@ -32,7 +33,10 @@ type Staff = Record<string, unknown> & {
   is_online?: boolean;
 };
 type Department = { key: DepartmentKey; staff: Staff; hrRole: "PIC" | "Manager" | "Staff" };
-type Session = { discordId: string; departments: Department[]; canManageHrMembers?: boolean; financeErpUrl?: string; contractProfile?: { nationalIdLast4: string; bankHolder: string; bankCode: string } | null };
+type Session = { discordId: string; departments: Department[]; canManageHrMembers?: boolean; financeErpUrl?: string; contractProfile?: {
+  nationalIdLast4: string; signerIdentity: keyof typeof HR_SIGNER_IDENTITIES;
+  bankHolder: string | null; bankCode: string | null; payoutChannel: string | null;
+} | null };
 type Entry = {
   id: string;
   discord_id?: string;
@@ -452,9 +456,12 @@ function ProfilePanel({ session, onSaved }: { session: Session; onSaved: () => P
           姓名、聯絡方式與銀行資料合併管理；官網介紹、邀請網址與填單區 ID 保留各店設定。
         </p>
         {session.contractProfile ? <dl className="hr-form-grid">
-          <div><dt>身分證字號（末四碼）</dt><dd>{session.contractProfile.nationalIdLast4}</dd></div>
-          <div><dt>簽約銀行戶名</dt><dd>{session.contractProfile.bankHolder}</dd></div>
-          <div><dt>簽約銀行代碼</dt><dd>{session.contractProfile.bankCode}</dd></div>
+          <div><dt>簽署身分</dt><dd>{HR_SIGNER_IDENTITIES[session.contractProfile.signerIdentity].title}</dd></div>
+          <div><dt>證件號碼（末四碼）</dt><dd>{session.contractProfile.nationalIdLast4}</dd></div>
+          {session.contractProfile.signerIdentity === "tw" ? <>
+            <div><dt>簽約銀行戶名</dt><dd>{session.contractProfile.bankHolder}</dd></div>
+            <div><dt>簽約銀行代碼</dt><dd>{session.contractProfile.bankCode}</dd></div>
+          </> : <div><dt>簽約收款通路</dt><dd>{session.contractProfile.payoutChannel}</dd></div>}
         </dl> : null}
         <form onSubmit={save}>
           <div className="hr-form-grid">

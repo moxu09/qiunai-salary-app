@@ -13,15 +13,20 @@ create table public.hr_document_signings (
   signed_pdf_sha256 text,
   source_sha256 text,
   evidence_hmac text,
+  signer_identity text check (signer_identity in ('tw', 'cn_hk_mo', 'foreign')),
   unique (discord_id, document_key)
 );
 
 create table public.hr_contract_profiles (
   discord_id text primary key check (discord_id ~ '^[0-9]{15,22}$'),
   national_id_encrypted text not null,
-  bank_holder text not null,
-  bank_code text not null check (bank_code ~ '^[0-9]{3}$'),
-  updated_at timestamptz not null default now()
+  signer_identity text not null check (signer_identity in ('tw', 'cn_hk_mo', 'foreign')),
+  bank_holder text,
+  bank_code text check (bank_code ~ '^[0-9]{3}$'),
+  payout_channel text,
+  updated_at timestamptz not null default now(),
+  check ((signer_identity = 'tw' and bank_holder is not null and bank_code is not null and payout_channel is null)
+    or (signer_identity <> 'tw' and bank_holder is null and bank_code is null and payout_channel is not null))
 );
 
 create table public.hr_contract_invitations (
@@ -69,7 +74,11 @@ create function public.hr_complete_document_signing(
 returns void language plpgsql security definer set search_path = '' as $$
 declare
   signing public.hr_document_signings%rowtype;
+  identity_type text := p_profile->>'signer_identity';
 begin
+  if identity_type is null or identity_type not in ('tw', 'cn_hk_mo', 'foreign') then
+    raise exception '請選擇簽署身分';
+  end if;
   select * into signing from public.hr_document_signings
   where id = p_id and attempt_id = p_attempt and discord_id = p_discord_id and signed_at is null
   for update;
@@ -95,28 +104,35 @@ begin
       p_signed_at + interval '7 days', signing.started_at, p_signed_at, p_signed_at,
       p_profile - 'national_id_encrypted', p_pdf_path, p_pdf_sha256, p_source_sha256, p_evidence_hmac, p_auth_user_id
     );
-    insert into public.hr_contract_profiles(discord_id, national_id_encrypted, bank_holder, bank_code)
-    values (p_discord_id, p_profile->>'national_id_encrypted', p_profile->>'bank_holder', p_profile->>'bank_code')
+    insert into public.hr_contract_profiles(discord_id, national_id_encrypted, signer_identity, bank_holder, bank_code, payout_channel)
+    values (p_discord_id, p_profile->>'national_id_encrypted', identity_type,
+      p_profile->>'bank_holder', p_profile->>'bank_code', p_profile->>'payout_channel')
     on conflict (discord_id) do update set national_id_encrypted = excluded.national_id_encrypted,
-      bank_holder = excluded.bank_holder, bank_code = excluded.bank_code, updated_at = now();
+      signer_identity = excluded.signer_identity, bank_holder = excluded.bank_holder,
+      bank_code = excluded.bank_code, payout_channel = excluded.payout_channel, updated_at = now();
     if 'qiunai' = any(p_departments) then
       update public.qiunai_staff
       set real_name = p_profile->>'real_name', phone = p_profile->>'phone',
-        birthday = (p_profile->>'birthday')::date, bank_name = p_profile->>'bank_name',
-        bank_account = p_profile->>'bank_account', updated_at = now()
+        birthday = (p_profile->>'birthday')::date,
+        bank_name = case when identity_type = 'tw' then p_profile->>'bank_name' else bank_name end,
+        bank_account = case when identity_type = 'tw' then p_profile->>'bank_account' else bank_account end,
+        updated_at = now()
       where discord_id = p_discord_id and is_active is distinct from false;
     end if;
     if 'deepnight' = any(p_departments) then
       update public.players
       set real_name = p_profile->>'real_name', phone = p_profile->>'phone',
-        birthday = (p_profile->>'birthday')::date, bank_name = p_profile->>'bank_name',
-        bank_code = p_profile->>'bank_code', bank_holder = p_profile->>'bank_holder',
-        bank_account = p_profile->>'bank_account', updated_at = now()
+        birthday = (p_profile->>'birthday')::date,
+        bank_name = case when identity_type = 'tw' then p_profile->>'bank_name' else bank_name end,
+        bank_code = case when identity_type = 'tw' then p_profile->>'bank_code' else bank_code end,
+        bank_holder = case when identity_type = 'tw' then p_profile->>'bank_holder' else bank_holder end,
+        bank_account = case when identity_type = 'tw' then p_profile->>'bank_account' else bank_account end,
+        updated_at = now()
       where discord_id = p_discord_id and guild_id::text = '1501098191813214312' and is_active is distinct from false;
     end if;
   end if;
 
-  update public.hr_document_signings set signed_at = p_signed_at, signed_pdf_path = p_pdf_path,
+  update public.hr_document_signings set signer_identity = identity_type, signed_at = p_signed_at, signed_pdf_path = p_pdf_path,
     signed_pdf_sha256 = p_pdf_sha256, source_sha256 = p_source_sha256, evidence_hmac = p_evidence_hmac
   where id = p_id;
 end;
@@ -135,8 +151,8 @@ returns trigger language plpgsql security definer set search_path = '' as $$
 declare
   profile jsonb;
 begin
-  if tg_table_name = 'players' and new.guild_id::text is distinct from '1501098191813214312' then
-    return new;
+  if tg_table_name = 'players' then
+    if new.guild_id::text is distinct from '1501098191813214312' then return new; end if;
   end if;
   select form_data into profile from public.employment_contract_signings
   where discord_id = new.discord_id and contract_version = 'v2.2' and status in ('signed', 'activated')
