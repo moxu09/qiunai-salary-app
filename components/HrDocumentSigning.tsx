@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import Link from "next/link";
+import HrCryptoPayoutQuote from "@/components/HrCryptoPayoutQuote";
+import { HR_CRYPTO_ASSETS } from "@/lib/hrCryptoPayout.mjs";
 import HrSigningPdfReader from "@/components/HrSigningPdfReader";
 import HrContractDeposit from "@/components/HrContractDeposit";
 import { SignaturePad } from "@/components/EmploymentSigningFlow";
@@ -14,14 +16,14 @@ type Identity = keyof typeof HR_SIGNER_IDENTITIES;
 const defaultForm = {
   realName: "", nationalId: "", contact: "", birthday: "", bankCode: "", bankHolder: "",
   bankAccount: "", address: "", guardianName: "", guardianContact: "", payeeName: "",
-  qrProvider: "", cryptoChannel: "", walletAddress: "", confirmWalletAddress: "",
+  qrProvider: "", cryptoAsset: "", cryptoNetwork: "", walletAddress: "", confirmWalletAddress: "",
 };
 type Field = keyof typeof defaultForm;
 const fieldLabels: Record<Field, string> = {
   realName: "乙方姓名", nationalId: "身分證字號", contact: "聯絡方式", birthday: "西元出生年月日",
   bankCode: "銀行代碼", bankHolder: "銀行戶名", bankAccount: "收款帳戶", address: "聯絡地址",
   guardianName: "法定代理人姓名", guardianContact: "法定代理人聯絡方式",
-  payeeName: "收款人名稱", qrProvider: "收款方式", cryptoChannel: "加密貨幣通路",
+  payeeName: "收款人名稱", qrProvider: "收款方式", cryptoAsset: "收款幣種", cryptoNetwork: "收款網路",
   walletAddress: "錢包地址", confirmWalletAddress: "再次輸入錢包地址",
 };
 const inputClass = "mt-1 block w-full rounded-lg border border-slate-300 bg-white p-3 text-slate-900";
@@ -160,7 +162,7 @@ export default function HrDocumentSigning({ documentKey }: { documentKey: Key })
     setError("");
     try {
       const { realName, nationalId, contact, address, birthday, guardianName, guardianContact, bankCode,
-        bankHolder, bankAccount, qrProvider, payeeName, cryptoChannel, walletAddress, confirmWalletAddress } = form;
+        bankHolder, bankAccount, qrProvider, payeeName, cryptoAsset, cryptoNetwork, walletAddress, confirmWalletAddress } = form;
       let details;
       if (nda) {
         details = { address };
@@ -173,7 +175,7 @@ export default function HrDocumentSigning({ documentKey }: { documentKey: Key })
           payout = { payeeName, qrProvider, paymentQrDataUrl: await readPaymentQr(paymentQr) };
         } else {
           if (walletAddress.trim() !== confirmWalletAddress.trim()) throw Error("兩次輸入的錢包地址不一致");
-          payout = { cryptoChannel, walletAddress, confirmWalletAddress };
+          payout = { cryptoAsset, cryptoNetwork, walletAddress, confirmWalletAddress };
         }
         details = { birthday, ...payout, ...(minor ? { guardianName, guardianContact, guardianSignatureDataUrl } : {}) };
       }
@@ -349,10 +351,14 @@ export default function HrDocumentSigning({ documentKey }: { documentKey: Key })
                       }} /><span className="text-sm text-slate-600">{paymentQr ? paymentQr.name : "PNG 或 JPEG，最大 768 KB。"}</span></label>
                   </> : null}
                   {!nda && identity === "foreign" ? <>
-                    <label className="sm:col-span-2">加密貨幣通路<input className={inputClass} required maxLength={60}
-                      placeholder="請填寫幣種及收款網路" value={form.cryptoChannel}
-                      onChange={(event) => setForm({ ...form, cryptoChannel: event.target.value })} /></label>
+                    <label>收款幣種<select className={inputClass} required value={form.cryptoAsset}
+                      onChange={(event) => setForm({ ...form, cryptoAsset: event.target.value })}>
+                      <option value="">請選擇幣種</option>
+                      {HR_CRYPTO_ASSETS.map((asset) => <option key={asset} value={asset}>{asset}</option>)}
+                    </select></label>
+                    {input("cryptoNetwork")}
                     {input("walletAddress", "text", 160)}{input("confirmWalletAddress", "text", 160)}
+                    <HrCryptoPayoutQuote key={form.cryptoAsset} asset={form.cryptoAsset} endpoint={endpoint} request={request} />
                   </> : null}
                 </div>
                 {!nda ? <label className="flex items-center gap-2">

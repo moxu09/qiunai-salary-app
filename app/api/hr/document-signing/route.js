@@ -1,5 +1,6 @@
 import { completeHrDocumentSigning, getHrDocumentSigning, hrSigningPdf, requireHrDocumentSigner } from "@/lib/hrDocumentSigning";
 import { hrFail } from "@/lib/hrServer";
+import { quoteHrCryptoPayout } from "@/lib/hrCryptoMarket";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -58,6 +59,10 @@ export async function POST(request) {
     const key = new URL(request.url).searchParams.get("document");
     const auth = await requireHrDocumentSigner(request, key);
     const body = await readSigningBody(request);
+    if (body.action === "crypto-quote") {
+      if (key !== "employment-v22") throw Error("此文件不提供收款試算");
+      return Response.json({ ok: true, quote: await quoteHrCryptoPayout(body.asset, body.amountTwd) }, { headers: noStore });
+    }
     return Response.json({ ok: true, ...await completeHrDocumentSigning(auth, key, body, request) }, { headers: noStore });
   } catch (error) {
     return hrFail(error);
