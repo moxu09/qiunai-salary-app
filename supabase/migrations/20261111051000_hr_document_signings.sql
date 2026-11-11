@@ -61,7 +61,7 @@ alter table public.hr_contract_deposit_waivers enable row level security;
 revoke all on public.hr_contract_deposit_waivers from public, anon, authenticated, service_role;
 
 create function public.hr_track_contract_deposit_waiver()
-returns trigger language plpgsql security definer set search_path = '' as $$
+returns trigger language plpgsql security definer set search_path = '' set timezone = 'UTC' as $$
 declare
   org text := case when tg_table_name = 'players' then 'deepnight' else 'qiunai' end;
 begin
@@ -102,7 +102,7 @@ where is_active is distinct from false and created_at < timestamptz '2026-12-01 
 union all
 select 'deepnight', id::text, discord_id from public.players
 where guild_id::text = '1501098191813214312' and is_active is distinct from false
-  and created_at < timestamptz '2026-12-01 00:00:00+08' and discord_id ~ '^[0-9]{15,22}$';
+  and created_at < timestamp '2026-11-30 16:00:00' and discord_id ~ '^[0-9]{15,22}$';
 
 create function public.hr_contract_existing_staff_waiver(p_discord_id text)
 returns boolean language sql stable security definer set search_path = '' as $$
