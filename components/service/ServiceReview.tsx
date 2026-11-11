@@ -28,6 +28,7 @@ export type ReviewData = Row & { department: Department; departments: { key: Dep
 export default function ServiceReview({ department, initial }: { department: Department; initial: ReviewData }) {
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState(initial);
+  const canManageMembership = data.canManageMembership !== false;
   const api = `/service/api/reviews?department=${department}`;
   const [tab, setTab] = useState("reports");
   const [error, setError] = useState("");
@@ -152,7 +153,7 @@ export default function ServiceReview({ department, initial }: { department: Dep
       <div className="svc-page-heading">
         <span className="svc-kicker"><ClipboardCheck size={17}/> {storeName(department)}</span>
         <h1>待審核訂單</h1>
-        <p>處理本店訂單與打賞，也可切換會員審核及兌換商品。</p>
+        <p>{canManageMembership ? "處理本店訂單與打賞，也可切換會員審核及兌換商品。" : "處理本店訂單與打賞。"}</p>
       </div>
       <div className="svc-panel svc-review-body" aria-busy={loading}>
         <div className="svc-section-title"><h2>審核工作</h2><button type="button" className="svc-secondary" onClick={()=>void load()} disabled={loading||busy}><RefreshCw size={16}/>重新讀取</button></div>
@@ -177,7 +178,7 @@ export default function ServiceReview({ department, initial }: { department: Dep
             ["members", "會員審核", Users, (data.redemptions || []).length],
             ["rewards", "兌換商品", Boxes, (data.rewards || []).length],
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          ].map(([key, label, Icon, count]: any) => (
+          ].filter(([key]) => key === "reports" || canManageMembership).map(([key, label, Icon, count]: any) => (
             <button
               key={key}
               type="button"
@@ -308,7 +309,7 @@ export default function ServiceReview({ department, initial }: { department: Dep
           </section>
         )}
 
-        {tab === "members" && (
+        {canManageMembership && tab === "members" && (
           <section className="mt-5 grid gap-5 xl:grid-cols-[1fr_1.4fr]">
             <div>
               <SectionTitle
@@ -583,7 +584,7 @@ export default function ServiceReview({ department, initial }: { department: Dep
           </section>
         )}
 
-        {tab === "rewards" && (
+        {canManageMembership && tab === "rewards" && (
           <section className="mt-5 grid gap-5 lg:grid-cols-[380px_1fr]">
             <div>
               <SectionTitle
