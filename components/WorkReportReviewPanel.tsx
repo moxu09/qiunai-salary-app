@@ -57,16 +57,20 @@ export default function WorkReportReviewPanel({
   onApprove,
   reviewApiPath,
   hideTitle = false,
+  compact = false,
 }: {
   appKey: "deepnight" | "qiunai";
   accent?: "sky" | "pink";
   onApprove: (report: WorkReport) => Promise<string>;
   reviewApiPath?: string;
   hideTitle?: boolean;
+  compact?: boolean;
 }) {
   const [reports, setReports] = useState<WorkReport[]>([]);
   const [loading, setLoading] = useState(true);
   const [workingId, setWorkingId] = useState("");
+  const [showAll, setShowAll] = useState(false);
+  const visibleReports = compact && !showAll ? reports.slice(0, 1) : reports;
   const accentClasses =
     accent === "pink"
       ? {
@@ -168,7 +172,7 @@ export default function WorkReportReviewPanel({
 
   return (
     <section
-      className={`rounded-[28px] border bg-white p-5 shadow-sm ${accentClasses.panel}`}
+      className={compact ? "bg-white px-3 py-2" : `rounded-[28px] border bg-white p-5 shadow-sm ${accentClasses.panel}`}
     >
       <div className="flex items-center justify-between gap-3">
         <div>
@@ -177,9 +181,11 @@ export default function WorkReportReviewPanel({
               <Clock3 size={20} /> 訂單／打賞待審核
             </h2>
           )}
-          <p className="mt-1 text-sm text-slate-500">
-            核准後會依員工抽成寫入薪資；駁回時需填寫原因。
-          </p>
+          {compact ? (
+            <p className="text-xs font-semibold text-slate-600">{loading ? "讀取中…" : `${reports.length} 筆待審核`}</p>
+          ) : (
+            <p className="mt-1 text-sm text-slate-500">核准後會依員工抽成寫入薪資；駁回時需填寫原因。</p>
+          )}
         </div>
         <button
           type="button"
@@ -192,17 +198,17 @@ export default function WorkReportReviewPanel({
       </div>
 
       {!loading && reports.length === 0 ? (
-        <p className="mt-5 rounded-2xl bg-slate-50 px-4 py-5 text-center text-sm text-slate-500">
+        <p className={compact ? "py-2 text-xs text-slate-500" : "mt-5 rounded-2xl bg-slate-50 px-4 py-5 text-center text-sm text-slate-500"}>
           目前沒有待審核申報
         </p>
       ) : (
-        <div className="mt-5 grid gap-3">
-          {reports.map((report) => (
+        <div className={compact ? "mt-2 grid gap-2" : "mt-5 grid gap-3"}>
+          {visibleReports.map((report) => (
             <article
               key={report.id}
-              className="grid gap-4 rounded-2xl border border-slate-100 p-4 lg:grid-cols-[1fr_auto] lg:items-center"
+              className={compact ? "grid gap-2 rounded-lg border border-slate-100 p-2.5" : "grid gap-4 rounded-2xl border border-slate-100 p-4 lg:grid-cols-[1fr_auto] lg:items-center"}
             >
-              <div className="grid min-w-0 gap-2 text-sm sm:grid-cols-2 lg:grid-cols-4">
+              <div className={compact ? "grid min-w-0 grid-cols-2 gap-2 text-xs" : "grid min-w-0 gap-2 text-sm sm:grid-cols-2 lg:grid-cols-4"}>
                 <p className="min-w-0 break-words">
                   <span className="text-slate-400">陪陪</span>
                   <br />
@@ -256,6 +262,11 @@ export default function WorkReportReviewPanel({
               </div>
             </article>
           ))}
+          {compact && reports.length > 1 ? (
+            <button type="button" aria-expanded={showAll} onClick={() => setShowAll(!showAll)} className="justify-self-start rounded-md px-2 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-50">
+              {showAll ? "收合其他待審核" : `查看全部 ${reports.length} 筆待審核`}
+            </button>
+          ) : null}
         </div>
       )}
     </section>

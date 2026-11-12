@@ -2,6 +2,7 @@
 
 import { useEffect, useEffectEvent, useMemo, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import {
   ArrowLeft,
   RefreshCw,
@@ -20,7 +21,8 @@ import {
 import { supabase } from "@/lib/supabase";
 import { getMonthlyOrderAmount } from "@/lib/creditedSalaryCommission";
 import { useQiunaiAdminGuard } from "@/lib/useQiunaiAdminGuard";
-import OrderDisclosure from "@/components/OrderDisclosure";
+import CompactOrderList from "@/components/CompactOrderList";
+import OrderDisclosure, { openOrderSection } from "@/components/OrderDisclosure";
 import WorkReportReviewPanel, {
   WorkReport,
 } from "@/components/WorkReportReviewPanel";
@@ -106,6 +108,7 @@ async function fetchAllSalaryOrders(
 }
 
 export default function AdminSalaryPage() {
+  const embedded = useSearchParams().get("embedded") === "1";
   const { adminLoading, isAdmin, access } = useQiunaiAdminGuard();
 
   const [loading, setLoading] = useState(true);
@@ -308,11 +311,7 @@ export default function AdminSalaryPage() {
 
   function showStaffDetails(discordId: string) {
     setSelectedDetailDiscordId(discordId);
-    const details = document.querySelector<HTMLDetailsElement>("#order-staff-details");
-    if (details) {
-      details.open = true;
-      details.scrollIntoView({ behavior: "smooth", block: "start" });
-    }
+    openOrderSection("order-staff-details");
   }
 
   async function loadAll(staffId = filterStaffId) {
@@ -847,8 +846,171 @@ export default function AdminSalaryPage() {
     return <main className="min-h-screen bg-[#fff7fb] px-5 py-6 text-[#3f2947]"><div className="mx-auto max-w-7xl space-y-5"><header className="rounded-[30px] border border-pink-100 bg-white px-6 py-5 shadow-sm shadow-pink-100"><p className="text-sm font-bold text-pink-600">秋奈電競陪玩 EIP｜客服</p><h1 className="mt-1 text-2xl font-black">訂單與打賞審核</h1><p className="mt-2 text-sm text-[#80647d]">客服帳號僅能核准或駁回待審核的訂單與打賞。</p></header><WorkReportReviewPanel appKey="qiunai" accent="pink" onApprove={approveWorkReport} reviewApiPath="/api/qiunai/work-reports/review"/></div></main>;
   }
 
+  const renderOrderTable = () => (
+    <div className="salary-orders-table max-h-[28rem] overflow-auto rounded-[28px] border border-pink-100 bg-white shadow-sm shadow-pink-100">
+      {loading ? (
+        <div className="p-8 text-center text-[#80647d]">載入中...</div>
+      ) : orders.length === 0 ? (
+        <div className="p-8 text-center text-[#80647d]">
+          此時間範圍內沒有薪資訂單
+        </div>
+      ) : (
+        <table className="min-w-[1350px] w-full text-left text-sm">
+          <thead className="bg-white/10 text-[#6f526d]">
+            <tr>
+              <th className="px-4 py-3">完成時間</th>
+              <th className="px-4 py-3">員工</th>
+              <th className="px-4 py-3">客人</th>
+              <th className="px-4 py-3">服務</th>
+              <th className="px-4 py-3">訂單金額</th>
+              <th className="px-4 py-3">員工薪資</th>
+              <th className="px-4 py-3">抽成</th>
+              <th className="px-4 py-3">獎金</th>
+              <th className="px-4 py-3">平台收入</th>
+              <th className="px-4 py-3">平台支出</th>
+              <th className="px-4 py-3">狀態</th>
+              <th className="px-4 py-3">發薪日</th>
+              <th className="px-4 py-3">操作</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            {orders.map((order) => (
+              <tr key={order.id} className="border-t border-pink-100">
+                <td className="px-4 py-3 text-[#6f526d]">
+                  {formatDateTime(order.order_finished_at)}
+                </td>
+
+                <td className="px-4 py-3">
+                  <button
+                    onClick={() =>
+                      showStaffDetails(order.discord_id)
+                    }
+                    className="text-left hover:text-pink-500"
+                  >
+                    <p>{order.staff_name || "未知員工"}</p>
+                    <p className="text-xs text-[#92778f]">
+                      {order.discord_id}
+                    </p>
+                  </button>
+                </td>
+
+                <td className="px-4 py-3">
+                  {order.customer_name || "-"}
+                </td>
+                <td className="px-4 py-3">
+                  <p>{order.service_name || "-"}</p>
+                  {order.admin_note ? (
+                    <p className="mt-1 text-xs text-[#92778f]">
+                      備註：{order.admin_note}
+                    </p>
+                  ) : null}
+                </td>
+
+                <td className="px-4 py-3">
+                  ${Number(order.order_amount || 0).toLocaleString()}
+                </td>
+
+                <td className="px-4 py-3 text-pink-500">
+                  ${Number(order.staff_salary || 0).toLocaleString()}
+                </td>
+
+                <td className="px-4 py-3">
+                  <p>
+                    {order.salary_rate ? `${order.salary_rate}%` : "-"}
+                  </p>
+                  <p className="text-xs text-[#92778f]">
+                    {order.salary_level || "-"}
+                  </p>
+                </td>
+
+                <td className="px-4 py-3">
+                  ${Number(order.bonus_amount || 0).toLocaleString()}
+                </td>
+
+                <td className="px-4 py-3">
+                  $
+                  {Number(
+                    order.platform_income || order.order_amount || 0
+                  ).toLocaleString()}
+                </td>
+
+                <td className="px-4 py-3">
+                  $
+                  {Number(
+                    order.platform_expense ||
+                      Number(order.staff_salary || 0) +
+                        Number(order.bonus_amount || 0)
+                  ).toLocaleString()}
+                </td>
+
+                <td className="px-4 py-3">
+                  <span
+                    className={`rounded-full px-3 py-1 text-xs ${
+                      order.status === "已入帳"
+                        ? "bg-emerald-500/20 text-emerald-300"
+                        : "bg-yellow-500/20 text-yellow-300"
+                    }`}
+                  >
+                    {order.status || "未入帳"}
+                  </span>
+                </td>
+
+                <td className="px-4 py-3 text-[#6f526d]">
+                  {order.wallet_settled_at
+                    ? formatDateTime(order.wallet_settled_at)
+                    : order.status === "已入帳" && order.paid_at
+                      ? formatDateTime(order.paid_at)
+                      : "-"}
+                </td>
+
+                <td className="px-4 py-3">
+                  <div className="flex flex-col gap-2">
+                    {order.status === "已入帳" ? (
+                      <span className="text-xs text-[#92778f]">
+                        已完成
+                      </span>
+                    ) : (
+                      <button
+                        onClick={() => markPaid(order)}
+                        className="flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 py-2 font-semibold hover:bg-emerald-400"
+                      >
+                        <CheckCircle2 size={16} />
+                        已入帳
+                      </button>
+                    )}
+
+                    <button
+                      onClick={() => setEditingOrder(order)}
+                      className="rounded-xl bg-blue-500 px-4 py-2 font-semibold hover:bg-blue-400"
+                    >
+                      修改細節
+                    </button>
+
+                    <button
+                      onClick={async () => {
+                        const ok = await deleteSalaryOrder(order.id);
+
+                        if (ok) {
+                          await loadAll();
+                        }
+                      }}
+                      className="rounded-xl bg-red-500 px-4 py-2 font-semibold hover:bg-red-400"
+                    >
+                      刪除
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
+  );
+
   return (
-    <main className="salary-overview-page min-h-screen bg-[#fff7fb] px-5 py-6 text-[#3f2947]">
+    <main className="salary-overview-page min-h-screen bg-[#fff7fb] px-3 py-3 text-[#3f2947]">
       <div className="salary-overview-content mx-auto max-w-7xl space-y-5">
         <section className="space-y-3">
           <OrderDisclosure title="訂單／打賞待審核" initiallyOpen>
@@ -857,171 +1019,31 @@ export default function AdminSalaryPage() {
               accent="pink"
               onApprove={approveWorkReport}
               hideTitle
+              compact={embedded}
               reviewApiPath="/api/qiunai/work-reports/review"
             />
           </OrderDisclosure>
 
           <OrderDisclosure title="訂單列表" initiallyOpen>
-            <div className="salary-orders-table max-h-[28rem] overflow-auto rounded-[28px] border border-pink-100 bg-white shadow-sm shadow-pink-100">
-              {loading ? (
-                <div className="p-8 text-center text-[#80647d]">載入中...</div>
-              ) : orders.length === 0 ? (
-                <div className="p-8 text-center text-[#80647d]">
-                  此時間範圍內沒有薪資訂單
-                </div>
-              ) : (
-                <table className="min-w-[1350px] w-full text-left text-sm">
-                  <thead className="bg-white/10 text-[#6f526d]">
-                    <tr>
-                      <th className="px-4 py-3">完成時間</th>
-                      <th className="px-4 py-3">員工</th>
-                      <th className="px-4 py-3">客人</th>
-                      <th className="px-4 py-3">服務</th>
-                      <th className="px-4 py-3">訂單金額</th>
-                      <th className="px-4 py-3">員工薪資</th>
-                      <th className="px-4 py-3">抽成</th>
-                      <th className="px-4 py-3">獎金</th>
-                      <th className="px-4 py-3">平台收入</th>
-                      <th className="px-4 py-3">平台支出</th>
-                      <th className="px-4 py-3">狀態</th>
-                      <th className="px-4 py-3">發薪日</th>
-                      <th className="px-4 py-3">操作</th>
-                    </tr>
-                  </thead>
-
-                  <tbody>
-                    {orders.map((order) => (
-                      <tr key={order.id} className="border-t border-pink-100">
-                        <td className="px-4 py-3 text-[#6f526d]">
-                          {formatDateTime(order.order_finished_at)}
-                        </td>
-
-                        <td className="px-4 py-3">
-                          <button
-                            onClick={() =>
-                              showStaffDetails(order.discord_id)
-                            }
-                            className="text-left hover:text-pink-500"
-                          >
-                            <p>{order.staff_name || "未知員工"}</p>
-                            <p className="text-xs text-[#92778f]">
-                              {order.discord_id}
-                            </p>
-                          </button>
-                        </td>
-
-                        <td className="px-4 py-3">
-                          {order.customer_name || "-"}
-                        </td>
-                        <td className="px-4 py-3">
-                          <p>{order.service_name || "-"}</p>
-                          {order.admin_note ? (
-                            <p className="mt-1 text-xs text-[#92778f]">
-                              備註：{order.admin_note}
-                            </p>
-                          ) : null}
-                        </td>
-
-                        <td className="px-4 py-3">
-                          ${Number(order.order_amount || 0).toLocaleString()}
-                        </td>
-
-                        <td className="px-4 py-3 text-pink-500">
-                          ${Number(order.staff_salary || 0).toLocaleString()}
-                        </td>
-
-                        <td className="px-4 py-3">
-                          <p>
-                            {order.salary_rate ? `${order.salary_rate}%` : "-"}
-                          </p>
-                          <p className="text-xs text-[#92778f]">
-                            {order.salary_level || "-"}
-                          </p>
-                        </td>
-
-                        <td className="px-4 py-3">
-                          ${Number(order.bonus_amount || 0).toLocaleString()}
-                        </td>
-
-                        <td className="px-4 py-3">
-                          $
-                          {Number(
-                            order.platform_income || order.order_amount || 0
-                          ).toLocaleString()}
-                        </td>
-
-                        <td className="px-4 py-3">
-                          $
-                          {Number(
-                            order.platform_expense ||
-                              Number(order.staff_salary || 0) +
-                                Number(order.bonus_amount || 0)
-                          ).toLocaleString()}
-                        </td>
-
-                        <td className="px-4 py-3">
-                          <span
-                            className={`rounded-full px-3 py-1 text-xs ${
-                              order.status === "已入帳"
-                                ? "bg-emerald-500/20 text-emerald-300"
-                                : "bg-yellow-500/20 text-yellow-300"
-                            }`}
-                          >
-                            {order.status || "未入帳"}
-                          </span>
-                        </td>
-
-                        <td className="px-4 py-3 text-[#6f526d]">
-                          {order.wallet_settled_at
-                            ? formatDateTime(order.wallet_settled_at)
-                            : order.status === "已入帳" && order.paid_at
-                              ? formatDateTime(order.paid_at)
-                              : "-"}
-                        </td>
-
-                        <td className="px-4 py-3">
-                          <div className="flex flex-col gap-2">
-                            {order.status === "已入帳" ? (
-                              <span className="text-xs text-[#92778f]">
-                                已完成
-                              </span>
-                            ) : (
-                              <button
-                                onClick={() => markPaid(order)}
-                                className="flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 py-2 font-semibold hover:bg-emerald-400"
-                              >
-                                <CheckCircle2 size={16} />
-                                已入帳
-                              </button>
-                            )}
-
-                            <button
-                              onClick={() => setEditingOrder(order)}
-                              className="rounded-xl bg-blue-500 px-4 py-2 font-semibold hover:bg-blue-400"
-                            >
-                              修改細節
-                            </button>
-
-                            <button
-                              onClick={async () => {
-                                const ok = await deleteSalaryOrder(order.id);
-
-                                if (ok) {
-                                  await loadAll();
-                                }
-                              }}
-                              className="rounded-xl bg-red-500 px-4 py-2 font-semibold hover:bg-red-400"
-                            >
-                              刪除
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </div>
+            {embedded ? (
+              <CompactOrderList
+                orders={orders}
+                loading={loading}
+                renderOrder={(order) => (
+                  <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 gap-y-1">
+                    <p className="break-words text-sm font-bold text-slate-900">{order.service_name || "未填寫項目"}</p>
+                    <p className="whitespace-nowrap text-right text-sm font-bold text-slate-900">{`NT$${Number(order.order_amount || 0).toLocaleString("zh-TW")}`}</p>
+                    <p className="break-words text-xs text-slate-600"><button type="button" className="font-bold text-pink-700 hover:underline" onClick={() => showStaffDetails(order.discord_id)}>{order.staff_name || "未知員工"}</button>{order.customer_name ? ` · ${order.customer_name}` : ""}</p>
+                    <span className="text-right text-xs font-semibold text-slate-600">{order.status || "未入帳"}</span>
+                    <p className="text-xs text-slate-500">{formatDateTime(order.order_finished_at)}</p>
+                    <button type="button" className="justify-self-end rounded-md px-1 text-xs font-bold text-slate-700 hover:underline" onClick={() => setEditingOrder(order)}>編輯</button>
+                  </div>
+                )}
+                  renderFullTable={renderOrderTable}
+                onFilter={() => openOrderSection("order-filters")}
+                onCreate={() => openOrderSection("order-editor")}
+              />
+            ) : renderOrderTable()}
           </OrderDisclosure>
 
           <OrderDisclosure title="薪資總表與重新整理">
@@ -1079,7 +1101,7 @@ export default function AdminSalaryPage() {
             </div>
           </OrderDisclosure>
 
-          <OrderDisclosure title="訂單篩選">
+          <OrderDisclosure id="order-filters" title="訂單篩選">
             <div className="salary-filter-panel rounded-[28px] border border-pink-100 bg-white p-5 shadow-sm shadow-pink-100">
               <div className="flex items-center gap-2">
                 <CalendarDays className="text-pink-500" size={20} />
@@ -1440,7 +1462,7 @@ export default function AdminSalaryPage() {
             </div>
           </details>
 
-          <OrderDisclosure title="新增訂單">
+          <OrderDisclosure id="order-editor" title="新增訂單">
             <div className="salary-order-form rounded-[28px] border border-pink-100 bg-white p-5 shadow-sm shadow-pink-100">
               <div className="flex items-center gap-2">
                 <ClipboardList className="text-pink-500" size={20} />
