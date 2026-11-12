@@ -592,6 +592,8 @@ function getStaffName(staff: Staff) {
 }
 
 function getCommissionLabel(value: string | null) {
+  if (value === "rate_70") return "70%";
+  if (value === "rate_75") return "75%";
   if (value === "rate_80") return "80%";
   if (value === "rate_85") return "85%";
   if (value === "rate_90") return "90%";

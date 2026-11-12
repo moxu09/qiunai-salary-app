@@ -1,5 +1,7 @@
 export type CommissionTier =
   | "auto"
+  | "rate_70"
+  | "rate_75"
   | "rate_80"
   | "rate_85"
   | "rate_90"
@@ -14,6 +16,8 @@ export function getCommissionLabel(
   tier: CommissionTier | string,
   rate: number
 ) {
+  if (tier === "rate_70") return "70%";
+  if (tier === "rate_75") return "75%";
   if (tier === "rate_80") return "80% 一般陪陪";
   if (tier === "rate_85") return "85% 進階陪陪";
   if (tier === "rate_90") return "90% 年度高階";
@@ -22,6 +26,8 @@ export function getCommissionLabel(
 }
 
 export function getManualRate(tier?: string | null) {
+  if (tier === "rate_70") return 70;
+  if (tier === "rate_75") return 75;
   if (tier === "rate_80") return 80;
   if (tier === "rate_85") return 85;
   if (tier === "rate_90") return 90;

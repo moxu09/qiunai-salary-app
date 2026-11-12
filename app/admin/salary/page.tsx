@@ -1397,7 +1397,7 @@ export default function AdminSalaryPage() {
 
             <p className="mt-2 text-sm text-[#80647d]">
               九月前系統預設 90%，但後台手動設定會優先套用。九月後可設定
-              80%、85%、90% 或主管津貼 95%。
+              70%、75%、80%、85%、90% 或主管津貼 95%。
             </p>
 
             <div className="mt-4 flex items-center gap-2 rounded-2xl border border-pink-100 bg-pink-50 px-3 py-2">
@@ -1414,13 +1414,15 @@ export default function AdminSalaryPage() {
             <div className="mt-5 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {staffList.filter((staff) => {
                 const query = commissionKeyword.trim().toLowerCase();
-                const percentage = query.match(/^(80|85|90|95)%?$/)?.[1];
+                const percentage = query.match(/^(70|75|80|85|90|95)%?$/)?.[1];
                 if (percentage) {
                   return (staff.commission_tier || "auto") ===
                     (percentage === "95" ? "manager_95" : `rate_${percentage}`);
                 }
                 const tierLabels: Record<string, string> = {
                   auto: "自動判定",
+                  rate_70: "70%",
+                  rate_75: "75%",
                   rate_80: "80% 一般陪陪",
                   rate_85: "85% 進階陪陪",
                   rate_90: "90% 年度高階",
@@ -1451,6 +1453,8 @@ export default function AdminSalaryPage() {
                       }
                     >
                       <option value="auto">自動判定</option>
+                      <option value="rate_70">70%</option>
+                      <option value="rate_75">75%</option>
                       <option value="rate_80">80% 一般陪陪</option>
                       <option value="rate_85">85% 進階陪陪</option>
                       <option value="rate_90">90% 年度高階</option>
@@ -2137,6 +2141,8 @@ function getManualRateForPreview(
   const sourceDate = orderFinishedAt ? new Date(orderFinishedAt) : new Date();
   const openingEnd = new Date("2026-09-01T00:00:00+08:00");
 
+  if (staff?.commission_tier === "rate_70") return 70;
+  if (staff?.commission_tier === "rate_75") return 75;
   if (staff?.commission_tier === "rate_80") return 80;
   if (staff?.commission_tier === "rate_85") return 85;
   if (staff?.commission_tier === "rate_90") return 90;

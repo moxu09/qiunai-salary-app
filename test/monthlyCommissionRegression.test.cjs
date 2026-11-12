@@ -52,7 +52,7 @@ test('工時核准以各月獨立業績決定85%，不是歷史累積永久升�
   }
 });
 test('保留人工檔位與去年薪資達標的年度90%', async () => {
-  for (const [tier, rows, expected] of [['manager_95', [], 95], ['rate_80', [row(50000, '2026-09-10T00:00:00Z')], 80],
+  for (const [tier, rows, expected] of [['manager_95', [], 95], ['rate_70', [], 70], ['rate_75', [], 75], ['rate_80', [row(50000, '2026-09-10T00:00:00Z')], 80],
     ['auto', [row(125000, '2025-12-15T00:00:00Z')], 90]]) {
     const db = dbFor(rows, tier);
     const result = await reviewFunction()(db, 'qiunai', { id: 'pending', action: 'approve' }, 'reviewer');

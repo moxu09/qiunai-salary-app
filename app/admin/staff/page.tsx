@@ -469,6 +469,8 @@ export default function AdminStaffPage() {
                   <option value="name_asc">名稱排序：A 到 Z</option>
                   <option value="name_desc">名稱排序：Z 到 A</option>
                   <option value="tier_auto">只看：自動判定</option>
+                  <option value="tier_rate_70">只看：70%</option>
+                  <option value="tier_rate_75">只看：75%</option>
                   <option value="tier_rate_80">只看：80%</option>
                   <option value="tier_rate_85">只看：85%</option>
                   <option value="tier_rate_90">只看：90%</option>
@@ -761,6 +763,8 @@ function getStaffDisplayName(staff: Staff) {
 }
 
 function getCommissionTierLabel(value?: string | null) {
+  if (value === "rate_70") return "70%";
+  if (value === "rate_75") return "75%";
   if (value === "rate_80") return "80%｜一般陪陪";
   if (value === "rate_85") return "85%｜進階陪陪";
   if (value === "rate_90") return "90%｜年度高階";
@@ -773,6 +777,8 @@ function getCommissionTierRank(value?: string | null) {
   if (value === "rate_90") return 90;
   if (value === "rate_85") return 85;
   if (value === "rate_80") return 80;
+  if (value === "rate_75") return 75;
+  if (value === "rate_70") return 70;
   return 0;
 }
 

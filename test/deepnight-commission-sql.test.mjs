@@ -12,7 +12,7 @@ export async function fixture(){
  create table salary_wallet_entries(id uuid primary key default gen_random_uuid(),app_key text,discord_id text,staff_name text,entry_type text,amount numeric,source_table text,source_id text,source_label text,period_key text,settlement_date date,metadata jsonb default '{}',created_at timestamptz default now(),unique(app_key,source_table,source_id,entry_type));
  create table salary_activity_commission_settings(app_key text,activity_rate numeric,starts_at timestamptz,ends_at timestamptz);
  insert into players(discord_id,commission_tier) values('${staff}','manager_95');`);
- for(const f of ['20261103000100_deepnight_manual_commission.sql','20261103000200_deepnight_commission_repair.sql'])await db.exec(await readFile(new URL('../supabase/migrations/'+f,import.meta.url),'utf8'));
+ for(const f of ['20261103000100_deepnight_manual_commission.sql','20261103000200_deepnight_commission_repair.sql','20261113000100_deepnight_commission_70_75.sql'])await db.exec(await readFile(new URL('../supabase/migrations/'+f,import.meta.url),'utf8'));
  await db.exec('create trigger trg_sync_play_order_salary_fields before insert or update on play_orders for each row execute function sync_play_order_salary_fields()');return db;
 }
 async function insert(db,id=first,patch={}){
@@ -31,6 +31,22 @@ test('manual wins over stale rates/opening/tips; other guild and auto preserved;
  await db.exec("delete from play_orders;update players set commission_tier='rate_85'");assert.equal((await insert(db)).salary_rate,85);
  assert.equal((await insert(db,second,{order_type:'打賞'})).salary_rate,90);
  }finally{await db.close();}
+});
+test('70% and 75% apply to completed DeepNight orders and keep the standard tip rate', async () => {
+  const db = await fixture();
+  try {
+    await db.exec(await readFile(new URL('../supabase/migrations/20261113000100_deepnight_commission_70_75.sql', import.meta.url), 'utf8'));
+    for (const rate of [70, 75]) {
+      await db.query('update players set commission_tier=$1', [`rate_${rate}`]);
+      const order = await insert(db);
+      assert.equal(order.salary_rate, rate);
+      assert.equal(order.staff_salary, 280 * rate / 100);
+      assert.equal((await insert(db, second, { order_type: '打賞' })).salary_rate, 90);
+      await db.exec('delete from play_orders');
+    }
+  } finally {
+    await db.close();
+  }
 });
 test('settled/credited/draft/refunded/deleted/metadata-only/shadow rows are not repriced',async()=>{
  const db=await fixture();try{
