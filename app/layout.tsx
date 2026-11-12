@@ -17,7 +17,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata = {
-  title: "秋奈 × 深夜 HR",
+  title: "As_Stu.HR",
   description: "秋奈電競與深夜不關燈員工 HR",
   icons: {
     icon: "/favicon.ico",

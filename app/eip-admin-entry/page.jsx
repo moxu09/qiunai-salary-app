@@ -37,7 +37,10 @@ export default function EipAdminEntry() {
   return (
     <main className="grid min-h-screen place-items-center bg-slate-100 p-5 text-slate-900">
       <section className="w-full max-w-lg rounded-3xl bg-white p-8 shadow-sm">
-        <h1 className="text-2xl font-bold">共同 EIP 後台</h1>
+        <h1 className="flex items-center gap-3 text-2xl font-bold">
+          <img src="/as-stu-mark.png" alt="" width={32} height={32} />
+          As_Stu.EIP
+        </h1>
         {state.departments ? (
           <nav className="mt-5 grid gap-3" aria-label="選擇部門">
             {state.departments.map(({ key, label, href }) => (

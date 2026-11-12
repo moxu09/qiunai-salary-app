@@ -284,7 +284,10 @@ export default function UnifiedHrPortal() {
       <header className="staff-workspace-header">
         <div className="hr-header-inner">
           <div>
-            <p className="staff-portal-eyebrow">WE ARE STILL HERE · HR</p>
+            <div className="flex items-center gap-2">
+              <img src="/as-stu-mark.png" alt="" width={32} height={32} className="rounded-lg bg-white p-1" />
+              <p className="staff-portal-eyebrow">As_Stu.HR</p>
+            </div>
             <h1>員工工作台</h1>
             <p>{employeeName} · {session.departments.map((d) => `${nameOf(d.key)} ${d.hrRole || "Staff"}`).join("／")}</p>
           </div>

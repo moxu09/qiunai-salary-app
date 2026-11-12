@@ -2,14 +2,12 @@
 
 import { FormEvent, useState } from "react";
 import {
-  Gamepad2,
   LoaderCircle,
   LockKeyhole,
   Mail,
   MessageCircle,
-  ShieldCheck,
 } from "lucide-react";
-import { HrThemeArtwork, HrThemeDecorations } from "@/components/HrThemeProvider";
+import { HrThemeDecorations } from "@/components/HrThemeProvider";
 import { supabase } from "@/lib/supabase";
 
 type Theme = "deepnight" | "qiunai";
@@ -36,7 +34,7 @@ const CONTENT = {
   },
   qiunai: {
     badge: "WE ARE STILL HERE HR",
-    title: "秋奈 × 深夜 HR",
+    title: "As_Stu.HR",
     description:
       "登入後整合顯示你所屬部門的個人資料、薪資、訂單與簽核。",
     copyright: "© 秋奈電競 × 深夜不關燈 We Are Still Here",
@@ -128,7 +126,7 @@ export default function ErpLoginCard({
       {isQiunai ? <HrThemeDecorations /> : null}
       <div className="relative z-10 w-full max-w-lg">
         <div className="hr-login-art">
-          {admin ? <ShieldCheck size={40} /> : isQiunai ? <HrThemeArtwork /> : <Gamepad2 size={40} />}
+          <img src="/as-stu-mark.png" alt="" width={60} height={60} className="rounded-xl bg-white p-2" />
         </div>
 
         <div

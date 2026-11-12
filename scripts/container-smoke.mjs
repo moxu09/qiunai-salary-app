@@ -98,9 +98,13 @@ async function readHost(hostname, path) {
 }
 for(const path of ["/admin/workspace","/admin/department/qiunai/workspace"]){
  const workspace=await readHost("eip.wearestilllhere.com",path);
- assert.equal(workspace.status,200,path);
- assert.match(workspace.body,/<title>[^<]*協作工作台/);
- assert.ok(!workspace.location,"協作工作台不可跳頁");
+ assert.equal(workspace.status,307,path);
+ const target = new URL(workspace.location);
+ assert.equal(target.origin, "https://eip.wearestilllhere.com");
+ assert.equal(target.pathname, "/admin");
+ assert.equal(target.searchParams.get("view"), "overview");
+ assert.equal(target.searchParams.get("section"), "workspace");
+ assert.equal(target.searchParams.get("department"), path.includes("/qiunai/") ? "qiunai" : "deepnight");
 }
 for(const path of ["/api/qiunai/workspace?admin=1","/api/deepnight/workspace?admin=1"]){
  const workspace=await readHost("eip.wearestilllhere.com",path);
@@ -114,7 +118,7 @@ const anonymousAdminEntry = await readHost("eip.wearestilllhere.com", "/api/eip-
 assert.equal(anonymousAdminEntry.status, 401);
 const supervisor = await readHost("eip.wearestilllhere.com", "/");
 assert.equal(supervisor.status, 200, "主管網域入口載入失敗");
-assert.ok(supervisor.body.includes("<title>深夜不關燈 EIP</title>"), "主管網域必須顯示既有主管應用程式");
+assert.match(supervisor.body, /<title>(?:As_Stu\.EIP|深夜不關燈 EIP)<\/title>/, "主管網域必須顯示主管登入頁");
 console.log("主管 HTTP 網域已導向既有後台登入頁。");
 for (const [path, target] of [
   ["/staff", "/collaboration/workspace"],

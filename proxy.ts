@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { isSupervisorHost, legacyEmployeeTarget, legacyQiunaiSupervisorTarget, supervisorTarget } from "@/lib/hrHostRouting.mjs";
+import { isSupervisorHost, legacyEmployeeTarget, legacyQiunaiSupervisorTarget, legacyWorkspaceTarget, supervisorTarget } from "@/lib/hrHostRouting.mjs";
 
 // Existing supervisor routes proxy upstream; the service namespace stays local.
 export function proxy(request: NextRequest) {
@@ -16,6 +16,8 @@ export function proxy(request: NextRequest) {
     request.nextUrl.search,
   );
   if (legacySupervisor) return NextResponse.redirect(legacySupervisor, 308);
+  const workspaceTarget = legacyWorkspaceTarget(hostname, request.nextUrl.pathname);
+  if (workspaceTarget) return NextResponse.redirect(workspaceTarget);
   if (isSupervisorHost(hostname)) {
     const path = request.nextUrl.pathname.replace(/\/+$/, "");
     if (path === "/api/eip-admin-entry") return NextResponse.next();
