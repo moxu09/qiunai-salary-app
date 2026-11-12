@@ -56,11 +56,13 @@ export default function WorkReportReviewPanel({
   accent = "sky",
   onApprove,
   reviewApiPath,
+  hideTitle = false,
 }: {
   appKey: "deepnight" | "qiunai";
   accent?: "sky" | "pink";
   onApprove: (report: WorkReport) => Promise<string>;
   reviewApiPath?: string;
+  hideTitle?: boolean;
 }) {
   const [reports, setReports] = useState<WorkReport[]>([]);
   const [loading, setLoading] = useState(true);
@@ -170,9 +172,11 @@ export default function WorkReportReviewPanel({
     >
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h2 className="flex items-center gap-2 text-lg font-black text-slate-900">
-            <Clock3 size={20} /> 訂單／打賞待審核
-          </h2>
+          {!hideTitle && (
+            <h2 className="flex items-center gap-2 text-lg font-black text-slate-900">
+              <Clock3 size={20} /> 訂單／打賞待審核
+            </h2>
+          )}
           <p className="mt-1 text-sm text-slate-500">
             核准後會依員工抽成寫入薪資；駁回時需填寫原因。
           </p>

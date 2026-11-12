@@ -20,6 +20,7 @@ import {
 import { supabase } from "@/lib/supabase";
 import { getMonthlyOrderAmount } from "@/lib/creditedSalaryCommission";
 import { useQiunaiAdminGuard } from "@/lib/useQiunaiAdminGuard";
+import OrderDisclosure from "@/components/OrderDisclosure";
 import WorkReportReviewPanel, {
   WorkReport,
 } from "@/components/WorkReportReviewPanel";
@@ -840,349 +841,523 @@ export default function AdminSalaryPage() {
   return (
     <main className="salary-overview-page min-h-screen bg-[#fff7fb] px-5 py-6 text-[#3f2947]">
       <div className="salary-overview-content mx-auto max-w-7xl space-y-5">
-        <header className="rounded-[30px] border border-pink-100 bg-white px-6 py-5 shadow-sm shadow-pink-100">
-          <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
-            <div>
-              <Link
-                href="/admin"
-                className="inline-flex items-center gap-2 text-sm font-bold text-pink-600 hover:text-pink-700"
-              >
-                <ArrowLeft size={16} />
-                回 EIP 首頁
-              </Link>
-              <p className="mt-4 text-sm font-bold text-pink-600">
-                Qiunai EIP
-              </p>
-              <h1 className="mt-1 text-2xl font-black text-[#3f2947] md:text-3xl">
-                薪資總表
-              </h1>
-              <p className="mt-2 text-sm text-[#80647d]">
-                管理訂單薪資、獎金、收入支出與批次發薪。
-              </p>
+        <section className="space-y-3">
+          <OrderDisclosure title="訂單／打賞待審核" initiallyOpen>
+            <WorkReportReviewPanel
+              appKey="qiunai"
+              accent="pink"
+              onApprove={approveWorkReport}
+              hideTitle
+              reviewApiPath="/api/qiunai/work-reports/review"
+            />
+          </OrderDisclosure>
+
+          <OrderDisclosure title="訂單列表" initiallyOpen>
+            <div className="salary-orders-table max-h-[28rem] overflow-auto rounded-[28px] border border-pink-100 bg-white shadow-sm shadow-pink-100">
+              {loading ? (
+                <div className="p-8 text-center text-[#80647d]">載入中...</div>
+              ) : orders.length === 0 ? (
+                <div className="p-8 text-center text-[#80647d]">
+                  此時間範圍內沒有薪資訂單
+                </div>
+              ) : (
+                <table className="min-w-[1350px] w-full text-left text-sm">
+                  <thead className="bg-white/10 text-[#6f526d]">
+                    <tr>
+                      <th className="px-4 py-3">完成時間</th>
+                      <th className="px-4 py-3">員工</th>
+                      <th className="px-4 py-3">客人</th>
+                      <th className="px-4 py-3">服務</th>
+                      <th className="px-4 py-3">訂單金額</th>
+                      <th className="px-4 py-3">員工薪資</th>
+                      <th className="px-4 py-3">抽成</th>
+                      <th className="px-4 py-3">獎金</th>
+                      <th className="px-4 py-3">平台收入</th>
+                      <th className="px-4 py-3">平台支出</th>
+                      <th className="px-4 py-3">狀態</th>
+                      <th className="px-4 py-3">發薪日</th>
+                      <th className="px-4 py-3">操作</th>
+                    </tr>
+                  </thead>
+
+                  <tbody>
+                    {orders.map((order) => (
+                      <tr key={order.id} className="border-t border-pink-100">
+                        <td className="px-4 py-3 text-[#6f526d]">
+                          {formatDateTime(order.order_finished_at)}
+                        </td>
+
+                        <td className="px-4 py-3">
+                          <button
+                            onClick={() =>
+                              setSelectedDetailDiscordId(order.discord_id)
+                            }
+                            className="text-left hover:text-pink-500"
+                          >
+                            <p>{order.staff_name || "未知員工"}</p>
+                            <p className="text-xs text-[#92778f]">
+                              {order.discord_id}
+                            </p>
+                          </button>
+                        </td>
+
+                        <td className="px-4 py-3">
+                          {order.customer_name || "-"}
+                        </td>
+                        <td className="px-4 py-3">
+                          <p>{order.service_name || "-"}</p>
+                          {order.admin_note ? (
+                            <p className="mt-1 text-xs text-[#92778f]">
+                              備註：{order.admin_note}
+                            </p>
+                          ) : null}
+                        </td>
+
+                        <td className="px-4 py-3">
+                          ${Number(order.order_amount || 0).toLocaleString()}
+                        </td>
+
+                        <td className="px-4 py-3 text-pink-500">
+                          ${Number(order.staff_salary || 0).toLocaleString()}
+                        </td>
+
+                        <td className="px-4 py-3">
+                          <p>
+                            {order.salary_rate ? `${order.salary_rate}%` : "-"}
+                          </p>
+                          <p className="text-xs text-[#92778f]">
+                            {order.salary_level || "-"}
+                          </p>
+                        </td>
+
+                        <td className="px-4 py-3">
+                          ${Number(order.bonus_amount || 0).toLocaleString()}
+                        </td>
+
+                        <td className="px-4 py-3">
+                          $
+                          {Number(
+                            order.platform_income || order.order_amount || 0
+                          ).toLocaleString()}
+                        </td>
+
+                        <td className="px-4 py-3">
+                          $
+                          {Number(
+                            order.platform_expense ||
+                              Number(order.staff_salary || 0) +
+                                Number(order.bonus_amount || 0)
+                          ).toLocaleString()}
+                        </td>
+
+                        <td className="px-4 py-3">
+                          <span
+                            className={`rounded-full px-3 py-1 text-xs ${
+                              order.status === "已入帳"
+                                ? "bg-emerald-500/20 text-emerald-300"
+                                : "bg-yellow-500/20 text-yellow-300"
+                            }`}
+                          >
+                            {order.status || "未入帳"}
+                          </span>
+                        </td>
+
+                        <td className="px-4 py-3 text-[#6f526d]">
+                          {order.wallet_settled_at
+                            ? formatDateTime(order.wallet_settled_at)
+                            : order.status === "已入帳" && order.paid_at
+                              ? formatDateTime(order.paid_at)
+                              : "-"}
+                        </td>
+
+                        <td className="px-4 py-3">
+                          <div className="flex flex-col gap-2">
+                            {order.status === "已入帳" ? (
+                              <span className="text-xs text-[#92778f]">
+                                已完成
+                              </span>
+                            ) : (
+                              <button
+                                onClick={() => markPaid(order)}
+                                className="flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 py-2 font-semibold hover:bg-emerald-400"
+                              >
+                                <CheckCircle2 size={16} />
+                                已入帳
+                              </button>
+                            )}
+
+                            <button
+                              onClick={() => setEditingOrder(order)}
+                              className="rounded-xl bg-blue-500 px-4 py-2 font-semibold hover:bg-blue-400"
+                            >
+                              修改細節
+                            </button>
+
+                            <button
+                              onClick={async () => {
+                                const ok = await deleteSalaryOrder(order.id);
+
+                                if (ok) {
+                                  await loadAll();
+                                }
+                              }}
+                              className="rounded-xl bg-red-500 px-4 py-2 font-semibold hover:bg-red-400"
+                            >
+                              刪除
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
             </div>
+          </OrderDisclosure>
 
-            <button
-              onClick={() => void loadAll()}
-              disabled={loading}
-              className="inline-flex items-center justify-center gap-2 rounded-full bg-pink-500 px-5 py-2.5 text-sm font-bold text-[#3f2947] shadow-sm shadow-pink-200 hover:bg-pink-600 disabled:opacity-60"
-            >
-              <RefreshCw size={16} className={loading ? "animate-spin" : ""} />
-              重新整理
-            </button>
-          </div>
-        </header>
-
-        <section className="salary-template space-y-5">
-          <WorkReportReviewPanel
-            appKey="qiunai"
-            accent="pink"
-            onApprove={approveWorkReport}
-            reviewApiPath="/api/qiunai/work-reports/review"
-          />
-
-          <div className="salary-stat-grid grid gap-4 md:grid-cols-4">
-            <Stat
-              title="總收入"
-              value={`$${totals.totalIncome.toLocaleString()}`}
-            />
-            <Stat
-              title="薪資支出"
-              value={`$${totals.totalSalary.toLocaleString()}`}
-            />
-            <Stat
-              title="獎金 / 扣除"
-              value={`$${totals.totalBonus.toLocaleString()}`}
-            />
-            <Stat
-              title="未入帳"
-              value={`$${totals.unpaidSalary.toLocaleString()}`}
-            />
-          </div>
-
-          <div className="salary-filter-panel rounded-[28px] border border-pink-100 bg-white p-5 shadow-sm shadow-pink-100">
-            <div className="flex items-center gap-2">
-              <CalendarDays className="text-pink-500" size={20} />
-              <h2 className="text-lg font-black text-[#3f2947]">
-                時間範圍查詢
-              </h2>
-            </div>
-
-            <p className="mt-2 text-sm text-[#80647d]">
-              預設為本月 1 號 00:00 到現在，可自行調整。
-            </p>
-
-            <div className="mt-5 grid gap-4 md:grid-cols-4">
-              <Input
-                label="開始時間"
-                type="datetime-local"
-                value={filter.start}
-                onChange={(value) =>
-                  setFilter((prev) => ({ ...prev, start: value }))
-                }
-              />
-
-              <Input
-                label="結束時間"
-                type="datetime-local"
-                value={filter.end}
-                onChange={(value) =>
-                  setFilter((prev) => ({ ...prev, end: value }))
-                }
-              />
-
-              <SearchableStaffSelect
-                label="搜尋單一員工"
-                value={filterStaffId}
-                staffList={staffList}
-                allowAll
-                onChange={(value) => {
-                  setFilterStaffId(value);
-                  void loadAll(value);
-                }}
-              />
+          <OrderDisclosure title="薪資總表與重新整理">
+          <header className="rounded-[30px] border border-pink-100 bg-white px-6 py-5 shadow-sm shadow-pink-100">
+            <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+              <div>
+                <Link
+                  href="/admin"
+                  className="inline-flex items-center gap-2 text-sm font-bold text-pink-600 hover:text-pink-700"
+                >
+                  <ArrowLeft size={16} />
+                  回 EIP 首頁
+                </Link>
+                <p className="mt-4 text-sm font-bold text-pink-600">
+                  Qiunai EIP
+                </p>
+                <h1 className="mt-1 text-2xl font-black text-[#3f2947] md:text-3xl">
+                  薪資總表
+                </h1>
+                <p className="mt-2 text-sm text-[#80647d]">
+                  管理訂單薪資、獎金、收入支出與批次發薪。
+                </p>
+              </div>
 
               <button
                 onClick={() => void loadAll()}
-                className="mt-6 rounded-xl bg-pink-500 px-4 py-3 font-semibold hover:bg-pink-400"
+                disabled={loading}
+                className="inline-flex items-center justify-center gap-2 rounded-full bg-pink-500 px-5 py-2.5 text-sm font-bold text-[#3f2947] shadow-sm shadow-pink-200 hover:bg-pink-600 disabled:opacity-60"
               >
-                套用查詢條件
+                <RefreshCw size={16} className={loading ? "animate-spin" : ""} />
+                重新整理
               </button>
             </div>
-          </div>
+          </header>
+          </OrderDisclosure>
 
-          <div className="salary-personal-panel rounded-[28px] border border-pink-100 bg-white p-5 shadow-sm shadow-pink-100">
-            <div className="flex items-center gap-2">
-              <WalletCards className="text-pink-500" size={20} />
-              <h2 className="text-lg font-black text-[#3f2947]">
-                陪陪個人薪資明細
-              </h2>
-            </div>
-
-            <p className="mt-2 text-sm text-[#80647d]">
-              選擇單一陪陪後，可以查看此時間範圍內的訂單、薪資、獎金與未入帳。
-            </p>
-
-            <div className="mt-5 grid gap-4 md:grid-cols-[1.1fr_2fr]">
-              <SearchableStaffSelect
-                label="搜尋 / 選擇陪陪"
-                value={selectedDetailDiscordId}
-                staffList={staffList}
-                onChange={setSelectedDetailDiscordId}
+          <OrderDisclosure title="營運金額統計">
+            <div className="salary-stat-grid grid gap-4 md:grid-cols-4">
+              <Stat
+                title="總收入"
+                value={`$${totals.totalIncome.toLocaleString()}`}
               />
+              <Stat
+                title="薪資支出"
+                value={`$${totals.totalSalary.toLocaleString()}`}
+              />
+              <Stat
+                title="獎金 / 扣除"
+                value={`$${totals.totalBonus.toLocaleString()}`}
+              />
+              <Stat
+                title="未入帳"
+                value={`$${totals.unpaidSalary.toLocaleString()}`}
+              />
+            </div>
+          </OrderDisclosure>
 
-              <div className="rounded-2xl border border-pink-100 bg-pink-50 p-4">
-                {selectedDetailStaff && selectedDetailSummary ? (
-                  <div>
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-pink-50 text-[#7b4f85]">
-                        <UserRound size={22} />
-                      </div>
+          <OrderDisclosure title="訂單篩選">
+            <div className="salary-filter-panel rounded-[28px] border border-pink-100 bg-white p-5 shadow-sm shadow-pink-100">
+              <div className="flex items-center gap-2">
+                <CalendarDays className="text-pink-500" size={20} />
+                <h2 className="text-lg font-black text-[#3f2947]">
+                  時間範圍查詢
+                </h2>
+              </div>
 
-                      <div>
-                        <p className="text-lg font-black">
-                          {getDisplayStaffName(selectedDetailStaff)}
-                        </p>
+              <p className="mt-2 text-sm text-[#80647d]">
+                預設為本月 1 號 00:00 到現在，可自行調整。
+              </p>
 
-                        <p className="text-xs text-[#92778f]">
-                          {selectedDetailStaff.discord_id}
-                        </p>
-                      </div>
-                    </div>
+              <div className="mt-5 grid gap-4 md:grid-cols-4">
+                <Input
+                  label="開始時間"
+                  type="datetime-local"
+                  value={filter.start}
+                  onChange={(value) =>
+                    setFilter((prev) => ({ ...prev, start: value }))
+                  }
+                />
 
-                    <div className="mt-5 grid gap-3 md:grid-cols-3">
-                      <MiniStat
-                        title="訂單數"
-                        value={`${selectedDetailSummary.orderCount} 筆`}
-                      />
-                      <MiniStat
-                        title="接單金額"
-                        value={`$${selectedDetailSummary.orderAmount.toLocaleString()}`}
-                      />
-                      <MiniStat
-                        title="訂單薪資"
-                        value={`$${selectedDetailSummary.orderSalary.toLocaleString()}`}
-                      />
-                      <MiniStat
-                        title="獎金 / 扣除"
-                        value={`$${(
-                          selectedDetailSummary.orderBonus +
-                          selectedDetailSummary.extraBonus
-                        ).toLocaleString()}`}
-                      />
-                      <MiniStat
-                        title="總薪資"
-                        value={`$${selectedDetailSummary.totalSalary.toLocaleString()}`}
-                      />
-                      <MiniStat
-                        title="未入帳"
-                        value={`$${selectedDetailSummary.unpaidSalary.toLocaleString()}`}
-                      />
-                    </div>
-                  </div>
-                ) : (
-                  <div className="py-8 text-center text-sm text-[#80647d]">
-                    請選擇一位陪陪
-                  </div>
-                )}
+                <Input
+                  label="結束時間"
+                  type="datetime-local"
+                  value={filter.end}
+                  onChange={(value) =>
+                    setFilter((prev) => ({ ...prev, end: value }))
+                  }
+                />
+
+                <SearchableStaffSelect
+                  label="搜尋單一員工"
+                  value={filterStaffId}
+                  staffList={staffList}
+                  allowAll
+                  onChange={(value) => {
+                    setFilterStaffId(value);
+                    void loadAll(value);
+                  }}
+                />
+
+                <button
+                  onClick={() => void loadAll()}
+                  className="mt-6 rounded-xl bg-pink-500 px-4 py-3 font-semibold hover:bg-pink-400"
+                >
+                  套用查詢條件
+                </button>
               </div>
             </div>
+          </OrderDisclosure>
 
-            {selectedDetailStaff ? (
-              <div className="mt-6 grid gap-6 xl:grid-cols-2">
-                <div className="overflow-x-auto rounded-2xl border border-pink-100 bg-pink-50">
-                  <div className="border-b border-pink-100 p-4">
-                    <h3 className="font-bold">此陪陪訂單明細</h3>
-                  </div>
+          <OrderDisclosure title="陪陪個人薪資明細">
+            <div className="salary-personal-panel rounded-[28px] border border-pink-100 bg-white p-5 shadow-sm shadow-pink-100">
+              <div className="flex items-center gap-2">
+                <WalletCards className="text-pink-500" size={20} />
+                <h2 className="text-lg font-black text-[#3f2947]">
+                  陪陪個人薪資明細
+                </h2>
+              </div>
 
-                  {selectedDetailOrders.length === 0 ? (
-                    <div className="p-8 text-center text-sm text-[#80647d]">
-                      此時間範圍內沒有訂單
+              <p className="mt-2 text-sm text-[#80647d]">
+                選擇單一陪陪後，可以查看此時間範圍內的訂單、薪資、獎金與未入帳。
+              </p>
+
+              <div className="mt-5 grid gap-4 md:grid-cols-[1.1fr_2fr]">
+                <SearchableStaffSelect
+                  label="搜尋 / 選擇陪陪"
+                  value={selectedDetailDiscordId}
+                  staffList={staffList}
+                  onChange={setSelectedDetailDiscordId}
+                />
+
+                <div className="rounded-2xl border border-pink-100 bg-pink-50 p-4">
+                  {selectedDetailStaff && selectedDetailSummary ? (
+                    <div>
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-pink-50 text-[#7b4f85]">
+                          <UserRound size={22} />
+                        </div>
+
+                        <div>
+                          <p className="text-lg font-black">
+                            {getDisplayStaffName(selectedDetailStaff)}
+                          </p>
+
+                          <p className="text-xs text-[#92778f]">
+                            {selectedDetailStaff.discord_id}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="mt-5 grid gap-3 md:grid-cols-3">
+                        <MiniStat
+                          title="訂單數"
+                          value={`${selectedDetailSummary.orderCount} 筆`}
+                        />
+                        <MiniStat
+                          title="接單金額"
+                          value={`$${selectedDetailSummary.orderAmount.toLocaleString()}`}
+                        />
+                        <MiniStat
+                          title="訂單薪資"
+                          value={`$${selectedDetailSummary.orderSalary.toLocaleString()}`}
+                        />
+                        <MiniStat
+                          title="獎金 / 扣除"
+                          value={`$${(
+                            selectedDetailSummary.orderBonus +
+                            selectedDetailSummary.extraBonus
+                          ).toLocaleString()}`}
+                        />
+                        <MiniStat
+                          title="總薪資"
+                          value={`$${selectedDetailSummary.totalSalary.toLocaleString()}`}
+                        />
+                        <MiniStat
+                          title="未入帳"
+                          value={`$${selectedDetailSummary.unpaidSalary.toLocaleString()}`}
+                        />
+                      </div>
                     </div>
                   ) : (
-                    <table className="min-w-[850px] w-full text-left text-sm">
-                      <thead className="bg-white/10 text-[#6f526d]">
-                        <tr>
-                          <th className="px-4 py-3">完成時間</th>
-                          <th className="px-4 py-3">客人</th>
-                          <th className="px-4 py-3">服務</th>
-                          <th className="px-4 py-3">金額</th>
-                          <th className="px-4 py-3">薪資</th>
-                          <th className="px-4 py-3">獎金</th>
-                          <th className="px-4 py-3">狀態</th>
-                        </tr>
-                      </thead>
+                    <div className="py-8 text-center text-sm text-[#80647d]">
+                      請選擇一位陪陪
+                    </div>
+                  )}
+                </div>
+              </div>
 
-                      <tbody>
-                        {selectedDetailOrders.map((order) => (
-                          <tr
-                            key={order.id}
-                            className="border-t border-pink-100"
-                          >
-                            <td className="px-4 py-3 text-[#6f526d]">
-                              {formatDateTime(order.order_finished_at)}
-                            </td>
+              {selectedDetailStaff ? (
+                <div className="mt-6 grid gap-6 xl:grid-cols-2">
+                  <div className="overflow-x-auto rounded-2xl border border-pink-100 bg-pink-50">
+                    <div className="border-b border-pink-100 p-4">
+                      <h3 className="font-bold">此陪陪訂單明細</h3>
+                    </div>
 
-                            <td className="px-4 py-3">
-                              {order.customer_name || "-"}
-                            </td>
+                    {selectedDetailOrders.length === 0 ? (
+                      <div className="p-8 text-center text-sm text-[#80647d]">
+                        此時間範圍內沒有訂單
+                      </div>
+                    ) : (
+                      <table className="min-w-[850px] w-full text-left text-sm">
+                        <thead className="bg-white/10 text-[#6f526d]">
+                          <tr>
+                            <th className="px-4 py-3">完成時間</th>
+                            <th className="px-4 py-3">客人</th>
+                            <th className="px-4 py-3">服務</th>
+                            <th className="px-4 py-3">金額</th>
+                            <th className="px-4 py-3">薪資</th>
+                            <th className="px-4 py-3">獎金</th>
+                            <th className="px-4 py-3">狀態</th>
+                          </tr>
+                        </thead>
 
-                            <td className="px-4 py-3">
-                              <p>{order.service_name || "-"}</p>
+                        <tbody>
+                          {selectedDetailOrders.map((order) => (
+                            <tr
+                              key={order.id}
+                              className="border-t border-pink-100"
+                            >
+                              <td className="px-4 py-3 text-[#6f526d]">
+                                {formatDateTime(order.order_finished_at)}
+                              </td>
 
-                              {order.admin_note ? (
-                                <p className="mt-1 text-xs text-[#92778f]">
-                                  備註：{order.admin_note}
-                                </p>
-                              ) : null}
-                            </td>
+                              <td className="px-4 py-3">
+                                {order.customer_name || "-"}
+                              </td>
 
-                            <td className="px-4 py-3">
-                              $
-                              {Number(order.order_amount || 0).toLocaleString()}
-                            </td>
+                              <td className="px-4 py-3">
+                                <p>{order.service_name || "-"}</p>
 
-                            <td className="px-4 py-3 text-pink-500">
-                              $
-                              {Number(order.staff_salary || 0).toLocaleString()}
-                            </td>
+                                {order.admin_note ? (
+                                  <p className="mt-1 text-xs text-[#92778f]">
+                                    備註：{order.admin_note}
+                                  </p>
+                                ) : null}
+                              </td>
 
-                            <td className="px-4 py-3">
-                              $
-                              {Number(order.bonus_amount || 0).toLocaleString()}
-                            </td>
+                              <td className="px-4 py-3">
+                                $
+                                {Number(order.order_amount || 0).toLocaleString()}
+                              </td>
 
-                            <td className="px-4 py-3">
-                              <span
-                                className={`rounded-full px-3 py-1 text-xs ${
-                                  order.status === "已入帳"
-                                    ? "bg-emerald-500/20 text-emerald-300"
-                                    : "bg-yellow-500/20 text-yellow-300"
+                              <td className="px-4 py-3 text-pink-500">
+                                $
+                                {Number(order.staff_salary || 0).toLocaleString()}
+                              </td>
+
+                              <td className="px-4 py-3">
+                                $
+                                {Number(order.bonus_amount || 0).toLocaleString()}
+                              </td>
+
+                              <td className="px-4 py-3">
+                                <span
+                                  className={`rounded-full px-3 py-1 text-xs ${
+                                    order.status === "已入帳"
+                                      ? "bg-emerald-500/20 text-emerald-300"
+                                      : "bg-yellow-500/20 text-yellow-300"
+                                  }`}
+                                >
+                                  {order.status || "未入帳"}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    )}
+                  </div>
+
+                  <div className="overflow-x-auto rounded-2xl border border-pink-100 bg-pink-50">
+                    <div className="border-b border-pink-100 p-4">
+                      <h3 className="font-bold">此陪陪額外獎金 / 薪水扣除</h3>
+                    </div>
+
+                    {selectedDetailBonuses.length === 0 ? (
+                      <div className="p-8 text-center text-sm text-[#80647d]">
+                        此時間範圍內沒有額外獎金或薪水扣除
+                      </div>
+                    ) : (
+                      <table className="min-w-[650px] w-full text-left text-sm">
+                        <thead className="bg-white/10 text-[#6f526d]">
+                          <tr>
+                            <th className="px-4 py-3">時間</th>
+                            <th className="px-4 py-3">獎金名稱</th>
+                            <th className="px-4 py-3">金額</th>
+                            <th className="px-4 py-3">備註</th>
+                            <th className="px-4 py-3">操作</th>
+                          </tr>
+                        </thead>
+
+                        <tbody>
+                          {selectedDetailBonuses.map((bonus) => (
+                            <tr
+                              key={bonus.id}
+                              className="border-t border-pink-100"
+                            >
+                              <td className="px-4 py-3 text-[#6f526d]">
+                                {formatDateTime(bonus.created_at)}
+                              </td>
+
+                              <td className="px-4 py-3">{bonus.title}</td>
+
+                              <td
+                                className={`px-4 py-3 ${
+                                  Number(bonus.amount || 0) < 0
+                                    ? "text-red-300"
+                                    : "text-pink-500"
                                 }`}
                               >
-                                {order.status || "未入帳"}
-                              </span>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  )}
-                </div>
+                                ${Number(bonus.amount || 0).toLocaleString()}
+                              </td>
 
-                <div className="overflow-x-auto rounded-2xl border border-pink-100 bg-pink-50">
-                  <div className="border-b border-pink-100 p-4">
-                    <h3 className="font-bold">此陪陪額外獎金 / 薪水扣除</h3>
+                              <td className="px-4 py-3">{bonus.note || "-"}</td>
+                              <td className="px-4 py-3">
+                                <button
+                                  onClick={() =>
+                                    void deleteSalaryAdjustment(bonus)
+                                  }
+                                  disabled={deletingBonusId === bonus.id}
+                                  className="inline-flex items-center gap-2 rounded-xl bg-red-500 px-3 py-2 text-xs font-semibold text-white hover:bg-red-400 disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                  {deletingBonusId === bonus.id ? (
+                                    <Loader2
+                                      size={14}
+                                      className="animate-spin"
+                                    />
+                                  ) : (
+                                    <Trash2 size={14} />
+                                  )}
+                                  {Number(bonus.amount || 0) < 0
+                                    ? "刪除扣薪"
+                                    : "刪除獎金"}
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    )}
                   </div>
-
-                  {selectedDetailBonuses.length === 0 ? (
-                    <div className="p-8 text-center text-sm text-[#80647d]">
-                      此時間範圍內沒有額外獎金或薪水扣除
-                    </div>
-                  ) : (
-                    <table className="min-w-[650px] w-full text-left text-sm">
-                      <thead className="bg-white/10 text-[#6f526d]">
-                        <tr>
-                          <th className="px-4 py-3">時間</th>
-                          <th className="px-4 py-3">獎金名稱</th>
-                          <th className="px-4 py-3">金額</th>
-                          <th className="px-4 py-3">備註</th>
-                          <th className="px-4 py-3">操作</th>
-                        </tr>
-                      </thead>
-
-                      <tbody>
-                        {selectedDetailBonuses.map((bonus) => (
-                          <tr
-                            key={bonus.id}
-                            className="border-t border-pink-100"
-                          >
-                            <td className="px-4 py-3 text-[#6f526d]">
-                              {formatDateTime(bonus.created_at)}
-                            </td>
-
-                            <td className="px-4 py-3">{bonus.title}</td>
-
-                            <td
-                              className={`px-4 py-3 ${
-                                Number(bonus.amount || 0) < 0
-                                  ? "text-red-300"
-                                  : "text-pink-500"
-                              }`}
-                            >
-                              ${Number(bonus.amount || 0).toLocaleString()}
-                            </td>
-
-                            <td className="px-4 py-3">{bonus.note || "-"}</td>
-                            <td className="px-4 py-3">
-                              <button
-                                onClick={() =>
-                                  void deleteSalaryAdjustment(bonus)
-                                }
-                                disabled={deletingBonusId === bonus.id}
-                                className="inline-flex items-center gap-2 rounded-xl bg-red-500 px-3 py-2 text-xs font-semibold text-white hover:bg-red-400 disabled:cursor-not-allowed disabled:opacity-50"
-                              >
-                                {deletingBonusId === bonus.id ? (
-                                  <Loader2
-                                    size={14}
-                                    className="animate-spin"
-                                  />
-                                ) : (
-                                  <Trash2 size={14} />
-                                )}
-                                {Number(bonus.amount || 0) < 0
-                                  ? "刪除扣薪"
-                                  : "刪除獎金"}
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  )}
                 </div>
-              </div>
-            ) : null}
-          </div>
+              ) : null}
+            </div>
+          </OrderDisclosure>
 
           <details className="salary-commission-panel rounded-[28px] border border-pink-100 bg-white p-5 shadow-sm shadow-pink-100">
             <summary className="cursor-pointer text-lg font-black text-[#3f2947]">
@@ -1256,527 +1431,374 @@ export default function AdminSalaryPage() {
             </div>
           </details>
 
-          <div className="salary-order-form rounded-[28px] border border-pink-100 bg-white p-5 shadow-sm shadow-pink-100">
-            <div className="flex items-center gap-2">
-              <ClipboardList className="text-pink-500" size={20} />
-              <h2 className="text-lg font-black text-[#3f2947]">新增訂單</h2>
-            </div>
+          <OrderDisclosure title="新增訂單">
+            <div className="salary-order-form rounded-[28px] border border-pink-100 bg-white p-5 shadow-sm shadow-pink-100">
+              <div className="flex items-center gap-2">
+                <ClipboardList className="text-pink-500" size={20} />
+                <h2 className="text-lg font-black text-[#3f2947]">新增訂單</h2>
+              </div>
 
-            <p className="mt-2 text-sm text-[#80647d]">
-              完成時間預設為現在，可自行修改。選擇陪陪後會自動套用她的個人抽成檔位。
-            </p>
+              <p className="mt-2 text-sm text-[#80647d]">
+                完成時間預設為現在，可自行修改。選擇陪陪後會自動套用她的個人抽成檔位。
+              </p>
 
-            <div className="mt-5 grid gap-4 md:grid-cols-2">
-              <SearchableStaffSelect
-                label="員工"
-                value={orderForm.discord_id}
-                staffList={staffList}
-                onChange={(value) =>
-                  setOrderForm((prev) => ({
-                    ...prev,
-                    discord_id: value,
-                    salary_rate: value
-                      ? String(
-                          getDefaultOrderRate(
-                            value,
-                            prev.entry_type,
-                            prev.order_finished_at
-                          )
-                        )
-                      : "",
-                  }))
-                }
-              />
-
-              <Input
-                label="老闆"
-                value={orderForm.customer_name}
-                placeholder="可填 Discord 名稱或暱稱"
-                onChange={(value) =>
-                  setOrderForm((prev) => ({ ...prev, customer_name: value }))
-                }
-              />
-
-              <label className="block">
-                <span className="text-sm font-semibold text-[#7b4f85]">
-                  類型
-                </span>
-                <select
-                  value={orderForm.entry_type}
-                  onChange={(event) =>
-                    setOrderForm((prev) => {
-                      const entryType = event.target.value as "order" | "tip";
-                      return {
-                        ...prev,
-                        entry_type: entryType,
-                        salary_rate: prev.discord_id
-                          ? String(
-                              getDefaultOrderRate(
-                                prev.discord_id,
-                                entryType,
-                                prev.order_finished_at
-                              )
-                            )
-                          : prev.salary_rate,
-                      };
-                    })
-                  }
-                  className="qiunai-input mt-2"
-                >
-                  <option value="order">訂單</option>
-                  <option value="tip">打賞</option>
-                </select>
-              </label>
-
-              <Input
-                label="服務項目"
-                value={orderForm.service_name}
-                placeholder="例如：特戰英豪娛樂陪玩"
-                onChange={(value) =>
-                  setOrderForm((prev) => ({ ...prev, service_name: value }))
-                }
-              />
-
-              <Input
-                label="完成時間"
-                type="datetime-local"
-                value={orderForm.order_finished_at}
-                onChange={(value) =>
-                  setOrderForm((prev) => ({
-                    ...prev,
-                    order_finished_at: value,
-                    salary_rate: prev.discord_id
-                      ? String(
-                          getDefaultOrderRate(
-                            prev.discord_id,
-                            prev.entry_type,
-                            value
-                          )
-                        )
-                      : prev.salary_rate,
-                  }))
-                }
-              />
-
-              <Input
-                label="訂單金額"
-                type="number"
-                value={orderForm.order_amount}
-                onChange={(value) =>
-                  setOrderForm((prev) => ({ ...prev, order_amount: value }))
-                }
-              />
-
-              {orderForm.entry_type === "order" ? (
-                <Input
-                  label="員工抽成（預設可修改）"
-                  type="number"
-                  value={orderForm.salary_rate}
+              <div className="mt-5 grid gap-4 md:grid-cols-2">
+                <SearchableStaffSelect
+                  label="員工"
+                  value={orderForm.discord_id}
+                  staffList={staffList}
                   onChange={(value) =>
                     setOrderForm((prev) => ({
                       ...prev,
-                      salary_rate: value,
+                      discord_id: value,
+                      salary_rate: value
+                        ? String(
+                            getDefaultOrderRate(
+                              value,
+                              prev.entry_type,
+                              prev.order_finished_at
+                            )
+                          )
+                        : "",
                     }))
                   }
                 />
-              ) : (
-                <div className="block">
-                  <span className="text-sm text-[#6f526d]">員工抽成</span>
-                  <div className="mt-2 rounded-xl border border-pink-100 bg-pink-50 px-4 py-3 font-bold text-[#7b4f85]">
-                    {orderForm.discord_id
-                      ? `${orderForm.salary_rate}%（打賞固定）`
-                      : "請先選擇陪陪"}
+
+                <Input
+                  label="老闆"
+                  value={orderForm.customer_name}
+                  placeholder="可填 Discord 名稱或暱稱"
+                  onChange={(value) =>
+                    setOrderForm((prev) => ({ ...prev, customer_name: value }))
+                  }
+                />
+
+                <label className="block">
+                  <span className="text-sm font-semibold text-[#7b4f85]">
+                    類型
+                  </span>
+                  <select
+                    value={orderForm.entry_type}
+                    onChange={(event) =>
+                      setOrderForm((prev) => {
+                        const entryType = event.target.value as "order" | "tip";
+                        return {
+                          ...prev,
+                          entry_type: entryType,
+                          salary_rate: prev.discord_id
+                            ? String(
+                                getDefaultOrderRate(
+                                  prev.discord_id,
+                                  entryType,
+                                  prev.order_finished_at
+                                )
+                              )
+                            : prev.salary_rate,
+                        };
+                      })
+                    }
+                    className="qiunai-input mt-2"
+                  >
+                    <option value="order">訂單</option>
+                    <option value="tip">打賞</option>
+                  </select>
+                </label>
+
+                <Input
+                  label="服務項目"
+                  value={orderForm.service_name}
+                  placeholder="例如：特戰英豪娛樂陪玩"
+                  onChange={(value) =>
+                    setOrderForm((prev) => ({ ...prev, service_name: value }))
+                  }
+                />
+
+                <Input
+                  label="完成時間"
+                  type="datetime-local"
+                  value={orderForm.order_finished_at}
+                  onChange={(value) =>
+                    setOrderForm((prev) => ({
+                      ...prev,
+                      order_finished_at: value,
+                      salary_rate: prev.discord_id
+                        ? String(
+                            getDefaultOrderRate(
+                              prev.discord_id,
+                              prev.entry_type,
+                              value
+                            )
+                          )
+                        : prev.salary_rate,
+                    }))
+                  }
+                />
+
+                <Input
+                  label="訂單金額"
+                  type="number"
+                  value={orderForm.order_amount}
+                  onChange={(value) =>
+                    setOrderForm((prev) => ({ ...prev, order_amount: value }))
+                  }
+                />
+
+                {orderForm.entry_type === "order" ? (
+                  <Input
+                    label="員工抽成（預設可修改）"
+                    type="number"
+                    value={orderForm.salary_rate}
+                    onChange={(value) =>
+                      setOrderForm((prev) => ({
+                        ...prev,
+                        salary_rate: value,
+                      }))
+                    }
+                  />
+                ) : (
+                  <div className="block">
+                    <span className="text-sm text-[#6f526d]">員工抽成</span>
+                    <div className="mt-2 rounded-xl border border-pink-100 bg-pink-50 px-4 py-3 font-bold text-[#7b4f85]">
+                      {orderForm.discord_id
+                        ? `${orderForm.salary_rate}%（打賞固定）`
+                        : "請先選擇陪陪"}
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
 
-              <Input
-                label="訂單獎金"
-                type="number"
-                value={orderForm.bonus_amount}
-                onChange={(value) =>
-                  setOrderForm((prev) => ({ ...prev, bonus_amount: value }))
-                }
-              />
+                <Input
+                  label="訂單獎金"
+                  type="number"
+                  value={orderForm.bonus_amount}
+                  onChange={(value) =>
+                    setOrderForm((prev) => ({ ...prev, bonus_amount: value }))
+                  }
+                />
 
-              <button
-                onClick={addOrder}
-                className="mt-6 flex items-center justify-center gap-2 rounded-xl bg-pink-500 px-4 py-3 font-semibold hover:bg-pink-400"
-              >
-                <Plus size={18} />
-                新增訂單
-              </button>
-            </div>
-          </div>
-
-          <div className="salary-bonus-form rounded-[28px] border border-pink-100 bg-white p-5 shadow-sm shadow-pink-100">
-            <div className="flex items-center gap-2">
-              <Gift className="text-pink-500" size={20} />
-              <h2 className="text-lg font-black text-[#3f2947]">
-                新增員工獎金
-              </h2>
-            </div>
-
-            <p className="mt-2 text-sm text-[#80647d]">
-              獎金時間預設為現在，可自行修改。
-            </p>
-
-            <div className="mt-5 grid gap-4 md:grid-cols-2">
-              <SearchableStaffSelect
-                label="員工"
-                value={bonusForm.discord_id}
-                staffList={staffList}
-                onChange={(value) =>
-                  setBonusForm((prev) => ({ ...prev, discord_id: value }))
-                }
-              />
-
-              <Input
-                label="獎金名稱"
-                value={bonusForm.title}
-                placeholder="例如：活動獎金"
-                onChange={(value) =>
-                  setBonusForm((prev) => ({ ...prev, title: value }))
-                }
-              />
-
-              <Input
-                label="金額"
-                type="number"
-                value={bonusForm.amount}
-                onChange={(value) =>
-                  setBonusForm((prev) => ({ ...prev, amount: value }))
-                }
-              />
-
-              <Input
-                label="獎金時間"
-                type="datetime-local"
-                value={bonusForm.created_at}
-                onChange={(value) =>
-                  setBonusForm((prev) => ({ ...prev, created_at: value }))
-                }
-              />
-
-              <Input
-                label="備註"
-                value={bonusForm.note}
-                onChange={(value) =>
-                  setBonusForm((prev) => ({ ...prev, note: value }))
-                }
-              />
-
-              <button
-                onClick={addBonus}
-                className="md:col-span-2 flex items-center justify-center gap-2 rounded-xl bg-pink-500 px-4 py-3 font-semibold hover:bg-pink-400"
-              >
-                <Plus size={18} />
-                新增獎金
-              </button>
-            </div>
-          </div>
-
-          <div className="salary-deduction-form rounded-[28px] border border-rose-100 bg-white p-5 shadow-sm shadow-rose-100">
-            <div className="flex items-center gap-2">
-              <MinusCircle className="text-red-300" size={20} />
-              <h2 className="text-lg font-black text-[#3f2947]">
-                新增薪水扣除
-              </h2>
-            </div>
-
-            <p className="mt-2 text-sm text-[#80647d]">
-              扣除金額請輸入正數，系統會以負數列入薪資明細。
-            </p>
-
-            <div className="mt-5 grid gap-4 md:grid-cols-2">
-              <SearchableStaffSelect
-                label="員工"
-                value={deductionForm.discord_id}
-                staffList={staffList}
-                onChange={(value) =>
-                  setDeductionForm((prev) => ({ ...prev, discord_id: value }))
-                }
-              />
-
-              <Input
-                label="扣除金額"
-                type="number"
-                value={deductionForm.amount}
-                placeholder="例如：300"
-                onChange={(value) =>
-                  setDeductionForm((prev) => ({ ...prev, amount: value }))
-                }
-              />
-
-              <Input
-                label="扣除時間"
-                type="datetime-local"
-                value={deductionForm.created_at}
-                onChange={(value) =>
-                  setDeductionForm((prev) => ({ ...prev, created_at: value }))
-                }
-              />
-
-              <Input
-                label="備註"
-                value={deductionForm.note}
-                placeholder="例如：遲到、請假扣款、手動修正"
-                onChange={(value) =>
-                  setDeductionForm((prev) => ({ ...prev, note: value }))
-                }
-              />
-
-              <button
-                onClick={addDeduction}
-                className="flex items-center justify-center gap-2 rounded-xl bg-red-500 px-4 py-3 font-semibold hover:bg-red-400 md:col-span-2"
-              >
-                <MinusCircle size={18} />
-                新增扣除
-              </button>
-            </div>
-          </div>
-
-          <div className="salary-orders-table overflow-x-auto rounded-[28px] border border-pink-100 bg-white shadow-sm shadow-pink-100">
-            {loading ? (
-              <div className="p-8 text-center text-[#80647d]">載入中...</div>
-            ) : orders.length === 0 ? (
-              <div className="p-8 text-center text-[#80647d]">
-                此時間範圍內沒有薪資訂單
+                <button
+                  onClick={addOrder}
+                  className="mt-6 flex items-center justify-center gap-2 rounded-xl bg-pink-500 px-4 py-3 font-semibold hover:bg-pink-400"
+                >
+                  <Plus size={18} />
+                  新增訂單
+                </button>
               </div>
-            ) : (
-              <table className="min-w-[1350px] w-full text-left text-sm">
-                <thead className="bg-white/10 text-[#6f526d]">
-                  <tr>
-                    <th className="px-4 py-3">完成時間</th>
-                    <th className="px-4 py-3">員工</th>
-                    <th className="px-4 py-3">客人</th>
-                    <th className="px-4 py-3">服務</th>
-                    <th className="px-4 py-3">訂單金額</th>
-                    <th className="px-4 py-3">員工薪資</th>
-                    <th className="px-4 py-3">抽成</th>
-                    <th className="px-4 py-3">獎金</th>
-                    <th className="px-4 py-3">平台收入</th>
-                    <th className="px-4 py-3">平台支出</th>
-                    <th className="px-4 py-3">狀態</th>
-                    <th className="px-4 py-3">發薪日</th>
-                    <th className="px-4 py-3">操作</th>
-                  </tr>
-                </thead>
+            </div>
+          </OrderDisclosure>
 
-                <tbody>
-                  {orders.map((order) => (
-                    <tr key={order.id} className="border-t border-pink-100">
-                      <td className="px-4 py-3 text-[#6f526d]">
-                        {formatDateTime(order.order_finished_at)}
-                      </td>
+          <OrderDisclosure title="新增獎金">
+            <div className="salary-bonus-form rounded-[28px] border border-pink-100 bg-white p-5 shadow-sm shadow-pink-100">
+              <div className="flex items-center gap-2">
+                <Gift className="text-pink-500" size={20} />
+                <h2 className="text-lg font-black text-[#3f2947]">
+                  新增員工獎金
+                </h2>
+              </div>
 
-                      <td className="px-4 py-3">
-                        <button
-                          onClick={() =>
-                            setSelectedDetailDiscordId(order.discord_id)
-                          }
-                          className="text-left hover:text-pink-500"
-                        >
-                          <p>{order.staff_name || "未知員工"}</p>
-                          <p className="text-xs text-[#92778f]">
-                            {order.discord_id}
-                          </p>
-                        </button>
-                      </td>
+              <p className="mt-2 text-sm text-[#80647d]">
+                獎金時間預設為現在，可自行修改。
+              </p>
 
-                      <td className="px-4 py-3">
-                        {order.customer_name || "-"}
-                      </td>
-                      <td className="px-4 py-3">
-                        <p>{order.service_name || "-"}</p>
-                        {order.admin_note ? (
-                          <p className="mt-1 text-xs text-[#92778f]">
-                            備註：{order.admin_note}
-                          </p>
-                        ) : null}
-                      </td>
+              <div className="mt-5 grid gap-4 md:grid-cols-2">
+                <SearchableStaffSelect
+                  label="員工"
+                  value={bonusForm.discord_id}
+                  staffList={staffList}
+                  onChange={(value) =>
+                    setBonusForm((prev) => ({ ...prev, discord_id: value }))
+                  }
+                />
 
-                      <td className="px-4 py-3">
-                        ${Number(order.order_amount || 0).toLocaleString()}
-                      </td>
+                <Input
+                  label="獎金名稱"
+                  value={bonusForm.title}
+                  placeholder="例如：活動獎金"
+                  onChange={(value) =>
+                    setBonusForm((prev) => ({ ...prev, title: value }))
+                  }
+                />
 
-                      <td className="px-4 py-3 text-pink-500">
-                        ${Number(order.staff_salary || 0).toLocaleString()}
-                      </td>
+                <Input
+                  label="金額"
+                  type="number"
+                  value={bonusForm.amount}
+                  onChange={(value) =>
+                    setBonusForm((prev) => ({ ...prev, amount: value }))
+                  }
+                />
 
-                      <td className="px-4 py-3">
-                        <p>
-                          {order.salary_rate ? `${order.salary_rate}%` : "-"}
-                        </p>
-                        <p className="text-xs text-[#92778f]">
-                          {order.salary_level || "-"}
-                        </p>
-                      </td>
+                <Input
+                  label="獎金時間"
+                  type="datetime-local"
+                  value={bonusForm.created_at}
+                  onChange={(value) =>
+                    setBonusForm((prev) => ({ ...prev, created_at: value }))
+                  }
+                />
 
-                      <td className="px-4 py-3">
-                        ${Number(order.bonus_amount || 0).toLocaleString()}
-                      </td>
+                <Input
+                  label="備註"
+                  value={bonusForm.note}
+                  onChange={(value) =>
+                    setBonusForm((prev) => ({ ...prev, note: value }))
+                  }
+                />
 
-                      <td className="px-4 py-3">
-                        $
-                        {Number(
-                          order.platform_income || order.order_amount || 0
-                        ).toLocaleString()}
-                      </td>
+                <button
+                  onClick={addBonus}
+                  className="md:col-span-2 flex items-center justify-center gap-2 rounded-xl bg-pink-500 px-4 py-3 font-semibold hover:bg-pink-400"
+                >
+                  <Plus size={18} />
+                  新增獎金
+                </button>
+              </div>
+            </div>
+          </OrderDisclosure>
 
-                      <td className="px-4 py-3">
-                        $
-                        {Number(
-                          order.platform_expense ||
-                            Number(order.staff_salary || 0) +
-                              Number(order.bonus_amount || 0)
-                        ).toLocaleString()}
-                      </td>
+          <OrderDisclosure title="新增薪水扣除">
+            <div className="salary-deduction-form rounded-[28px] border border-rose-100 bg-white p-5 shadow-sm shadow-rose-100">
+              <div className="flex items-center gap-2">
+                <MinusCircle className="text-red-300" size={20} />
+                <h2 className="text-lg font-black text-[#3f2947]">
+                  新增薪水扣除
+                </h2>
+              </div>
 
-                      <td className="px-4 py-3">
-                        <span
-                          className={`rounded-full px-3 py-1 text-xs ${
-                            order.status === "已入帳"
-                              ? "bg-emerald-500/20 text-emerald-300"
-                              : "bg-yellow-500/20 text-yellow-300"
+              <p className="mt-2 text-sm text-[#80647d]">
+                扣除金額請輸入正數，系統會以負數列入薪資明細。
+              </p>
+
+              <div className="mt-5 grid gap-4 md:grid-cols-2">
+                <SearchableStaffSelect
+                  label="員工"
+                  value={deductionForm.discord_id}
+                  staffList={staffList}
+                  onChange={(value) =>
+                    setDeductionForm((prev) => ({ ...prev, discord_id: value }))
+                  }
+                />
+
+                <Input
+                  label="扣除金額"
+                  type="number"
+                  value={deductionForm.amount}
+                  placeholder="例如：300"
+                  onChange={(value) =>
+                    setDeductionForm((prev) => ({ ...prev, amount: value }))
+                  }
+                />
+
+                <Input
+                  label="扣除時間"
+                  type="datetime-local"
+                  value={deductionForm.created_at}
+                  onChange={(value) =>
+                    setDeductionForm((prev) => ({ ...prev, created_at: value }))
+                  }
+                />
+
+                <Input
+                  label="備註"
+                  value={deductionForm.note}
+                  placeholder="例如：遲到、請假扣款、手動修正"
+                  onChange={(value) =>
+                    setDeductionForm((prev) => ({ ...prev, note: value }))
+                  }
+                />
+
+                <button
+                  onClick={addDeduction}
+                  className="flex items-center justify-center gap-2 rounded-xl bg-red-500 px-4 py-3 font-semibold hover:bg-red-400 md:col-span-2"
+                >
+                  <MinusCircle size={18} />
+                  新增扣除
+                </button>
+              </div>
+            </div>
+          </OrderDisclosure>
+
+          <OrderDisclosure title="獎金／扣除明細">
+            <div className="salary-bonus-table overflow-x-auto rounded-[28px] border border-pink-100 bg-white shadow-sm shadow-pink-100">
+              <div className="border-b border-pink-100 p-5">
+                <h2 className="text-lg font-black text-[#3f2947]">
+                  獎金 / 扣除明細
+                </h2>
+              </div>
+
+              {bonusList.length === 0 ? (
+                <div className="p-8 text-center text-[#80647d]">
+                  此時間範圍內沒有額外獎金或薪水扣除
+                </div>
+              ) : (
+                <table className="min-w-[800px] w-full text-left text-sm">
+                  <thead className="bg-white/10 text-[#6f526d]">
+                    <tr>
+                      <th className="px-4 py-3">時間</th>
+                      <th className="px-4 py-3">員工</th>
+                      <th className="px-4 py-3">獎金名稱</th>
+                      <th className="px-4 py-3">金額</th>
+                      <th className="px-4 py-3">備註</th>
+                      <th className="px-4 py-3">操作</th>
+                    </tr>
+                  </thead>
+
+                  <tbody>
+                    {bonusList.map((bonus) => (
+                      <tr key={bonus.id} className="border-t border-pink-100">
+                        <td className="px-4 py-3 text-[#6f526d]">
+                          {formatDateTime(bonus.created_at)}
+                        </td>
+
+                        <td className="px-4 py-3">
+                          <button
+                            onClick={() =>
+                              setSelectedDetailDiscordId(bonus.discord_id)
+                            }
+                            className="text-left hover:text-pink-500"
+                          >
+                            <p>{bonus.staff_name || bonus.discord_id}</p>
+                            <p className="text-xs text-[#92778f]">
+                              {bonus.discord_id}
+                            </p>
+                          </button>
+                        </td>
+
+                        <td className="px-4 py-3">{bonus.title}</td>
+
+                        <td
+                          className={`px-4 py-3 ${
+                            Number(bonus.amount || 0) < 0
+                              ? "text-red-300"
+                              : "text-pink-500"
                           }`}
                         >
-                          {order.status || "未入帳"}
-                        </span>
-                      </td>
+                          ${Number(bonus.amount || 0).toLocaleString()}
+                        </td>
 
-                      <td className="px-4 py-3 text-[#6f526d]">
-                        {order.wallet_settled_at
-                          ? formatDateTime(order.wallet_settled_at)
-                          : order.status === "已入帳" && order.paid_at
-                            ? formatDateTime(order.paid_at)
-                            : "-"}
-                      </td>
-
-                      <td className="px-4 py-3">
-                        <div className="flex flex-col gap-2">
-                          {order.status === "已入帳" ? (
-                            <span className="text-xs text-[#92778f]">
-                              已完成
-                            </span>
-                          ) : (
-                            <button
-                              onClick={() => markPaid(order)}
-                              className="flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 py-2 font-semibold hover:bg-emerald-400"
-                            >
-                              <CheckCircle2 size={16} />
-                              已入帳
-                            </button>
-                          )}
-
+                        <td className="px-4 py-3">{bonus.note || "-"}</td>
+                        <td className="px-4 py-3">
                           <button
-                            onClick={() => setEditingOrder(order)}
-                            className="rounded-xl bg-blue-500 px-4 py-2 font-semibold hover:bg-blue-400"
+                            onClick={() => void deleteSalaryAdjustment(bonus)}
+                            disabled={deletingBonusId === bonus.id}
+                            className="inline-flex items-center gap-2 rounded-xl bg-red-500 px-3 py-2 text-xs font-semibold text-white hover:bg-red-400 disabled:cursor-not-allowed disabled:opacity-50"
                           >
-                            修改細節
+                            {deletingBonusId === bonus.id ? (
+                              <Loader2 size={14} className="animate-spin" />
+                            ) : (
+                              <Trash2 size={14} />
+                            )}
+                            {Number(bonus.amount || 0) < 0
+                              ? "刪除扣薪"
+                              : "刪除獎金"}
                           </button>
-
-                          <button
-                            onClick={async () => {
-                              const ok = await deleteSalaryOrder(order.id);
-
-                              if (ok) {
-                                await loadAll();
-                              }
-                            }}
-                            className="rounded-xl bg-red-500 px-4 py-2 font-semibold hover:bg-red-400"
-                          >
-                            刪除
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
-
-          <div className="salary-bonus-table overflow-x-auto rounded-[28px] border border-pink-100 bg-white shadow-sm shadow-pink-100">
-            <div className="border-b border-pink-100 p-5">
-              <h2 className="text-lg font-black text-[#3f2947]">
-                獎金 / 扣除明細
-              </h2>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
             </div>
-
-            {bonusList.length === 0 ? (
-              <div className="p-8 text-center text-[#80647d]">
-                此時間範圍內沒有額外獎金或薪水扣除
-              </div>
-            ) : (
-              <table className="min-w-[800px] w-full text-left text-sm">
-                <thead className="bg-white/10 text-[#6f526d]">
-                  <tr>
-                    <th className="px-4 py-3">時間</th>
-                    <th className="px-4 py-3">員工</th>
-                    <th className="px-4 py-3">獎金名稱</th>
-                    <th className="px-4 py-3">金額</th>
-                    <th className="px-4 py-3">備註</th>
-                    <th className="px-4 py-3">操作</th>
-                  </tr>
-                </thead>
-
-                <tbody>
-                  {bonusList.map((bonus) => (
-                    <tr key={bonus.id} className="border-t border-pink-100">
-                      <td className="px-4 py-3 text-[#6f526d]">
-                        {formatDateTime(bonus.created_at)}
-                      </td>
-
-                      <td className="px-4 py-3">
-                        <button
-                          onClick={() =>
-                            setSelectedDetailDiscordId(bonus.discord_id)
-                          }
-                          className="text-left hover:text-pink-500"
-                        >
-                          <p>{bonus.staff_name || bonus.discord_id}</p>
-                          <p className="text-xs text-[#92778f]">
-                            {bonus.discord_id}
-                          </p>
-                        </button>
-                      </td>
-
-                      <td className="px-4 py-3">{bonus.title}</td>
-
-                      <td
-                        className={`px-4 py-3 ${
-                          Number(bonus.amount || 0) < 0
-                            ? "text-red-300"
-                            : "text-pink-500"
-                        }`}
-                      >
-                        ${Number(bonus.amount || 0).toLocaleString()}
-                      </td>
-
-                      <td className="px-4 py-3">{bonus.note || "-"}</td>
-                      <td className="px-4 py-3">
-                        <button
-                          onClick={() => void deleteSalaryAdjustment(bonus)}
-                          disabled={deletingBonusId === bonus.id}
-                          className="inline-flex items-center gap-2 rounded-xl bg-red-500 px-3 py-2 text-xs font-semibold text-white hover:bg-red-400 disabled:cursor-not-allowed disabled:opacity-50"
-                        >
-                          {deletingBonusId === bonus.id ? (
-                            <Loader2 size={14} className="animate-spin" />
-                          ) : (
-                            <Trash2 size={14} />
-                          )}
-                          {Number(bonus.amount || 0) < 0
-                            ? "刪除扣薪"
-                            : "刪除獎金"}
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
+          </OrderDisclosure>
 
           {editingOrder && (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
