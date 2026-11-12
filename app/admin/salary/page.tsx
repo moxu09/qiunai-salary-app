@@ -306,6 +306,15 @@ export default function AdminSalaryPage() {
     );
   }, [bonusList, selectedDetailDiscordId]);
 
+  function showStaffDetails(discordId: string) {
+    setSelectedDetailDiscordId(discordId);
+    const details = document.querySelector<HTMLDetailsElement>("#order-staff-details");
+    if (details) {
+      details.open = true;
+      details.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }
+
   async function loadAll(staffId = filterStaffId) {
     setLoading(true);
 
@@ -890,7 +899,7 @@ export default function AdminSalaryPage() {
                         <td className="px-4 py-3">
                           <button
                             onClick={() =>
-                              setSelectedDetailDiscordId(order.discord_id)
+                              showStaffDetails(order.discord_id)
                             }
                             className="text-left hover:text-pink-500"
                           >
@@ -1123,7 +1132,7 @@ export default function AdminSalaryPage() {
             </div>
           </OrderDisclosure>
 
-          <OrderDisclosure title="陪陪個人薪資明細">
+          <OrderDisclosure id="order-staff-details" title="陪陪個人薪資明細">
             <div className="salary-personal-panel rounded-[28px] border border-pink-100 bg-white p-5 shadow-sm shadow-pink-100">
               <div className="flex items-center gap-2">
                 <WalletCards className="text-pink-500" size={20} />
@@ -1752,7 +1761,7 @@ export default function AdminSalaryPage() {
                         <td className="px-4 py-3">
                           <button
                             onClick={() =>
-                              setSelectedDetailDiscordId(bonus.discord_id)
+                              showStaffDetails(bonus.discord_id)
                             }
                             className="text-left hover:text-pink-500"
                           >
