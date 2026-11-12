@@ -326,8 +326,24 @@ export default function UnifiedHrPortal() {
             {activeTab === "appearance" ? <HrAppearancePanel /> : null}
             {(collaboration || managingActivities) && managers.length ? (
               <Card title={managementLabel}>
-                {managing ? <button type="button" className="qiunai-soft-button" onClick={() => setManagedDepartment(null)}>返回工作台檢視</button> : null}
-                {managers.map((d) => <button key={d.key} type="button" aria-pressed={managing?.key === d.key} className="qiunai-soft-button" onClick={() => setManagedDepartment(d.key)}>{managementLabel} · {nameOf(d.key)}</button>)}
+                <div className="hr-management-actions" role="group" aria-label={managementLabel}>
+                  {managers.map((department) => (
+                    <button
+                      key={department.key}
+                      type="button"
+                      aria-pressed={managing?.key === department.key}
+                      className="qiunai-soft-button"
+                      onClick={() => setManagedDepartment(department.key)}
+                    >
+                      {nameOf(department.key)}
+                    </button>
+                  ))}
+                  {managing && (
+                    <button type="button" className="qiunai-soft-button" onClick={() => setManagedDepartment(null)}>
+                      返回工作台檢視
+                    </button>
+                  )}
+                </div>
               </Card>
             ) : null}
             {(collaboration || managingActivities) && managing ? (

@@ -594,3 +594,18 @@ dialog.hr-announcement-modal::backdrop { background:rgb(15 23 42 / .65); }
  .hr-halloween-nav-decoration-4 .hr-halloween-nav-web { width:61px; height:61px; }
  .hr-halloween-nav-shard-one { right:2px; }
 }
+
+.hr-management-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.hr-management-actions .qiunai-soft-button {
+  min-height: 44px;
+  padding: 0.625rem 1.125rem;
+}
+
+.hr-management-actions .qiunai-soft-button[aria-pressed="true"] {
+  box-shadow: inset 0 0 0 2px var(--hr-control-border, #a8759d);
+}
