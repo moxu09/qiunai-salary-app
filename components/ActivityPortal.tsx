@@ -13,6 +13,8 @@ type Activity = {
   location?: string | null;
   starts_at: string;
   response_deadline: string;
+  capacity?: number | null;
+  occupied?: number | null;
   eligibility_note?: string | null;
   participant_note?: string | null;
   allow_not_attending?: boolean;
@@ -101,7 +103,13 @@ function ActivityForm({ activity, onSaved, organization }: { activity: Activity;
     ...(activity.allow_not_attending !== false ? [["not_attending", "不參與"]] : []),
     ...(activity.allow_distance !== false ? [["distance", "因地區無法參與"]] : []),
   ];
+  const remaining = activity.capacity == null || activity.occupied == null
+    ? null : Math.max(0, activity.capacity - activity.occupied);
+  const reservedSeats = existing?.response_status === "attending" ? 1 + (existing.guests?.length ?? 0) : 0;
+  const exceedsCapacity = status === "attending" && remaining != null &&
+    1 + guests.length > remaining + reservedSeats;
   const canSubmit =
+    !exceedsCapacity &&
     activity.eligibility.eligible &&
     !activity.locked &&
     statuses.some(([value]) => value === status) &&
@@ -145,7 +153,10 @@ function ActivityForm({ activity, onSaved, organization }: { activity: Activity;
         }),
       });
       const payload = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(payload.message || "送出活動回覆失敗");
+      if (!response.ok) {
+        if (response.status === 409) await onSaved();
+        throw new Error(payload.message || "送出活動回覆失敗");
+      }
       await onSaved();
       alert("活動回覆已儲存");
     } catch (error) {
@@ -170,6 +181,12 @@ function ActivityForm({ activity, onSaved, organization }: { activity: Activity;
           {activity.locked ? "已截止" : existing ? "已回覆，可修改" : "報名中"}
         </span>
       </div>
+      {remaining != null && (
+        <p className="mt-3 text-sm font-bold text-violet-700">
+          {remaining === 0 ? "名額已滿" : `剩餘 ${remaining} 個名額`}（上限 {activity.capacity} 人，含同行親友）
+        </p>
+      )}
+      {exceedsCapacity && <p role="status" className="mt-2 text-sm font-bold text-rose-700">目前名額不足，請確認同行人數。</p>}
       <div className="mt-4 grid gap-2 text-sm text-slate-600 sm:grid-cols-2">
         <p className="flex items-center gap-2">
           <CalendarDays size={16} className="text-violet-500" />

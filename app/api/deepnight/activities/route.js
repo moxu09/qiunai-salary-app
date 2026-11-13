@@ -1,3 +1,4 @@
+import { activityOccupied, checkActivityCapacityEdit, parseActivityCapacity } from "@/lib/activityCapacity.mjs";
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { requireHrPic } from "@/lib/hrAccess";
@@ -109,7 +110,7 @@ async function adminList() {
     "*",
     "slot",
   );
-  return (activities || []).map((activity) => {
+  return Promise.all((activities || []).map(async (activity) => {
     const activityResponses = responses
       .filter((item) => item.activity_id === activity.id)
       .map((item) => ({
@@ -118,6 +119,7 @@ async function adminList() {
       }));
     return {
       ...activity,
+      occupied: activity.capacity == null ? null : await activityOccupied(supabaseAdmin, "deepnight", activity.id),
       options: options.filter((option) => option.activity_id === activity.id),
       responses: activityResponses,
       stats: {
@@ -127,7 +129,7 @@ async function adminList() {
         distance: activityResponses.filter((item) => item.response_status === "distance").length,
       },
     };
-  });
+  }));
 }
 
 export async function GET(request) {
@@ -181,6 +183,7 @@ export async function GET(request) {
         const response = responses.find((item) => item.activity_id === activity.id) || null;
         return {
           ...activity,
+          occupied: activity.capacity == null ? null : await activityOccupied(supabaseAdmin, "deepnight", activity.id),
           options: options.filter((item) => item.activity_id === activity.id),
           eligibility: await employeeEligibility(activity, staff),
           response: response
@@ -232,6 +235,7 @@ export async function POST(request) {
         location: clean(body.location, 300) || null,
         starts_at: startsAt.toISOString(),
         response_deadline: responseDeadline.toISOString(),
+        capacity: parseActivityCapacity(body.capacity),
         min_completed_orders: Math.max(0, Math.floor(Number(body.minCompletedOrders) || 0)),
         min_employment_days: Math.max(0, Math.floor(Number(body.minEmploymentDays) || 0)),
         eligibility_note: clean(body.eligibilityNote, 1000) || null,
@@ -336,6 +340,8 @@ export async function PATCH(request) {
       const responseDeadline =
         requestedDeadline > latestDeadline ? latestDeadline : requestedDeadline;
       if (Number.isNaN(responseDeadline.getTime())) throw new Error("回覆截止時間不正確");
+      const capacity = body.capacity === undefined ? undefined : parseActivityCapacity(body.capacity);
+      await checkActivityCapacityEdit(supabaseAdmin, "deepnight", id, capacity);
       const options = parseEditedOptions(body.options);
       const { data: existingOptions, error: optionsError } = await supabaseAdmin
         .from("deepnight_activity_options")
@@ -391,6 +397,7 @@ export async function PATCH(request) {
       const { error: updateError } = await supabaseAdmin
         .from("deepnight_activities")
         .update({
+          ...(capacity === undefined ? {} : { capacity }),
           title,
           description: clean(body.description),
           location: clean(body.location, 300) || null,
@@ -413,7 +420,7 @@ export async function PATCH(request) {
   } catch (error) {
     return NextResponse.json(
       { ok: false, message: error?.message || "更新活動失敗" },
-      { status: error?.status || 400 },
+      { status: error?.status || (error?.message === "活動剩餘名額不足" ? 409 : 400) },
     );
   }
 }

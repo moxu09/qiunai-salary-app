@@ -23,6 +23,8 @@ type Activity = {
   location?: string | null;
   starts_at: string;
   response_deadline: string;
+  capacity?: number | null;
+  occupied?: number | null;
   is_published: boolean;
   min_completed_orders: number;
   min_employment_days: number;
@@ -50,6 +52,7 @@ const blank = () => ({
   location: "",
   startsAt: "",
   responseDeadline: "",
+  capacity: "",
   minCompletedOrders: 0,
   minEmploymentDays: 0,
   eligibilityNote: "",
@@ -121,6 +124,7 @@ export default function AdminActivityManager({ organization = "qiunai" }: { orga
       location: activity.location || "",
       startsAt: localDateTime(activity.starts_at),
       responseDeadline: localDateTime(activity.response_deadline),
+      capacity: activity.capacity?.toString() ?? "",
       minCompletedOrders: activity.min_completed_orders,
       minEmploymentDays: activity.min_employment_days,
       eligibilityNote: activity.eligibility_note || "",
@@ -247,6 +251,16 @@ export default function AdminActivityManager({ organization = "qiunai" }: { orga
               type="datetime-local"
               value={form.responseDeadline}
               onChange={(e) => setField("responseDeadline", e.target.value)}
+            />
+          </Field>
+          <Field label="活動人數上限（含同行親友）">
+            <input
+              type="number"
+              min={1}
+              step={1}
+              placeholder="留空表示不限"
+              value={form.capacity}
+              onChange={(event) => setField("capacity", event.target.value)}
             />
           </Field>
           <Field label="最低完成訂單數">
@@ -392,6 +406,11 @@ export default function AdminActivityManager({ organization = "qiunai" }: { orga
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div>
                   <h3 className="font-black text-slate-900">{activity.title}</h3>
+                  {activity.capacity != null && activity.occupied != null && (
+                    <p className="mt-1 text-xs font-bold text-slate-700">
+                      已報名 {activity.occupied} / {activity.capacity} 人（含同行親友）
+                    </p>
+                  )}
                   <p className="mt-1 text-xs font-bold text-pink-600">活動選項：{activity.allow_multiple_options ? "可複選" : "單選"}</p>
                   <p className="mt-1 text-xs text-slate-500">
                     {new Date(activity.starts_at).toLocaleString("zh-TW")}｜截止{" "}

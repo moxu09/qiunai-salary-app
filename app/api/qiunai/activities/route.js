@@ -1,3 +1,4 @@
+import { activityOccupied, checkActivityCapacityEdit, parseActivityCapacity } from "@/lib/activityCapacity.mjs";
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { requireHrPic } from "@/lib/hrAccess";
@@ -69,10 +70,11 @@ async function adminList() {
     ? await supabaseAdmin.from("qiunai_activity_guests").select("*").in("response_id", responseIds).order("slot")
     : { data: [], error: null };
   if (guestError) throw guestError;
-  return (activities || []).map((activity) => {
+  return Promise.all((activities || []).map(async (activity) => {
     const activityResponses = responses.filter((item) => item.activity_id === activity.id).map((item) => ({ ...item, guests: (guests || []).filter((guest) => guest.response_id === item.id) }));
     return {
       ...activity,
+      occupied: activity.capacity == null ? null : await activityOccupied(supabaseAdmin, "qiunai", activity.id),
       options: options.filter((option) => option.activity_id === activity.id),
       responses: activityResponses,
       stats: {
@@ -81,7 +83,7 @@ async function adminList() {
         distance: activityResponses.filter((item) => item.response_status === "distance").length,
       },
     };
-  });
+  }));
 }
 
 export async function GET(request) {
@@ -109,7 +111,7 @@ export async function GET(request) {
     if (guestError) throw guestError;
     const result = await Promise.all((activities || []).map(async (activity) => {
       const response = responses.find((item) => item.activity_id === activity.id) || null;
-      return { ...activity, options: options.filter((item) => item.activity_id === activity.id), eligibility: await employeeEligibility(activity, staff), response: response ? { ...response, guests: (guests || []).filter((guest) => guest.response_id === response.id) } : null, locked: Date.now() >= new Date(activity.response_deadline).getTime() };
+      return { ...activity, occupied: activity.capacity == null ? null : await activityOccupied(supabaseAdmin, "qiunai", activity.id), options: options.filter((item) => item.activity_id === activity.id), eligibility: await employeeEligibility(activity, staff), response: response ? { ...response, guests: (guests || []).filter((guest) => guest.response_id === response.id) } : null, locked: Date.now() >= new Date(activity.response_deadline).getTime() };
     }));
     return NextResponse.json({ ok: true, activities: result, staff: { nickname: staff.display_name || staff.discord_name, realName: staff.real_name, phone: staff.phone } });
   } catch (error) {
@@ -132,6 +134,7 @@ export async function POST(request) {
     const { data, error } = await supabaseAdmin.from("qiunai_activities").insert({
       title, description: clean(body.description), location: clean(body.location, 300) || null,
       starts_at: startsAt.toISOString(), response_deadline: responseDeadline.toISOString(),
+      capacity: parseActivityCapacity(body.capacity),
       min_completed_orders: Math.max(0, Math.floor(Number(body.minCompletedOrders) || 0)),
       min_employment_days: Math.max(0, Math.floor(Number(body.minEmploymentDays) || 0)),
       eligibility_note: clean(body.eligibilityNote, 1000) || null,
@@ -171,8 +174,7 @@ export async function PATCH(request) {
       if (!staff?.is_active) throw new Error("找不到有效員工資料");
       const eligibility = await employeeEligibility(activity, staff);
       if (!eligibility.eligible) throw new Error(`你目前不符合參與門檻：${eligibility.reasons.join("、")}`);
-      const guests = status === "attending" ? (Array.isArray(body.guests) ? body.guests : []).slice(0, 1).map((guest, index) => ({ slot: index + 1, guest_name: clean(guest.name, 100), guest_phone: clean(guest.phone, 30) })).filter((guest) => guest.guest_name && guest.guest_phone) : [];
-      if ((Array.isArray(body.guests) ? body.guests : []).length > 1) throw new Error("每位員工最多攜帶一位親友");
+      const guests = status === "attending" && Array.isArray(body.guests) ? body.guests : [];
       const options = await optionsFor([activityId]);
       let existingResponse = null;
       if (body.optionIds === undefined) {
@@ -182,19 +184,17 @@ export async function PATCH(request) {
         existingResponse = data;
       }
       const optionIds = normalizeActivityOptionIds(activity, body, options, existingResponse);
-      const { data: response, error: responseError } = await supabaseAdmin.from("qiunai_activity_responses").upsert({
-        activity_id: activityId, discord_id: discordId, response_status: status,
-        selected_option_id: optionIds[0] || null, selected_option_ids: optionIds,
-        staff_nickname: staff.display_name || staff.discord_name || discordId, staff_real_name: staff.real_name || null, staff_phone: staff.phone || null,
-        submitted_at: new Date().toISOString(), updated_at: new Date().toISOString(),
-      }, { onConflict: "activity_id,discord_id" }).select("*").single();
+      const { data: response, error: responseError } = await supabaseAdmin.rpc("submit_qiunai_activity_response", {
+        p_activity_id: activityId,
+        p_discord_id: discordId,
+        p_status: status,
+        p_option_ids: optionIds,
+        p_guests: guests,
+        p_staff_nickname: staff.display_name || staff.discord_name || discordId,
+        p_staff_real_name: staff.real_name || null,
+        p_staff_phone: staff.phone || null,
+      });
       if (responseError) throw responseError;
-      const { error: deleteError } = await supabaseAdmin.from("qiunai_activity_guests").delete().eq("response_id", response.id);
-      if (deleteError) throw deleteError;
-      if (guests.length) {
-        const { error: guestError } = await supabaseAdmin.from("qiunai_activity_guests").insert(guests.map((guest) => ({ ...guest, response_id: response.id })));
-        if (guestError) throw guestError;
-      }
       return NextResponse.json({ ok: true, response });
     }
     await requireAdmin(request);
@@ -225,6 +225,8 @@ export async function PATCH(request) {
       const requestedDeadline = new Date(body.responseDeadline || latestDeadline);
       const responseDeadline = requestedDeadline > latestDeadline ? latestDeadline : requestedDeadline;
       if (Number.isNaN(responseDeadline.getTime())) throw new Error("回覆截止時間不正確");
+      const capacity = body.capacity === undefined ? undefined : parseActivityCapacity(body.capacity);
+      await checkActivityCapacityEdit(supabaseAdmin, "qiunai", id, capacity);
       const options = parseEditedOptions(body.options);
       const { data: existingOptions, error: optionsError } = await supabaseAdmin.from("qiunai_activity_options").select("id,label,note,sort_order").eq("activity_id", id);
       if (optionsError) throw optionsError;
@@ -254,6 +256,7 @@ export async function PATCH(request) {
         if (error) throw error;
       }
       const { error: updateError } = await supabaseAdmin.from("qiunai_activities").update({
+        ...(capacity === undefined ? {} : { capacity }),
         title,
         description: clean(body.description),
         location: clean(body.location, 300) || null,
@@ -274,7 +277,7 @@ export async function PATCH(request) {
     }
     throw new Error("活動操作不正確");
   } catch (error) {
-    return NextResponse.json({ ok: false, message: error?.message || "更新活動失敗" }, { status: error?.status || 400 });
+    return NextResponse.json({ ok: false, message: error?.message || "更新活動失敗" }, { status: error?.status || (error?.message === "活動剩餘名額不足" ? 409 : 400) });
   }
 }
 

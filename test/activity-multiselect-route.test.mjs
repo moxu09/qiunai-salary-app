@@ -15,6 +15,11 @@ function database(tables) {
   const calls = [], writes = [];
   return {
     calls, writes,
+    async rpc(name, args) {
+      assert.equal(name, "submit_qiunai_activity_response");
+      writes.push({ operation: name, args });
+      return { data: { id: "new-response" }, error: null };
+    },
     from(table) {
       const entry = { table, columns: "*", filters: [], single: false };
       calls.push(entry);
@@ -137,14 +142,14 @@ test("實際回覆 route 拒絕舊頁面縮減既有複選，不刪除親友", a
   assert.equal(db.writes.length, 0);
 });
 
-test("實際回覆 route 同時儲存全部場次與相容單選欄位", async () => {
+test("實際回覆 route 將全部場次交由資料庫一次儲存", async () => {
   const db = database(fixture());
   const { activityRoute } = await routes(db);
   const response = await activityRoute.PATCH(request({ action: "respond", activityId: "activity", status: "attending", optionIds: ["s", "n", "c"], guests: [] }));
   assert.equal(response.status, 200);
-  const write = db.writes.find(call => call.operation === "upsert");
-  assert.deepEqual(write.value.selected_option_ids, ["n", "c", "s"]);
-  assert.equal(write.value.selected_option_id, "n");
+  assert.equal(db.writes.length, 1);
+  assert.equal(db.writes[0].operation, "submit_qiunai_activity_response");
+  assert.deepEqual(db.writes[0].args.p_option_ids, ["n", "c", "s"]);
 });
 
 test("複選修正仍遵守報名截止，不寫入已截止活動", async () => {
