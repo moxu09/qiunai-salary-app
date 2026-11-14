@@ -31,16 +31,19 @@ function setup() {
         select(_columns, nextOptions = {}) { options = nextOptions; return this; },
         eq(key, value) { filters.push([key, value]); return this; },
         is(key, value) { filters.push([key, value]); return this; },
+        neq(key, value) { filters.push([key, { neq: value }]); return this; },
         gte(key, value) { filters.push([key, { gte: value }]); return this; },
         lt(key, value) { filters.push([key, { lt: value }]); return this; },
         order() { return this; },
         range(start, end) { page = [start, end]; return this; },
-        in() { return this; },
+        in(key, values) { filters.push([key, { values }]); return this; },
         update(value) { patch = value; return this; },
         result() {
           const matching = (table === "salary_requests" ? rows : []).filter((row) => filters.every(([key, value]) => {
             if (value && typeof value === "object" && "gte" in value) return row[key] >= value.gte;
             if (value && typeof value === "object" && "lt" in value) return row[key] < value.lt;
+            if (value && typeof value === "object" && "neq" in value) return row[key] !== value.neq;
+            if (value && typeof value === "object" && "values" in value) return value.values.includes(row[key]);
             return (row[key] ?? null) === value;
           }));
           if (patch && matching.length) { Object.assign(matching[0], patch); updates.push({ filters: [...filters], patch }); }
@@ -65,6 +68,10 @@ function setup() {
     removeRequestImages: async (paths) => { removed.push(paths); },
     uploadRequestImages: async () => [],
     personnelProgress,
+    allRows: async (build) => {
+      const result = await build().range(0, 999);
+      return result.data;
+    },
     Response: { json: (body, options = {}) => ({ body, status: options.status || 200 }) },
     NextResponse: { json: (body, options = {}) => ({ body, status: options.status || 200 }) },
     URL, Date, String, Number, Object, Array, Set, Map, Promise, console,
@@ -131,4 +138,22 @@ test("DeepNight resignation reviewer sees only resignation applications", async 
   assert.equal(response.status, 200);
   assert.deepEqual(Array.from(response.body.requests, (row) => row.id), ["resignation"]);
   assert.equal(response.body.summary.pending, 1);
+});
+
+
+test("assigned HR inbox shows only items at the reviewer's stage in their organization", async () => {
+  const { handlers, rows } = setup();
+  rows.push(
+    { ...rows[0], id: "final", first_reviewed_at: "2025-02-01", first_reviewed_by: manager },
+    { ...rows[0], id: "self", discord_id: manager },
+    { ...rows[0], id: "same-reviewer", first_reviewed_at: "2025-02-01", first_reviewed_by: pic },
+  );
+  const cases = [[manager, ["old-pending", "resignation"]], [pic, ["resignation", "final"]]];
+  for (const [actor, visible] of cases) {
+    const response = await handlers.GET(get(actor, "&assigned=1"));
+    assert.deepEqual(Array.from(response.body.requests, (row) => row.id), visible);
+    assert.equal(response.body.pagination.total, 2);
+    assert.ok(response.body.requests.every(row => row.canReview));
+  }
+  assert.equal((await handlers.GET(get(employee, "&assigned=1"))).status, 403);
 });

@@ -46,7 +46,12 @@ const categories = [
 type Status = "pending" | "approved" | "rejected" | "all";
 type Summary = { pending: number; approved: number; rejected: number };
 
-export default function AdminApprovals({ apiPath, embedded = false, onPendingChange }: { apiPath: string; embedded?: boolean; onPendingChange?: (count: number) => void }) {
+export default function AdminApprovals({ apiPath, embedded = false, assignedOnly = false, onPendingChange }: {
+  apiPath: string;
+  embedded?: boolean;
+  assignedOnly?: boolean;
+  onPendingChange?: (count: number) => void;
+}) {
   const [category, setCategory] = useState("");
   const [status, setStatus] = useState<Status>("pending");
   const [page, setPage] = useState(1);
@@ -65,6 +70,7 @@ export default function AdminApprovals({ apiPath, embedded = false, onPendingCha
       const { data } = await supabase.auth.getSession();
       if (!data.session) throw new Error("登入已過期，請重新登入");
       const query = new URLSearchParams({ mode: "admin", view: "inbox", status, category, page: String(page) });
+      if (assignedOnly) query.set("assigned", "1");
       const response = await fetch(`${apiPath}?${query}`, {
         headers: { Authorization: `Bearer ${data.session.access_token}` },
         cache: "no-store",
@@ -81,7 +87,7 @@ export default function AdminApprovals({ apiPath, embedded = false, onPendingCha
     } finally {
       setLoading(false);
     }
-  }, [apiPath, status, category, page, onPendingChange]);
+  }, [apiPath, status, category, page, assignedOnly, onPendingChange]);
 
   useEffect(() => {
     void Promise.resolve().then(load);
@@ -102,7 +108,7 @@ export default function AdminApprovals({ apiPath, embedded = false, onPendingCha
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload.message || "簽核失敗");
       setNotice(payload.warning || (payload.advanced ? "Manager 初核通過，已送交 PIC 覆核" : status === "approved" ? "申請已核准" : "申請已駁回"));
-      if (!payload.advanced && rows.length === 1 && page > 1) setPage((current) => current - 1);
+      if ((assignedOnly || !payload.advanced) && rows.length === 1 && page > 1) setPage((current) => current - 1);
       else await load();
       setResult((current) => { const next = { ...current }; delete next[id]; return next; });
       window.dispatchEvent(new Event("erp-notifications-changed"));
@@ -114,10 +120,11 @@ export default function AdminApprovals({ apiPath, embedded = false, onPendingCha
   }
 
   return (
-    <main className={embedded ? "py-4" : "min-h-screen p-4 sm:p-7"}>
+    <div className={embedded ? "py-4" : "min-h-screen p-4 sm:p-7"}>
       <div className="mx-auto max-w-[1400px]">
         <div className="rounded-3xl bg-white p-6 shadow-sm">
-          <h1 className="text-2xl font-black text-slate-900">行政與人事簽核</h1>
+          <h1 className="text-2xl font-black text-slate-900">{assignedOnly ? "待我簽核的行政與人事申請" : "行政與人事簽核"}</h1>
+          {assignedOnly ? <p className="mt-2 text-sm text-slate-500">目前有 {summary.pending} 筆輪到你處理。</p> : <>
           <p className="mt-2 text-sm text-slate-500">
             跨月份處理行政、報銷、福利、請假及留職停薪申請；此處與原簽核頁使用同一筆資料。
           </p>
@@ -125,6 +132,7 @@ export default function AdminApprovals({ apiPath, embedded = false, onPendingCha
             {([ ["pending", "待處理", summary.pending], ["approved", "已核准", summary.approved], ["rejected", "已駁回", summary.rejected], ["all", "全部", summary.pending + summary.approved + summary.rejected] ] as const).map(([value, label, count]) =>
               <button key={value} type="button" onClick={() => { setStatus(value); setPage(1); }} className={`rounded-xl px-4 py-2 text-sm font-bold ${status === value ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-600"}`}>{label} {count}</button>)}
           </div>
+          </>}
           <div className="mt-5 grid gap-3 sm:grid-cols-2">
             <label className="text-sm font-bold text-slate-600">
               簽核類別
@@ -195,12 +203,12 @@ export default function AdminApprovals({ apiPath, embedded = false, onPendingCha
               </article>
             ))
           ) : (
-            <p className="rounded-3xl bg-white p-10 text-center text-slate-400">此篩選條件目前沒有申請資料</p>
+            <p className="rounded-3xl bg-white p-10 text-center text-slate-400">{assignedOnly ? "目前沒有輪到你簽核的申請。" : "此篩選條件目前沒有申請資料"}</p>
           )}
           <div className="flex items-center justify-end gap-3 text-sm text-slate-600"><span>共 {pagination.total} 筆 · 第 {pagination.page} / {Math.max(1, Math.ceil(pagination.total / pagination.pageSize))} 頁</span><button type="button" disabled={page <= 1} onClick={() => setPage((current) => current - 1)}>上一頁</button><button type="button" disabled={page * pagination.pageSize >= pagination.total} onClick={() => setPage((current) => current + 1)}>下一頁</button></div>
         </div>
       </div>
-    </main>
+    </div>
   );
 }
 

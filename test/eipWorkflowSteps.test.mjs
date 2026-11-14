@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { stepsForRole, requestSteps, planWorkflowDecision } from "../lib/eipWorkflowSteps.mjs";
+import { stepsForRole, requestSteps, planWorkflowDecision, canDecideWorkflow } from "../lib/eipWorkflowSteps.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const base = { status: "pending", applicant_discord_id: "employee", approval_steps: ["manager", "owner"], approval_step_index: 0 };
@@ -47,4 +47,18 @@ test("migration snapshots old templates and audits intermediate stage transition
   assert.match(sql, /after update of status, approval_step_index/i);
   assert.match(sql, /new\.approval_step_index is distinct from old\.approval_step_index/i);
   assert.match(sql, /revoke all on function public\.eip_workflow_record_decision\(\) from public, anon, authenticated/i);
+});
+
+
+test("workflow inbox eligibility follows the current review stage and excludes self review", () => {
+  assert.equal(canDecideWorkflow(base, "Manager", "manager"), true);
+  assert.equal(canDecideWorkflow(base, "PIC", "owner"), false);
+  const final = { ...base, approval_step_index: 1, first_approved_by: "manager" };
+  assert.equal(canDecideWorkflow(final, "PIC", "owner"), true);
+  assert.equal(canDecideWorkflow(final, "PIC", "manager"), false);
+  assert.equal(canDecideWorkflow(final, "Manager", "manager"), false);
+  assert.equal(canDecideWorkflow(base, "Manager", "employee"), false);
+  const { approval_steps: _, ...legacy } = base;
+  assert.equal(canDecideWorkflow(legacy, "PIC", "owner", "manager"), true);
+  assert.equal(canDecideWorkflow(legacy, "Manager", "manager", "owner"), false);
 });

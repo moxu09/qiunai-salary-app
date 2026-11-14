@@ -12,6 +12,7 @@ import HrCareerPanel from "@/components/HrCareerPanel";
 import StaffPortalNav, { type PortalTab } from "@/components/StaffPortalNav";
 import HrMemberManager from "@/components/HrMemberManager";
 import StaffCollaboration from "@/components/StaffCollaboration";
+import AdminApprovals from "@/components/AdminApprovals";
 import AdminWorkspaceManager from "@/components/AdminWorkspaceManager";
 import AdminActivityManager from "@/components/AdminActivityManager";
 import StaffMessages from "@/components/StaffMessages";
@@ -182,6 +183,7 @@ export default function UnifiedHrPortal() {
   const [hrMonth, setHrMonth] = useState(getTaipeiMonthInput());
   const [canAudit, setCanAudit] = useState(false);
   const [managedDepartment, setManagedDepartment] = useState<DepartmentKey | null>(null);
+  const [approvalDepartment, setApprovalDepartment] = useState<DepartmentKey | null>(null);
   const init = useCallback(async () => {
     setLoading(true);
     setError("");
@@ -269,6 +271,7 @@ export default function UnifiedHrPortal() {
   const managers = session.departments.filter((d) =>
     d.hrRole === "PIC" || d.hrRole === "Manager",
   );
+  const reviewing = managers.find((d) => d.key === approvalDepartment) || managers[0];
   const managing = managers.find((d) => d.key === managedDepartment);
   const managementLabel = activeTab === "documents" ? "新增／管理共享文件" : activeTab === "knowledge" ? "管理知識庫與課程" :
     activeTab === "calendar" ? "新增／管理日程" : activeTab === "workflows" ? "管理表單與簽核" :
@@ -277,7 +280,7 @@ export default function UnifiedHrPortal() {
     activeTab === "profile" ||
     activeTab === "admin-service" ||
     activeTab === "welfare" ||
-    activeTab.startsWith("approval-");
+    (activeTab.startsWith("approval-") && activeTab !== "approval-pending");
   return (
     <main className="qiunai-page staff-workspace hr-unified">
       <HrThemeDecorations />
@@ -312,6 +315,7 @@ export default function UnifiedHrPortal() {
             company="秋奈 × 深夜"
             brand={<Logos departments={session.departments} />}
             showDeviceAudit={canAudit}
+            showPendingApprovals={managers.length > 0}
           />
           <div className="staff-main-column min-w-0">
             <HrThemeBanner />
@@ -324,6 +328,27 @@ export default function UnifiedHrPortal() {
               </Card>
             ) : null}
             {activeTab === "appearance" ? <HrAppearancePanel /> : null}
+            {(activeTab === "workflows" || activeTab === "approval-pending") && reviewing ? (
+              <Card title="待我簽核">
+                {managers.length > 1 ? (
+                  <div className="hr-management-actions" role="group" aria-label="待簽核部門">
+                    {managers.map(({ key }) => (
+                      <button key={key} type="button" className="qiunai-soft-button"
+                        aria-pressed={reviewing.key === key}
+                        onClick={() => setApprovalDepartment(key)}>{nameOf(key)}</button>
+                    ))}
+                  </div>
+                ) : <p className="hr-note">{nameOf(reviewing.key)}</p>}
+                {activeTab === "workflows" ? (
+                  <AdminWorkspaceManager key={reviewing.key} organization={reviewing.key} initialSection="decision" assignedOnly />
+                ) : (
+                  <AdminApprovals key={reviewing.key} apiPath={`/api/${reviewing.key}/hr`} embedded assignedOnly />
+                )}
+              </Card>
+            ) : null}
+            {activeTab === "approval-pending" && !reviewing ? (
+              <Card title="待我簽核"><p className="hr-note">此頁供具有簽核權限的 Manager 或 PIC 使用。</p></Card>
+            ) : null}
             {(collaboration || managingActivities) && managers.length ? (
               <Card title={managementLabel}>
                 <div className="hr-management-actions" role="group" aria-label={managementLabel}>

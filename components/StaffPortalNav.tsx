@@ -45,6 +45,7 @@ export type PortalTab =
   | "bonuses"
   | "deductions"
   | "device-audit"
+  | "approval-pending"
   | "approval-administrative"
   | "approval-reimbursement"
   | "approval-welfare"
@@ -116,6 +117,7 @@ type StaffPortalNavProps = {
   employeeName: string;
   company: string;
   showDeviceAudit?: boolean;
+  showPendingApprovals?: boolean;
   brand?: React.ReactNode;
 };
 
@@ -125,6 +127,7 @@ export default function StaffPortalNav({
   employeeName,
   company,
   showDeviceAudit = false,
+  showPendingApprovals = false,
   brand,
 }: StaffPortalNavProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -177,6 +180,9 @@ export default function StaffPortalNav({
               ]
             : []),
         ].map(({ title, icon: GroupIcon, items }, groupIndex) => {
+          const visibleItems = title === "簽核" && showPendingApprovals
+            ? [["approval-pending", "待我簽核", ClipboardCheck] as const, ...items]
+            : items;
           const isOpen = openGroups[title] ?? true;
           const regionId = `staff-portal-${title}`;
 
@@ -200,7 +206,7 @@ export default function StaffPortalNav({
               >
                 <div className="staff-portal-items-inner">
                   <div className="staff-portal-items">
-                    {items.map(([tab, label, Icon]) => (
+                    {visibleItems.map(([tab, label, Icon]) => (
                       <Link
                         key={tab}
                         href={HR_ROUTES[tab]}

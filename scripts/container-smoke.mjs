@@ -20,7 +20,7 @@ for (let attempt = 0; attempt < 30; attempt += 1) {
 }
 assert.ok(ready, "容器未能啟動員工頁面");
 
-for (const path of ["/staff", "/personal/data", "/order/order.details", "/order/reward.details", "/resources/appearance", "/admin/activities"]) {
+for (const path of ["/staff", "/personal/data", "/order/order.details", "/order/reward.details", "/resources/appearance", "/collaboration/workflows", "/approval/pending", "/admin/activities"]) {
   const response = await read(path);
   assert.equal(response.status, 200, `${path} 載入失敗`);
   const html = await response.text();
@@ -47,6 +47,10 @@ for(const path of ["/service/", "/service/templates", "/service/courses", "/serv
 }
 for (const path of [
   "/api/hr/session",
+  "/api/qiunai/workspace?admin=1&assigned=1",
+  "/api/deepnight/workspace?admin=1&assigned=1",
+  "/api/qiunai/hr?mode=admin&view=inbox&assigned=1",
+  "/api/deepnight/hr?mode=admin&view=inbox&assigned=1",
   "/service/api/catalog",
   "/service/api/manual?department=qiunai",
   "/service/api/desk/deepnight",
