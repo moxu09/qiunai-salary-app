@@ -30,7 +30,7 @@ type Row = {
   stage?: "initial" | "final" | "general";
   canReview?: boolean;
   automaticAmount?: number;
-  discordOffboarding?: "pending" | "completed" | "attention" | "cancelled";
+  discordOffboarding?: "pending" | "running" | "completed" | "attention" | "cancelled";
   form_data?: { approved_amount?: number; settlement_status?: string; withdrawal_amount?: number; unpaid_sources?: boolean; details?: string; attachments?: Attachment[] };
 };
 
@@ -183,6 +183,7 @@ export default function AdminApprovals({ apiPath, embedded = false, onPendingCha
                     {row.form_data?.settlement_status === "no_balance" ? <p>已封存，目前無可提領餘額</p> : null}
                     {row.discordOffboarding ? <p>{({
                       pending: "Discord 身分組等待移除",
+                      running: "正在移除 Discord 身分組",
                       completed: "已移除該店 Discord 員工身分組",
                       attention: "部分 Discord 身分組暫時無法移除，請管理員檢查機器人權限",
                       cancelled: "員工資料已恢復，取消 Discord 身分組移除",

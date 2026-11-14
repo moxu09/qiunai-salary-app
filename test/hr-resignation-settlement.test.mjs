@@ -39,27 +39,30 @@ test("離職只封存該店，結清本店薪資並保留既有提領，尾款�
       create table players_bonus(like qiunai_staff_bonus including all);
       create function hr_salary_reviewer_role(org text, actor text) returns text
         language sql as $$select case when org='qiunai' and actor='manager' then 'Manager' else 'Staff' end$$;
-      insert into qiunai_staff values ('employee',true,true,true,null,'test-bank','12345','Test'),
-        ('unverified',true,true,true,null,'test-bank','67890','Test'),
-        ('failed-bank',true,true,true,null,'test-bank','54321','Test');
-      insert into players select *, '1501098191813214312' from qiunai_staff where discord_id='employee';
-      insert into qiunai_admins values ('employee',true);
-      insert into admins values ('employee',true);
-      insert into hr_manager_memberships values ('qiunai','employee'),('deepnight','employee');
+      insert into qiunai_staff values ('199999999999999999',true,true,true,null,'test-bank','12345','Test'),
+        ('199999999999999998',true,true,true,null,'test-bank','67890','Test'),
+        ('199999999999999997',true,true,true,null,'test-bank','54321','Test');
+      insert into players select *, '1501098191813214312' from qiunai_staff where discord_id='199999999999999999';
+      insert into qiunai_admins values ('199999999999999999',true);
+      insert into admins values ('199999999999999999',true);
+      insert into hr_manager_memberships values ('qiunai','199999999999999999'),('deepnight','199999999999999999');
       insert into employment_contract_signings values
-        ('employee','deepnight','v2.2','activated',now(),'{"bank_name":"test-bank","bank_account":"12345"}'),
-        ('failed-bank','qiunai','v2.2','signed',now(),'{"bank_name":"test-bank","bank_account":"54321"}');
+        ('199999999999999999','deepnight','v2.2','activated',now(),'{"bank_name":"test-bank","bank_account":"12345"}'),
+        ('199999999999999997','qiunai','v2.2','signed',now(),'{"bank_name":"test-bank","bank_account":"54321"}');
       insert into salary_wallet_entries(app_key,discord_id,amount,settlement_date)
-        values ('qiunai','employee',300,current_date),('deepnight','employee',800,current_date),('qiunai','unverified',55,current_date),('qiunai','failed-bank',49,current_date);
+        values ('qiunai','199999999999999999',300,current_date),('deepnight','199999999999999999',800,current_date),('qiunai','199999999999999998',55,current_date),('qiunai','199999999999999997',49,current_date);
       insert into salary_withdraw_requests(app_key,discord_id,amount,status,destination)
-        values ('qiunai','employee',100,'pending','bank');
+        values ('qiunai','199999999999999999',100,'pending','bank');
       insert into qiunai_salary_orders(discord_id,staff_name,staff_salary,bonus_amount,is_deleted,status,order_finished_at)
-        values ('employee','Test',100,10,false,'已完成',now() - interval '1 second');
+        values ('199999999999999999','Test',100,10,false,'已完成',now() - interval '1 second');
       insert into qiunai_staff_bonus(discord_id,staff_name,amount,created_at)
-        values ('employee','Test',20,now() - interval '1 second');
+        values ('199999999999999999','Test',20,now() - interval '1 second');
     `);
     await db.exec(await readFile(new URL(
       "../supabase/migrations/20261114171000_hr_resignation_settlement.sql", import.meta.url,
+    ), "utf8"));
+    await db.exec(await readFile(new URL(
+      "../supabase/migrations/20261114172000_hr_discord_offboarding.sql", import.meta.url,
     ), "utf8"));
     const add = async (person) => (await db.query(`
       insert into salary_requests(organization_code,discord_id,staff_name,request_type,approval_category,status)
@@ -69,7 +72,7 @@ test("離職只封存該店，結清本店薪資並保留既有提領，尾款�
       "select * from hr_approve_resignation($1,$2,'manager','Reviewer','已確認','2000-01-01')", [id, org],
     )).rows[0];
 
-    const id = await add("employee");
+    const id = await add("199999999999999999");
     await assert.rejects(() => approve(id, "deepnight"), /找不到離職申請/);
     await assert.rejects(() => db.query("update salary_requests set status='approved' where id=$1", [id]), /EIP 人事簽核/);
     const done = await approve(id);
@@ -81,12 +84,12 @@ test("離職只封存該店，結清本店薪資並保留既有提領，尾款�
     assert.deepEqual((await db.query(
       "select amount,service_fee,payout_amount,status from salary_withdraw_requests where request_note is not null",
     )).rows, [{ amount: 330, service_fee: 0, payout_amount: 330, status: "pending" }]);
-    assert.equal((await db.query("select is_active from qiunai_staff where discord_id='employee'")).rows[0].is_active, false);
-    assert.equal((await db.query("select is_active from players where discord_id='employee'")).rows[0].is_active, true);
+    assert.equal((await db.query("select is_active from qiunai_staff where discord_id='199999999999999999'")).rows[0].is_active, false);
+    assert.equal((await db.query("select is_active from players where discord_id='199999999999999999'")).rows[0].is_active, true);
     assert.deepEqual((await db.query("select organization_code from hr_manager_memberships")).rows, [{ organization_code: "deepnight" }]);
     assert.equal((await db.query("select count(*)::int as n from hr_bank_payout_details")).rows[0].n, 1);
     await assert.rejects(() => db.query(
-      "insert into salary_withdraw_requests(app_key,discord_id,amount,status,destination) values ('qiunai','employee',1,'pending','bank')",
+      "insert into salary_withdraw_requests(app_key,discord_id,amount,status,destination) values ('qiunai','199999999999999999',1,'pending','bank')",
     ), /離職尾款須交由財務處理/);
     await db.exec("insert into qiunai_staff(discord_id,is_active) values ('999999999999999999',false)");
     await assert.rejects(() => db.query(
@@ -94,15 +97,27 @@ test("離職只封存該店，結清本店薪資並保留既有提領，尾款�
     ), /已停用/);
     await db.exec("insert into play_orders(guild_id,assigned_player,order_type) values ('1206138511535898654','999999999999999999','打賞')");
     await db.exec("insert into play_orders(guild_id,assigned_player) values ('1501098191813214312','999999999999999999')");
-    const needsBankReview = await approve(await add("unverified"));
+    assert.equal((await db.query("select count(*)::int as n from hr_discord_offboarding")).rows[0].n, 1);
+    assert.equal((await db.query("select * from hr_claim_discord_offboarding('deepnight')")).rows.length, 0);
+    const [job] = (await db.query("select * from hr_claim_discord_offboarding('qiunai')")).rows;
+    assert.equal(job.request_id, id);
+    assert.equal(job.status, "running");
+    assert.equal((await db.query("select * from hr_claim_discord_offboarding('qiunai')")).rows.length, 0);
+    await assert.rejects(() => db.query("update qiunai_staff set is_active=true where discord_id='199999999999999999'"), /仍在處理/);
+    assert.equal((await db.query(
+      "select hr_finish_discord_offboarding('qiunai',$1,1,'attention') as applied", [id],
+    )).rows[0].applied, true);
+    await db.exec("update qiunai_staff set is_active=true where discord_id='199999999999999999'");
+    assert.equal((await db.query("select status from hr_discord_offboarding where request_id=$1", [id])).rows[0].status, "cancelled");
+    const needsBankReview = await approve(await add("199999999999999998"));
     assert.equal(needsBankReview.form_data.settlement_status, "bank_review");
     assert.equal(needsBankReview.form_data.withdrawal_id, null);
 
-    const blocked = await add("failed-bank");
+    const blocked = await add("199999999999999997");
     await assert.rejects(() => approve(blocked), /check constraint/);
     assert.equal((await db.query("select status from salary_requests where id=$1", [blocked])).rows[0].status, "pending");
-    assert.equal((await db.query("select is_active from qiunai_staff where discord_id='failed-bank'")).rows[0].is_active, true);
-    assert.equal((await db.query("select count(*)::int as n from salary_withdraw_requests where discord_id='failed-bank'")).rows[0].n, 0);
+    assert.equal((await db.query("select is_active from qiunai_staff where discord_id='199999999999999997'")).rows[0].is_active, true);
+    assert.equal((await db.query("select count(*)::int as n from salary_withdraw_requests where discord_id='199999999999999997'")).rows[0].n, 0);
   } finally {
     await db.close();
   }
