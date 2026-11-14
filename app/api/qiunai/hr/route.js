@@ -34,8 +34,8 @@ function monthRange(value, offset = 0) {
 }
 
 async function getStaff(discordId) {
-  const { data, error } = await supabaseAdmin.from("qiunai_staff").select("discord_id,discord_name,display_name,real_name").eq("discord_id", discordId).maybeSingle();
-  if (error || !data) throw new Error("找不到員工資料");
+  const { data, error } = await supabaseAdmin.from("qiunai_staff").select("discord_id,discord_name,display_name,real_name,is_active").eq("discord_id", discordId).maybeSingle();
+  if (error || !data || data.is_active === false) throw new Error("找不到在職員工資料");
   return data;
 }
 
@@ -87,13 +87,13 @@ async function readRequestBody(request) {
   };
 }
 
-async function priorMonthSalary(discordId, selectedMonth) {
-  const range = monthRange(selectedMonth, -1);
-  const [{ data: orders }, { data: bonuses }] = await Promise.all([
-    supabaseAdmin.from("qiunai_salary_orders").select("staff_salary").eq("discord_id", discordId).or("is_deleted.eq.false,is_deleted.is.null").gte("order_finished_at", range.start).lt("order_finished_at", range.end),
-    supabaseAdmin.from("qiunai_staff_bonus").select("amount").eq("discord_id", discordId).gte("created_at", range.start).lt("created_at", range.end),
-  ]);
-  return [...(orders || []).map((item) => Number(item.staff_salary || 0)), ...(bonuses || []).map((item) => Number(item.amount || 0))].reduce((sum, amount) => sum + amount, 0);
+async function welfareEligibility(discordId) {
+  const { data, error } = await supabaseAdmin.rpc("hr_welfare_eligibility", {
+    p_org: ORG, p_employee: discordId,
+    p_date: new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Taipei" }),
+  });
+  if (error) throw error;
+  return data;
 }
 
 export async function GET(request) {
@@ -107,10 +107,10 @@ export async function GET(request) {
     if (adminMode) await requireAdmin(discordId);
     const query = supabaseAdmin.from("salary_requests").select("*").eq("organization_code", ORG).gte("application_date", range.start.slice(0, 10)).lt("application_date", range.end.slice(0, 10)).order("created_at", { ascending: false });
     if (!adminMode) query.eq("discord_id", discordId);
-    const [{ data: requests, error }, { data: announcements }, salary] = await Promise.all([
+    const [{ data: requests, error }, { data: announcements }, eligibility] = await Promise.all([
       query,
       supabaseAdmin.from("salary_announcements").select("*").eq("organization_code", ORG).eq("is_active", true).order("created_at", { ascending: false }),
-      adminMode ? Promise.resolve(null) : priorMonthSalary(discordId, selectedMonth),
+      adminMode ? Promise.resolve({}) : welfareEligibility(discordId),
     ]);
     if (error) throw error;
     const orderedRequests = adminMode
@@ -131,7 +131,7 @@ export async function GET(request) {
       reviewer_discord_id: item.reviewed_by || item.form_data?.reviewer_discord_id || null,
       reviewer_name: item.form_data?.reviewer_name || reviewerMap.get(String(item.reviewed_by || "")) || null,
     }));
-    return NextResponse.json({ ok: true, requests: await signRequestAttachments(requestsWithReviewer), announcements: announcements || [], priorMonthSalary: salary, welfareEligible: salary === null ? null : salary > 5000 });
+    return NextResponse.json({ ok: true, requests: await signRequestAttachments(requestsWithReviewer), announcements: announcements || [], ...eligibility });
   } catch (error) {
     return NextResponse.json({ ok: false, message: friendlyError(error, "讀取申請資料失敗") }, { status: error.status || 400 });
   }
@@ -148,10 +148,6 @@ export async function POST(request) {
     if (!allowed.includes(requestType)) throw new Error("申請項目不正確");
     if (["查掛津貼", "代支報銷"].includes(requestType) && files.length === 0) {
       throw new Error(requestType === "查掛津貼" ? "查掛津貼必須上傳付款證明" : "代支報銷必須上傳發票或付款證明");
-    }
-    if (group === "welfare") {
-      const salary = await priorMonthSalary(discordId, getTaipeiMonthInput());
-      if (salary <= 5000) throw new Error("前一個月薪資需超過 5,000 元才可申請福利");
     }
     const name = staff.display_name || staff.real_name || staff.discord_name || discordId;
     const details = String(body.details || "").trim();

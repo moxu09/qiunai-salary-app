@@ -28,7 +28,7 @@ async function getStaff(discordId) {
   const { data, error } = await supabaseAdmin
     .from(walletConfig.staffTable)
     .select(
-      "discord_id, discord_name, display_name, real_name, bank_name, bank_account"
+      "discord_id, discord_name, display_name, real_name, bank_name, bank_account, is_active"
     )
     .eq("discord_id", discordId)
     .maybeSingle();
@@ -38,6 +38,7 @@ async function getStaff(discordId) {
     throw new Error("讀取員工資料失敗");
   }
 
+  if (!data || data.is_active === false) throw new Error("你沒有此部門的在職員工權限");
   return data;
 }
 
@@ -56,9 +57,8 @@ export async function GET(request) {
   try {
     const { discordId } = await getAuthUserFromRequest(supabaseAdmin, request);
 
-    await settleSalaryWallet(supabaseAdmin, walletConfig);
-
     const staff = await getStaff(discordId);
+    await settleSalaryWallet(supabaseAdmin, walletConfig);
     const wallet = await getSalaryWalletSummary(
       supabaseAdmin,
       walletConfig.appKey,
@@ -86,9 +86,8 @@ export async function POST(request) {
     const { discordId } = await getAuthUserFromRequest(supabaseAdmin, request);
     const body = await request.json().catch(() => ({}));
 
-    await settleSalaryWallet(supabaseAdmin, walletConfig);
-
     const staff = await getStaff(discordId);
+    await settleSalaryWallet(supabaseAdmin, walletConfig);
     const wallet = await getSalaryWalletSummary(
       supabaseAdmin,
       walletConfig.appKey,

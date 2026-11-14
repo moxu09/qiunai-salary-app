@@ -1,9 +1,10 @@
 import { hrAuth, hrFail } from "@/lib/hrServer";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { hrSource, annotate } from "@/lib/hrUpstream";
 export const dynamic = "force-dynamic";
 export async function GET(request) {
   try {
-    const { departments } = await hrAuth(request);
+    const { departments, discordId } = await hrAuth(request);
     const url = new URL(request.url);
     const month = url.searchParams.get("month") || "";
     const selected = url.searchParams.get("department") || departments[0].key;
@@ -18,10 +19,14 @@ export async function GET(request) {
       const data = await hrSource(request, key, `hr?month=${encodeURIComponent(month)}`);
       result.requests.push(...annotate(data.requests, key));
       result.announcements.push(...annotate(data.announcements, key, "title"));
-      if (key === selected) {
-        result.priorMonthSalary = data.priorMonthSalary;
-        result.welfareEligible = data.welfareEligible;
-      }
+    }
+    if (departments.some(({ key }) => key === selected)) {
+      const { data, error } = await supabaseAdmin.rpc("hr_welfare_eligibility", {
+        p_org: selected, p_employee: discordId,
+        p_date: new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Taipei" }),
+      });
+      if (error) throw error;
+      Object.assign(result, data);
     }
     result.requests.sort((a, b) =>
       String(b.application_date).localeCompare(String(a.application_date)),

@@ -29,7 +29,8 @@ type Row = {
   first_review_note?: string | null;
   stage?: "initial" | "final" | "general";
   canReview?: boolean;
-  form_data?: { details?: string; attachments?: Attachment[] };
+  automaticAmount?: number;
+  form_data?: { approved_amount?: number; settlement_status?: string; withdrawal_amount?: number; unpaid_sources?: boolean; details?: string; attachments?: Attachment[] };
 };
 
 const categories = [
@@ -85,7 +86,8 @@ export default function AdminApprovals({ apiPath, embedded = false, onPendingCha
     void Promise.resolve().then(load);
   }, [load]);
 
-  async function review(id: string, status: "approved" | "rejected") {
+  async function review(row: Row, status: "approved" | "rejected") {
+    const id = row.id;
     if (status === "rejected" && !result[id]?.trim()) { setError("駁回時請填寫原因"); return; }
     try {
       setBusy(id); setError(""); setNotice("");
@@ -161,13 +163,24 @@ export default function AdminApprovals({ apiPath, embedded = false, onPendingCha
                 {row.first_reviewed_at ? <p className="mt-3 text-sm text-slate-600">Manager 初核通過 · {new Date(row.first_reviewed_at).toLocaleString("zh-TW", { timeZone: "Asia/Taipei" })}{row.first_review_note ? ` · ${row.first_review_note}` : ""}</p> : null}
                 {row.status === "pending" && row.canReview !== false ? (
                   <div className="mt-4 grid gap-3 md:grid-cols-[1fr_auto_auto]">
+                    {row.automaticAmount && row.stage === "final" ? (
+                      <p className="md:col-span-full text-sm font-bold">覆核通過後新增福利金 NT$ {row.automaticAmount}</p>
+                    ) : null}
+                    {row.request_type === "離職申請書" ? (
+                      <p className="md:col-span-full text-sm font-bold">核准後立即停用此店權限、封存資料，並將可提領尾款送交銀行提領審核。</p>
+                    ) : null}
                     <input value={result[row.id] || ""} onChange={(event) => setResult((current) => ({ ...current, [row.id]: event.target.value }))} placeholder="簽核說明；駁回時必填原因" />
-                    <button disabled={busy !== null} onClick={() => void review(row.id, "approved")} className="rounded-xl bg-emerald-500 px-5 py-2 font-black text-white disabled:opacity-50">{row.stage === "initial" ? "初核通過" : row.stage === "final" ? "覆核通過" : "核准"}</button>
-                    <button disabled={busy !== null} onClick={() => void review(row.id, "rejected")} className="rounded-xl bg-rose-500 px-5 py-2 font-black text-white disabled:opacity-50">駁回</button>
+                    <button disabled={busy !== null} onClick={() => void review(row, "approved")} className="rounded-xl bg-emerald-500 px-5 py-2 font-black text-white disabled:opacity-50">{row.stage === "initial" ? "初核通過" : row.stage === "final" ? "覆核通過" : "核准"}</button>
+                    <button disabled={busy !== null} onClick={() => void review(row, "rejected")} className="rounded-xl bg-rose-500 px-5 py-2 font-black text-white disabled:opacity-50">駁回</button>
                   </div>
                 ) : row.status !== "pending" ? (
                   <div className="mt-4 rounded-xl bg-slate-50 p-3 text-sm text-slate-600">
                     <p>簽核結果：{row.review_result || "-"}</p>
+                    {row.form_data?.approved_amount ? <p>已新增獎金／津貼 NT$ {row.form_data.approved_amount.toLocaleString("zh-TW")}</p> : null}
+                    {row.form_data?.settlement_status === "withdrawal_pending" ? <p>已封存，尾款 NT$ {row.form_data.withdrawal_amount?.toLocaleString("zh-TW")} 待審核</p> : null}
+                    {row.form_data?.settlement_status === "bank_review" ? <p>已封存，銀行帳戶待財務核對</p> : null}
+                    {row.form_data?.settlement_status === "no_balance" ? <p>已封存，目前無可提領餘額</p> : null}
+                    {row.form_data?.unpaid_sources ? <p>仍有未結束訂單或未入帳薪資，待財務確認</p> : null}
                     <p className="mt-1 font-bold text-slate-700">簽核人：{row.reviewer_name || "未知簽核人"}{row.reviewer_discord_id ? `（${row.reviewer_discord_id}）` : ""}</p>
                   </div>
                 ) : null}

@@ -22,6 +22,7 @@ export default function HrPortalPanel({ activeTab, apiPath, department, staffNam
   const [announcements, setAnnouncements] = useState<StaffAnnouncement[]>([]);
   const [priorSalary, setPriorSalary] = useState(0);
   const [eligible, setEligible] = useState(false);
+  const [birthdayEligible, setBirthdayEligible] = useState(false);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [type, setType] = useState(ADMIN_TYPES[0]);
@@ -39,7 +40,7 @@ export default function HrPortalPanel({ activeTab, apiPath, department, staffNam
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) throw Error(payload.message || "讀取人事資料失敗");
     setLoadError("");
-    if (response.ok) { setRequests(payload.requests || []); setAnnouncements((payload.announcements || []).filter((item: StaffAnnouncement) => item.is_active !== false)); setPriorSalary(Number(payload.priorMonthSalary || 0)); setEligible(Boolean(payload.welfareEligible)); }
+    if (response.ok) { setRequests(payload.requests || []); setAnnouncements((payload.announcements || []).filter((item: StaffAnnouncement) => item.is_active !== false)); setPriorSalary(Number(payload.priorMonthSalary || 0)); setEligible(Boolean(payload.welfareEligible)); setBirthdayEligible(Boolean(payload.birthdayEligible)); }
     } catch (error) { setLoadError(error instanceof Error ? error.message : "讀取失敗"); } finally { setLoading(false); }
   }, [apiPath, selectedMonth, selectedDepartment]);
 
@@ -131,6 +132,7 @@ export default function HrPortalPanel({ activeTab, apiPath, department, staffNam
     const welfare = activeTab === "welfare";
     const typeOptions = welfare ? WELFARE_TYPES : ADMIN_TYPES;
     const selectedType = typeOptions.includes(type) ? type : typeOptions[0];
+    const birthdayGift = welfare && selectedType === "生日禮金";
     const requiresPaymentProof = !welfare && ["查掛津貼", "代支報銷"].includes(selectedType);
     return <section className="rounded-[28px] border border-violet-100 bg-white p-6 shadow-sm shadow-violet-100">
       <div className="flex items-center gap-3"><span className="rounded-2xl bg-violet-100 p-3 text-violet-600"><FilePenLine size={22}/></span><div><h2 className="text-xl font-black">{welfare ? "福利申請" : "行政服務申請"}</h2><p className="mt-1 text-sm text-slate-500">申請送出後，可至簽核分類查看結果。</p></div></div>
@@ -139,7 +141,7 @@ export default function HrPortalPanel({ activeTab, apiPath, department, staffNam
         {!welfare && <><Field label="緊急程度"><select value={urgency} onChange={(e) => setUrgency(e.target.value)}><option value="general">一般</option><option value="urgent">急件</option></select></Field><Field label="需求日期"><input type="date" min={today()} value={neededDate} onChange={(e) => setNeededDate(e.target.value)} /></Field></>}
         <Field label={welfare ? "福利項目" : "需求分類"}><select value={selectedType} onChange={(e) => setType(e.target.value)}>{typeOptions.map((item) => <option key={item}>{item}</option>)}</select></Field>
       </div>
-      {welfare && <div className={`mt-5 rounded-2xl p-4 text-sm font-bold ${eligible ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}><p>前一個月薪資：{money(priorSalary)}</p><p className="mt-1">{eligible ? "符合超過 5,000 元的申請資格" : "前一個月薪資需超過 5,000 元才可申請"}</p></div>}
+      {welfare && <div className={`mt-5 rounded-2xl p-4 text-sm font-bold ${eligible ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}><p>前一個月薪資：{money(priorSalary)}</p><p className="mt-1">{eligible ? "符合滿 5,000 元的申請資格" : "前一個月薪資須滿 5,000 元才可申請"}</p><p className="mt-1">{birthdayGift ? "生日禮金 NT$200，限生日當月申請。" : "此福利金額 NT$100。"}</p></div>}
       <Field label="申請內容 / 補充說明（選填）" className="mt-5"><textarea rows={7} maxLength={10000} value={details} onChange={(e) => setDetails(e.target.value)} placeholder="可填寫申請原因與補充資料，也可以留空。" /></Field>
       <Field label={requiresPaymentProof ? (selectedType === "查掛津貼" ? "付款證明（必填）" : "發票或付款證明（必填）") : "上傳圖片（選填）"} className="mt-5">
         <div className="rounded-2xl border border-dashed border-violet-200 bg-violet-50/60 p-4">
@@ -148,7 +150,7 @@ export default function HrPortalPanel({ activeTab, apiPath, department, staffNam
           {images.length ? <div className="mt-3 grid gap-2 sm:grid-cols-2">{images.map((image, index) => <div key={`${image.name}-${image.lastModified}`} className="flex items-center gap-2 rounded-xl bg-white px-3 py-2 text-xs text-slate-600"><FileImage size={16} className="shrink-0 text-violet-500"/><span className="min-w-0 flex-1 truncate">{image.name}</span><button type="button" aria-label={`移除 ${image.name}`} title={`移除 ${image.name}`} onClick={() => setImages((current) => current.filter((_, itemIndex) => itemIndex !== index))} className="hr-icon-button rounded-full p-1 text-slate-400 hover:bg-rose-50 hover:text-rose-500"><X size={14}/></button></div>)}</div> : null}
         </div>
       </Field>
-      <button type="button" onClick={() => submit(welfare ? "welfare" : "administrative")} disabled={submitting || (welfare && !eligible) || (requiresPaymentProof && images.length === 0)} className="mt-5 w-full rounded-2xl bg-violet-600 px-5 py-3 font-black text-white hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-40">{submitting ? "送出中…" : "送出申請"}</button>
+      <button type="button" onClick={() => submit(welfare ? "welfare" : "administrative")} disabled={submitting || (welfare && (!eligible || (birthdayGift && !birthdayEligible))) || (requiresPaymentProof && images.length === 0)} className="mt-5 w-full rounded-2xl bg-violet-600 px-5 py-3 font-black text-white hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-40">{submitting ? "送出中…" : "送出申請"}</button>
     </section>;
   }
 
