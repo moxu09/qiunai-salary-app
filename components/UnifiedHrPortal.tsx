@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { LogOut, RefreshCw, WalletCards, Save, UserRound, LockKeyhole, Landmark, ArrowUpRight } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { linkedWithdrawalPlan, withdrawalBalances, withdrawalSourceAmounts } from "@/lib/hrLinkedWallet.mjs";
-import { HR_SIGNER_IDENTITIES } from "@/lib/hrSigningDocuments.mjs";
+import { HR_SIGNER_IDENTITIES, taipeiSigningAge } from "@/lib/hrSigningDocuments.mjs";
 import { HR_DEPARTMENTS, HR_ROUTES, hrTabForPath, allocateWithdrawal } from "@/lib/hrRoutes.mjs";
 import { HrThemeBanner, HrAppearancePanel, HrThemeDecorations } from "@/components/HrThemeProvider";
 import HrCareerPanel from "@/components/HrCareerPanel";
@@ -113,7 +113,7 @@ const profileFields = [
   ["real_name", "真實姓名", "text"],
   ["phone", "員工電話", "tel"],
   ["gender", "性別", "text"],
-  ["birthday", "生日", "date"],
+  ["birthday", "西元出生年月日", "text"],
   ["bank_name", "銀行名稱", "text"],
   ["bank_account", "銀行帳號", "text"],
 ] as const;
@@ -453,14 +453,29 @@ function ProfilePanel({ session, onSaved }: { session: Session; onSaved: () => P
     [session],
   );
   const [form, setForm] = useState(merged);
+  const [birthYear = "", birthMonth = "", birthDay = ""] = form.birthday.split("-");
+  const birthParts = [birthYear, birthMonth, birthDay];
+
+  function updateBirthPart(index: number, value: string) {
+    const next = birthParts.map((part, position) => position === index ? value.replace(/[^0-9]/g, "") : part);
+    setForm((current) => ({ ...current, birthday: next.join("-") }));
+  }
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   async function save(event: React.FormEvent) {
     event.preventDefault();
+    const birthday = birthParts.some(Boolean)
+      ? [birthYear, birthMonth.padStart(2, "0"), birthDay.padStart(2, "0")].join("-")
+      : "";
+    if (birthday && taipeiSigningAge(birthday) === null) {
+      setError("請輸入有效的西元出生年月日，日期不得晚於今天。");
+      return;
+    }
     setBusy(true);
     setError("");
     try {
-      await hrFetch("/api/hr/profile", { method: "PATCH", body: JSON.stringify(form) });
+      await hrFetch("/api/hr/profile", { method: "PATCH", body: JSON.stringify({ ...form, birthday }) });
+      setForm((current) => ({ ...current, birthday }));
       await onSaved();
     } catch (caught) {
       setError(errorText(caught));
@@ -472,7 +487,7 @@ function ProfilePanel({ session, onSaved }: { session: Session; onSaved: () => P
     <>
       <Card title="個人資料">
         <p className="hr-note">
-          姓名、聯絡方式與銀行資料合併管理；官網介紹、邀請網址與填單區 ID 保留各店設定。
+          姓名、聯絡方式、出生年月日與銀行資料合併管理；官網介紹、邀請網址與填單區 ID 保留各店設定。
         </p>
         {session.contractProfile ? <dl className="hr-form-grid">
           <div><dt>簽署身分</dt><dd>{HR_SIGNER_IDENTITIES[session.contractProfile.signerIdentity].title}</dd></div>
@@ -490,6 +505,25 @@ function ProfilePanel({ session, onSaved }: { session: Session; onSaved: () => P
               );
               const conflict =
                 new Set(session.departments.map((d) => String(d.staff[key] || ""))).size > 1;
+              if (key === "birthday") {
+                return (
+                  <fieldset key={key} className="min-w-0">
+                    <legend className="mb-2 text-[13px] font-bold">{label}</legend>
+                    <div className="grid grid-cols-3 gap-2">
+                      {([["年", "1998", 4], ["月", "03", 2], ["日", "15", 2]] as const).map(([part, example, limit], index) => (
+                        <label key={part}>
+                          {part}
+                          <input type="text" inputMode="numeric" maxLength={limit}
+                            autoComplete={["bday-year", "bday-month", "bday-day"][index]}
+                            placeholder={example} value={birthParts[index]}
+                            onChange={(event) => updateBirthPart(index, event.target.value)} />
+                        </label>
+                      ))}
+                    </div>
+                    {conflict ? <small className="hr-note">原資料不同：{sources.join("；")}</small> : null}
+                  </fieldset>
+                );
+              }
               return (
                 <label key={key}>
                   {label}

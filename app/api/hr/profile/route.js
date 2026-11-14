@@ -1,4 +1,5 @@
 import { hrAuth, hrFail } from "@/lib/hrServer";
+import { taipeiSigningAge } from "@/lib/hrSigningDocuments.mjs";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 export const dynamic = "force-dynamic";
 export async function PATCH(request) {
@@ -19,8 +20,8 @@ export async function PATCH(request) {
         throw Error("個人資料格式不正確");
       profile[key] = body[key].trim() || null;
     }
-    if (profile.birthday && !/^\d{4}-\d{2}-\d{2}$/.test(profile.birthday))
-      throw Error("生日格式錯誤");
+    if (profile.birthday && taipeiSigningAge(profile.birthday) === null)
+      throw Error("請輸入有效的西元出生年月日，日期不得晚於今天。");
     profile._organizations = departments.map((d) => d.key);
     const { error } = await supabaseAdmin.rpc("hr_update_profile_atomic", {
       p_discord_id: discordId,
