@@ -91,7 +91,7 @@ begin
   if p_org = 'qiunai' then
     select to_jsonb(s) into staff from public.qiunai_staff s where discord_id = item.discord_id for update;
   else
-    select to_jsonb(s) into staff from public.players s where discord_id = item.discord_id for update;
+    select to_jsonb(s) into staff from public.players s where discord_id = item.discord_id and guild_id::text = '1501098191813214312' for update;
   end if;
   if staff is null or staff->>'is_active' = 'false' then
     raise exception '此店員工已封存或不存在' using errcode = '23514';
@@ -155,7 +155,8 @@ begin
     update public.qiunai_staff set is_active=false,is_online=false,can_take_order=false,updated_at=approved_at where discord_id=item.discord_id;
     update public.qiunai_admins set is_active=false where discord_id=item.discord_id and is_active;
   else
-    update public.players set is_active=false,is_online=false,can_take_order=false,updated_at=approved_at where discord_id=item.discord_id;
+    update public.players set is_active=false,is_online=false,can_take_order=false,updated_at=approved_at
+      where discord_id=item.discord_id and guild_id::text='1501098191813214312';
     update public.admins set is_active=false where discord_id=item.discord_id and is_active;
   end if;
   update public.salary_public_profiles set is_active=false,is_online=false,can_take_order=false,is_featured=false,featured_month=null,updated_at=approved_at

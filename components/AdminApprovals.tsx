@@ -30,6 +30,7 @@ type Row = {
   stage?: "initial" | "final" | "general";
   canReview?: boolean;
   automaticAmount?: number;
+  discordOffboarding?: "pending" | "completed" | "attention" | "cancelled";
   form_data?: { approved_amount?: number; settlement_status?: string; withdrawal_amount?: number; unpaid_sources?: boolean; details?: string; attachments?: Attachment[] };
 };
 
@@ -180,6 +181,12 @@ export default function AdminApprovals({ apiPath, embedded = false, onPendingCha
                     {row.form_data?.settlement_status === "withdrawal_pending" ? <p>已封存，尾款 NT$ {row.form_data.withdrawal_amount?.toLocaleString("zh-TW")} 待審核</p> : null}
                     {row.form_data?.settlement_status === "bank_review" ? <p>已封存，銀行帳戶待財務核對</p> : null}
                     {row.form_data?.settlement_status === "no_balance" ? <p>已封存，目前無可提領餘額</p> : null}
+                    {row.discordOffboarding ? <p>{({
+                      pending: "Discord 身分組等待移除",
+                      completed: "已移除該店 Discord 員工身分組",
+                      attention: "部分 Discord 身分組暫時無法移除，請管理員檢查機器人權限",
+                      cancelled: "員工資料已恢復，取消 Discord 身分組移除",
+                    })[row.discordOffboarding]}</p> : null}
                     {row.form_data?.unpaid_sources ? <p>仍有未結束訂單或未入帳薪資，待財務確認</p> : null}
                     <p className="mt-1 font-bold text-slate-700">簽核人：{row.reviewer_name || "未知簽核人"}{row.reviewer_discord_id ? `（${row.reviewer_discord_id}）` : ""}</p>
                   </div>

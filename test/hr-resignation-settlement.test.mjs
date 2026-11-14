@@ -17,7 +17,7 @@ test("離職只封存該店，結清本店薪資並保留既有提領，尾款�
       create table hr_bank_payout_details(request_id uuid, primary_discord_id text, bank_name text, bank_account text check(bank_account <> '54321'));
       create table qiunai_staff(discord_id text primary key, is_active bool, is_online bool, can_take_order bool,
         updated_at timestamptz, bank_name text, bank_account text, real_name text);
-      create table players(like qiunai_staff including all);
+      create table players(like qiunai_staff including all,guild_id text);
       create table qiunai_admins(discord_id text, is_active bool);
       create table admins(like qiunai_admins);
       create table salary_public_profiles(app_key text, discord_id text, is_active bool, is_online bool,
@@ -42,7 +42,7 @@ test("離職只封存該店，結清本店薪資並保留既有提領，尾款�
       insert into qiunai_staff values ('employee',true,true,true,null,'test-bank','12345','Test'),
         ('unverified',true,true,true,null,'test-bank','67890','Test'),
         ('failed-bank',true,true,true,null,'test-bank','54321','Test');
-      insert into players select * from qiunai_staff where discord_id='employee';
+      insert into players select *, '1501098191813214312' from qiunai_staff where discord_id='employee';
       insert into qiunai_admins values ('employee',true);
       insert into admins values ('employee',true);
       insert into hr_manager_memberships values ('qiunai','employee'),('deepnight','employee');
