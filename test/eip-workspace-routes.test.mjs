@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { WorkspaceInputError, validateFields, validateAnswers } from "../lib/eipWorkspaceValidation.mjs";
 import { WORKFLOW_TARGET_HOURS, workflowOverdueBefore } from "../lib/eipWorkflowSla.mjs";
-import { stepsForRole, requestSteps, planWorkflowDecision } from "../lib/eipWorkflowSteps.mjs";
+import { stepsForRole, requestSteps, planWorkflowDecision, canDecideWorkflow } from "../lib/eipWorkflowSteps.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const employee = "1206138511535898654";
@@ -56,6 +56,7 @@ function setup({ multistage = false } = {}) {
       const query = {
         select(_columns, options) { selectedOptions = options || {}; return this; },
         eq(key, value) { filters.push([key, value]); return this; },
+        neq(key, value) { filters.push([key, { neq: value }]); return this; },
         is(key, value) { filters.push([key, value]); return this; },
         gte(key, value) { filters.push([key, { gte: value }]); return this; },
         lt(key, value) { filters.push([key, { lt: value }]); return this; },
@@ -67,7 +68,8 @@ function setup({ multistage = false } = {}) {
         then(resolve, reject) {
           const rows = (records[table] || []).filter((item) => filters.every(([key, value]) =>
             value && typeof value === "object" && "gte" in value ? item[key] >= value.gte :
-              value && typeof value === "object" && "lt" in value ? item[key] < value.lt : (item[key] ?? null) === value));
+              value && typeof value === "object" && "lt" in value ? item[key] < value.lt :
+                value && typeof value === "object" && "neq" in value ? item[key] !== value.neq : (item[key] ?? null) === value));
           calls.push({ table, filters: [...filters], range, selectedOptions });
           const visible = range ? rows.slice(range[0], range[1] + 1) : rowLimit ? rows.slice(0, rowLimit) : rows;
           return Promise.resolve({ data: selectedOptions.head ? null : visible, count: selectedOptions.count === "exact" ? rows.length : null, error: null }).then(resolve, reject);
@@ -97,6 +99,8 @@ function setup({ multistage = false } = {}) {
     stepsForRole,
     requestSteps,
     planWorkflowDecision,
+    canDecideWorkflow,
+    allRows: async (build) => (await build().range(0, 999)).data,
     process: { env: { EIP_WORKFLOW_MULTISTAGE_ENABLED: multistage ? "true" : "false" } },
     getAuthUserFromRequest: async (_db, request) => {
       if (!request.discordId) throw new Error("missing");
@@ -272,4 +276,28 @@ test("workspace migration protects browser roles and records revisions", () => {
   assert.match(sql, /revoke all on public\.%I from anon, authenticated/i);
   assert.match(sql, /eip_workspace_document_revision before update/i);
   assert.match(sql, /eip_workflow_decision_audit after update of status/i);
+});
+
+
+test("assigned workflow count respects each reviewer stage and returns no request details", async () => {
+  const { route, records } = setup({ multistage: true });
+  const base = { ...records.eip_workflow_requests[0], template: { approver_role: "manager" }, approval_steps: ["manager", "owner"] };
+  records.eip_workflow_requests = [
+    base,
+    { ...base, id: "other-store", organization_code: "deepnight" },
+    { ...base, id: "own", applicant_discord_id: manager },
+    { ...base, id: "final", approval_step_index: 1, first_approved_by: manager },
+    { ...base, id: "already-reviewed", approval_step_index: 1, first_approved_by: owner },
+  ];
+  const load = (discordId) => route.GET({
+    discordId,
+    url: "https://test.local/workspace?admin=1&assigned=1&countOnly=1",
+  });
+  for (const reviewer of [manager, owner]) {
+    const response = await load(reviewer);
+    assert.equal(response.status, 200);
+    assert.deepEqual(Object.keys(response.body).sort(), ["count", "ok"]);
+    assert.equal(response.body.count, 1);
+  }
+  assert.equal((await load(employee)).status, 403);
 });

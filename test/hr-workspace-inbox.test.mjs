@@ -154,6 +154,9 @@ test("assigned HR inbox shows only items at the reviewer's stage in their organi
     assert.deepEqual(Array.from(response.body.requests, (row) => row.id), visible);
     assert.equal(response.body.pagination.total, 2);
     assert.ok(response.body.requests.every(row => row.canReview));
+    const count = await handlers.GET(get(actor, "&assigned=1&countOnly=1"));
+    assert.deepEqual(Object.keys(count.body).sort(), ["count", "ok"]);
+    assert.equal(count.body.count, response.body.pagination.total);
   }
   assert.equal((await handlers.GET(get(employee, "&assigned=1"))).status, 403);
 });

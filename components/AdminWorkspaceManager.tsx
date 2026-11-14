@@ -221,6 +221,7 @@ export default function AdminWorkspaceManager({ organization, initialSection = "
     try {
       setBusy(true); setError("");
       const result = await call("PATCH", { kind: "decision", id: item.id, status, note: decisionNote.trim() });
+      window.dispatchEvent(new Event("erp-notifications-changed"));
       setNotice(status === "approved" && result.stageCompleted === false ? "初審已通過，申請已送交PIC 覆核。" : "已記錄簽核決定。"); setDecisionTarget(null); setDecisionNote(""); setHistory(null);
       if (requestStatus !== "all" && requestPage > 1 && data.requests.length === 1) {
         setRequestPage((page) => page - 1);

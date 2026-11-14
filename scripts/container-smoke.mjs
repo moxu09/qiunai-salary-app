@@ -47,10 +47,10 @@ for(const path of ["/service/", "/service/templates", "/service/courses", "/serv
 }
 for (const path of [
   "/api/hr/session",
-  "/api/qiunai/workspace?admin=1&assigned=1",
-  "/api/deepnight/workspace?admin=1&assigned=1",
-  "/api/qiunai/hr?mode=admin&view=inbox&assigned=1",
-  "/api/deepnight/hr?mode=admin&view=inbox&assigned=1",
+  "/api/qiunai/workspace?admin=1&assigned=1&countOnly=1",
+  "/api/deepnight/workspace?admin=1&assigned=1&countOnly=1",
+  "/api/qiunai/hr?mode=admin&view=inbox&assigned=1&countOnly=1",
+  "/api/deepnight/hr?mode=admin&view=inbox&assigned=1&countOnly=1",
   "/service/api/catalog",
   "/service/api/manual?department=qiunai",
   "/service/api/desk/deepnight",

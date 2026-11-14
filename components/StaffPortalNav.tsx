@@ -118,6 +118,7 @@ type StaffPortalNavProps = {
   company: string;
   showDeviceAudit?: boolean;
   showPendingApprovals?: boolean;
+  approvalCounts?: { workflows?: number; personnel?: number };
   brand?: React.ReactNode;
 };
 
@@ -128,6 +129,7 @@ export default function StaffPortalNav({
   company,
   showDeviceAudit = false,
   showPendingApprovals = false,
+  approvalCounts,
   brand,
 }: StaffPortalNavProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -197,6 +199,9 @@ export default function StaffPortalNav({
               >
                 <GroupIcon className="staff-portal-group-icon" size={17} />
                 <span>{title}</span>
+                {title === "簽核" && showPendingApprovals && approvalCounts?.personnel !== undefined
+                  ? <ApprovalCount count={approvalCounts.personnel} />
+                  : null}
                 <ChevronDown size={15} className="staff-portal-chevron ml-auto" />
               </button>
 
@@ -220,6 +225,9 @@ export default function StaffPortalNav({
                       >
                         <Icon size={18} />
                         <span>{label}</span>
+                        {tab === "workflows" && showPendingApprovals && approvalCounts?.workflows !== undefined
+                          ? <ApprovalCount count={approvalCounts.workflows} />
+                          : null}
                       </Link>
                     ))}
                   </div>
@@ -232,5 +240,15 @@ export default function StaffPortalNav({
       </nav>
       <HrSidebarArtwork />
     </aside>
+  );
+}
+
+
+function ApprovalCount({ count }: { count: number }) {
+  return (
+    <span className={`staff-portal-approval-count${count === 0 ? " is-empty" : ""}`}>
+      <span aria-hidden="true">{count.toLocaleString("zh-TW")}</span>
+      <span className="sr-only">{count} 筆待我簽核</span>
+    </span>
   );
 }

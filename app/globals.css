@@ -1274,6 +1274,29 @@ tbody tr:hover {
   transition: background-color 160ms ease, color 160ms ease, transform 160ms ease;
 }
 
+.staff-portal-approval-count {
+  display: inline-flex;
+  flex: 0 0 auto;
+  justify-content: center;
+  min-width: 1.35rem;
+  padding: 0.16rem 0.4rem;
+  border-radius: 999px;
+  background: #9f1239;
+  color: white;
+  font-size: 0.72rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+
+.staff-portal-approval-count.is-empty {
+  background: #475569;
+}
+
+.staff-portal-link .staff-portal-approval-count {
+  margin-inline-start: auto;
+}
+
 .staff-portal-link svg,
 .admin-portal-link svg {
   flex: 0 0 auto;

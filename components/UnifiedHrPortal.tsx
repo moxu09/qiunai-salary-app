@@ -184,6 +184,56 @@ export default function UnifiedHrPortal() {
   const [canAudit, setCanAudit] = useState(false);
   const [managedDepartment, setManagedDepartment] = useState<DepartmentKey | null>(null);
   const [approvalDepartment, setApprovalDepartment] = useState<DepartmentKey | null>(null);
+  const [approvalCounts, setApprovalCounts] = useState<{
+    session: Session;
+    workflows?: number;
+    personnel?: number;
+  } | null>(null);
+  useEffect(() => {
+    if (!session) return;
+    const currentSession = session;
+    const stores = currentSession.departments.filter(({ hrRole }) => hrRole === "Manager" || hrRole === "PIC");
+    if (!stores.length) return;
+    let request: AbortController | undefined;
+
+    async function refresh() {
+      if (document.visibilityState !== "visible") return;
+      request?.abort();
+      const controller = new AbortController();
+      request = controller;
+      async function total(endpoint: string) {
+        const counts = await Promise.all(stores.map(async ({ key }) => {
+          const result = await hrFetch(`/api/${key}/${endpoint}&assigned=1&countOnly=1`, {
+            signal: controller.signal,
+          });
+          if (!Number.isSafeInteger(result.count) || result.count < 0) throw Error("待簽核數量無法讀取");
+          return result.count as number;
+        }));
+        return counts.reduce((sum, count) => sum + count, 0);
+      }
+      const [workflows, personnel] = await Promise.allSettled([
+        total("workspace?admin=1"),
+        total("hr?mode=admin&view=inbox"),
+      ]);
+      if (controller.signal.aborted) return;
+      setApprovalCounts({
+        session: currentSession,
+        workflows: workflows.status === "fulfilled" ? workflows.value : undefined,
+        personnel: personnel.status === "fulfilled" ? personnel.value : undefined,
+      });
+    }
+
+    void refresh();
+    const timer = window.setInterval(refresh, 60_000);
+    document.addEventListener("visibilitychange", refresh);
+    window.addEventListener("erp-notifications-changed", refresh);
+    return () => {
+      request?.abort();
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", refresh);
+      window.removeEventListener("erp-notifications-changed", refresh);
+    };
+  }, [session]);
   const init = useCallback(async () => {
     setLoading(true);
     setError("");
@@ -316,6 +366,7 @@ export default function UnifiedHrPortal() {
             brand={<Logos departments={session.departments} />}
             showDeviceAudit={canAudit}
             showPendingApprovals={managers.length > 0}
+            approvalCounts={approvalCounts?.session === session ? approvalCounts : undefined}
           />
           <div className="staff-main-column min-w-0">
             <HrThemeBanner />
