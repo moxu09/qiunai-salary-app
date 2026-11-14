@@ -267,7 +267,7 @@ export default function UnifiedHrPortal() {
   const adminSection = activeTab === "calendar" ? "event" : activeTab === "documents" || activeTab === "knowledge" ? "document" : activeTab === "workflows" ? "decision" : "overview";
   const managingActivities = activeTab === "activities";
   const managers = session.departments.filter((d) =>
-    d.hrRole === "PIC" || (!managingActivities && d.hrRole === "Manager"),
+    d.hrRole === "PIC" || d.hrRole === "Manager",
   );
   const managing = managers.find((d) => d.key === managedDepartment);
   const managementLabel = activeTab === "documents" ? "新增／管理共享文件" : activeTab === "knowledge" ? "管理知識庫與課程" :

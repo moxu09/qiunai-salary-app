@@ -3,6 +3,7 @@ import test from "node:test";
 import fs from "node:fs/promises";
 import ExcelJS from "exceljs";
 import { groupActivityResponses } from "../lib/qiunaiActivityGroups.ts";
+import { activityOccupied, checkActivityCapacityEdit, parseActivityCapacity } from "../lib/activityCapacity.mjs";
 import { normalizeActivityOptionIds } from "../lib/activityOptionSelection.js";
 
 class NextResponse extends Response {
@@ -41,6 +42,7 @@ function database(tables) {
         maybeSingle() { entry.single = true; return Promise.resolve(result()); },
         single() { entry.single = true; return Promise.resolve(result()); },
         upsert(value) { entry.operation = "upsert"; entry.value = value; writes.push(entry); return this; },
+        update(value) { entry.operation = "update"; entry.value = value; writes.push(entry); return this; },
         delete() { entry.operation = "delete"; writes.push(entry); return this; },
         then(resolve, reject) { return Promise.resolve(result()).then(resolve, reject); },
       };
@@ -49,20 +51,22 @@ function database(tables) {
   };
 }
 
-async function routes(db, authorize = async () => ({ discordId: "staff" })) {
+async function routes(db, authorize = async () => ({ discordId: "staff" }), authorizeEditor = authorize) {
   async function load(file, names) {
     const source = (await fs.readFile(new URL(file, import.meta.url), "utf8"))
       .replace(/^import .*;\r?$/gm, "").replace(/^export /gm, "");
     return new Function("ExcelJS", "NextResponse", "supabaseAdmin", "requireHrPic",
       "groupActivityResponses", "getAuthUserFromRequest", "normalizeActivityOptionIds",
+      "requireHrActivityEditor", "activityOccupied", "checkActivityCapacityEdit", "parseActivityCapacity",
       source + "\nreturn {" + names.join(",") + "};")(
       ExcelJS, NextResponse, db, authorize, groupActivityResponses,
       async () => ({ discordId: "staff" }), normalizeActivityOptionIds,
+      authorizeEditor, activityOccupied, checkActivityCapacityEdit, parseActivityCapacity,
     );
   }
   return {
     exportRoute: await load("../app/api/qiunai/activities/[id]/export/route.js", ["GET"]),
-    activityRoute: await load("../app/api/qiunai/activities/route.js", ["PATCH"]),
+    activityRoute: await load("../app/api/qiunai/activities/route.js", ["GET", "POST", "PATCH", "DELETE"]),
   };
 }
 
@@ -161,4 +165,53 @@ test("複選修正仍遵守報名截止，不寫入已截止活動", async () =>
   assert.equal(response.status, 400);
   assert.match((await response.json()).message, /報名已截止/);
   assert.equal(db.writes.length, 0);
+});
+
+
+test("本店 Manager 能讀取並編輯活動，編輯資料不含名單且不能切換發布狀態", async () => {
+  const db = database(fixture());
+  const { activityRoute } = await routes(db,
+    async () => { throw Object.assign(new Error("只有 PIC 可以執行此操作"), { status: 403 }); },
+    async (_, organization) => {
+      assert.equal(organization, "qiunai");
+      return { canManageActivity: false };
+    },
+  );
+  const list = await activityRoute.GET(new Request("https://example.test/api/qiunai/activities?admin=1"));
+  assert.equal(list.status, 200);
+  const payload = await list.json();
+  assert.equal(payload.activities.length, 1);
+  assert.equal(payload.canManageActivity, false);
+  assert.equal(db.calls.some(call => call.table.endsWith("_responses") || call.table.endsWith("_guests")), false);
+
+  const response = await activityRoute.PATCH(request({
+    action: "edit", id: "activity", title: "改活動", startsAt: "2099-11-15T04:30:00Z",
+    isPublished: false, capacity: null, options: fixture().qiunai_activity_options,
+  }));
+  assert.equal(response.status, 200);
+  const edit = db.writes.find(call => call.table === "qiunai_activities");
+  assert.equal(edit.value.title, "改活動");
+  assert.equal(Object.hasOwn(edit.value, "is_published"), false);
+
+  const publish = await activityRoute.PATCH(request({ action: "publish", id: "activity", isPublished: false }));
+  assert.equal(publish.status, 403);
+});
+
+test("活動編輯使用本店 HR 角色，拒絕其他店主管及未登入者", async () => {
+  const source = (await fs.readFile(new URL("../lib/hrAccess.js", import.meta.url), "utf8"))
+    .replace(/^import .*;\r?$/gm, "").replace(/^export /gm, "");
+  const db = { async rpc(name, { p_org, p_actor }) {
+    assert.equal(name, "hr_salary_reviewer_role");
+    return { data: p_actor === "owner" ? "PIC" : p_org === "deepnight" && p_actor === "manager" ? "Manager" : "Staff" };
+  } };
+  const requireEditor = new Function("supabaseAdmin", "ERP_OWNER_DISCORD_ID", "getAuthUserFromRequest",
+    source + "\nreturn requireHrActivityEditor;")(db, "owner", async (_, actor) => {
+      if (!actor) throw Error("登入失效");
+      return { discordId: actor };
+    });
+  assert.equal((await requireEditor("manager", "deepnight")).canManageActivity, false);
+  assert.equal((await requireEditor("owner", "qiunai")).canManageActivity, true);
+  await assert.rejects(requireEditor("manager", "qiunai"), { status: 403 });
+  await assert.rejects(requireEditor("staff", "deepnight"), { status: 403 });
+  await assert.rejects(requireEditor(null, "deepnight"), { status: 401 });
 });

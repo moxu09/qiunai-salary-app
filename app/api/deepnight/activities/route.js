@@ -1,7 +1,7 @@
 import { activityOccupied, checkActivityCapacityEdit, parseActivityCapacity } from "@/lib/activityCapacity.mjs";
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { requireHrPic } from "@/lib/hrAccess";
+import { requireHrActivityEditor, requireHrPic } from "@/lib/hrAccess";
 import { getAuthUserFromRequest } from "@/lib/salaryWallet";
 
 export const dynamic = "force-dynamic";
@@ -136,8 +136,21 @@ export async function GET(request) {
   try {
     const url = new URL(request.url);
     if (url.searchParams.get("admin") === "1") {
-      await requireAdmin(request);
-      return NextResponse.json({ ok: true, activities: await adminList() });
+      const { canManageActivity } = await requireHrActivityEditor(request, "deepnight");
+      if (canManageActivity) {
+        return NextResponse.json({ ok: true, canManageActivity, activities: await adminList() });
+      }
+      const { data: activities, error } = await supabaseAdmin.from("deepnight_activities")
+        .select("id,title,description,location,starts_at,response_deadline,is_published,min_completed_orders,min_employment_days,allow_not_attending,allow_distance,eligibility_note,participant_note,capacity")
+        .order("starts_at", { ascending: false });
+      if (error) throw error;
+      const options = await optionsFor((activities || []).map((activity) => activity.id));
+      const editableActivities = await Promise.all((activities || []).map(async (activity) => ({
+        ...activity,
+        occupied: activity.capacity == null ? null : await activityOccupied(supabaseAdmin, "deepnight", activity.id),
+        options: options.filter((option) => option.activity_id === activity.id),
+      })));
+      return NextResponse.json({ ok: true, canManageActivity, activities: editableActivities });
     }
     const { discordId } = await getAuthUserFromRequest(supabaseAdmin, request);
     const { data: staff, error: staffError } = await supabaseAdmin
@@ -313,7 +326,9 @@ export async function PATCH(request) {
       if (responseError) throw responseError;
       return NextResponse.json({ ok: true, response });
     }
-    await requireAdmin(request);
+    const canManageActivity = body.action === "edit"
+      ? (await requireHrActivityEditor(request, "deepnight")).canManageActivity
+      : Boolean(await requireAdmin(request));
     const id = clean(body.id, 100);
     if (!id) throw new Error("缺少活動 ID");
     if (body.action === "publish") {
@@ -409,7 +424,7 @@ export async function PATCH(request) {
           participant_note: clean(body.participantNote, 2000) || null,
           allow_not_attending: body.allowNotAttending !== false,
           allow_distance: body.allowDistance !== false,
-          is_published: body.isPublished !== false,
+          ...(canManageActivity ? { is_published: body.isPublished !== false } : {}),
           updated_at: new Date().toISOString(),
         })
         .eq("id", id);

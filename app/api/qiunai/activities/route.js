@@ -1,7 +1,7 @@
 import { activityOccupied, checkActivityCapacityEdit, parseActivityCapacity } from "@/lib/activityCapacity.mjs";
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { requireHrPic } from "@/lib/hrAccess";
+import { requireHrActivityEditor, requireHrPic } from "@/lib/hrAccess";
 import { getAuthUserFromRequest } from "@/lib/salaryWallet";
 import { normalizeActivityOptionIds } from "@/lib/activityOptionSelection";
 
@@ -90,8 +90,21 @@ export async function GET(request) {
   try {
     const url = new URL(request.url);
     if (url.searchParams.get("admin") === "1") {
-      await requireAdmin(request);
-      return NextResponse.json({ ok: true, activities: await adminList() });
+      const { canManageActivity } = await requireHrActivityEditor(request, "qiunai");
+      if (canManageActivity) {
+        return NextResponse.json({ ok: true, canManageActivity, activities: await adminList() });
+      }
+      const { data: activities, error } = await supabaseAdmin.from("qiunai_activities")
+        .select("id,title,description,location,starts_at,response_deadline,is_published,min_completed_orders,min_employment_days,allow_not_attending,allow_distance,eligibility_note,participant_note,capacity,allow_multiple_options")
+        .order("starts_at", { ascending: false });
+      if (error) throw error;
+      const options = await optionsFor((activities || []).map((activity) => activity.id));
+      const editableActivities = await Promise.all((activities || []).map(async (activity) => ({
+        ...activity,
+        occupied: activity.capacity == null ? null : await activityOccupied(supabaseAdmin, "qiunai", activity.id),
+        options: options.filter((option) => option.activity_id === activity.id),
+      })));
+      return NextResponse.json({ ok: true, canManageActivity, activities: editableActivities });
     }
     const { discordId } = await getAuthUserFromRequest(supabaseAdmin, request);
     const { data: staff, error: staffError } = await supabaseAdmin.from("qiunai_staff").select("discord_id,display_name,discord_name,real_name,phone,created_at,is_active").eq("discord_id", discordId).maybeSingle();
@@ -197,7 +210,9 @@ export async function PATCH(request) {
       if (responseError) throw responseError;
       return NextResponse.json({ ok: true, response });
     }
-    await requireAdmin(request);
+    const canManageActivity = body.action === "edit"
+      ? (await requireHrActivityEditor(request, "qiunai")).canManageActivity
+      : Boolean(await requireAdmin(request));
     const id = clean(body.id, 100);
     if (!id) throw new Error("缺少活動 ID");
     if (body.action === "publish") {
@@ -269,7 +284,7 @@ export async function PATCH(request) {
         allow_not_attending: body.allowNotAttending !== false,
         allow_distance: body.allowDistance !== false,
         allow_multiple_options: allowMultipleOptions,
-        is_published: body.isPublished !== false,
+        ...(canManageActivity ? { is_published: body.isPublished !== false } : {}),
         updated_at: new Date().toISOString(),
       }).eq("id", id);
       if (updateError) throw updateError;
