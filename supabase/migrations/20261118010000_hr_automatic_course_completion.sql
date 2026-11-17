@@ -1,4 +1,6 @@
 begin;
+set local lock_timeout = '4s';
+set local statement_timeout = '25s';
 
 -- Retire the former options without editing or versioning the course content.
 update public.service_course_links
@@ -107,6 +109,48 @@ begin
  return jsonb_build_object('progress',result,'score',score,'completion',(select jsonb_build_object('document_version',document_version,'completed_at',completed_at) from public.knowledge_course_completions where organization_code=p_org and document_id=p_id and discord_id=target and document_version=p_version));
 end $$;
 
+-- Qiunai has an independent onboarding guard on both learning and completion.
+create or replace function public.qiunai_new_hire_training_has_contract(p_discord_id text)
+returns boolean
+language sql stable security definer set search_path = '' as $$
+  select exists (
+    select 1 from public.qiunai_staff s where s.discord_id = p_discord_id
+      and s.created_at < timestamptz '2026-11-06 16:38:00+08'
+  ) or exists (
+    select 1 from public.employment_contract_signings s where s.discord_id = p_discord_id
+      and s.status in ('signed', 'activated') and s.signed_at <= statement_timestamp()
+  );
+$$;
+
+revoke all on function public.qiunai_new_hire_training_has_contract(text)
+from public, anon, authenticated, service_role;
+
+create or replace function public.qiunai_guard_new_hire_learning()
+returns trigger
+language plpgsql security definer set search_path = '' as $$
+begin
+  if new.organization_code <> 'qiunai'
+      or new.document_id <> '28df42e9-99d0-41aa-86f5-c26f99cf77ce' then
+    return new;
+  end if;
+  if not public.qiunai_new_hire_training_has_contract(new.discord_id) then
+    raise exception using errcode = '22023', message = '請先完成入職契約簽署，再開始新人訓練課程';
+  end if;
+  if tg_table_name = 'knowledge_course_completions' and not exists (
+    select 1 from public.service_course_links course
+    where course.document_id = new.document_id and course.organization_code = new.organization_code
+      and course.managed and course.is_published
+      and (course.requirements->>'minimumSeconds')::integer > 0
+      and jsonb_array_length(course.quiz) > 0
+  ) then
+    raise exception using errcode = '22023', message = '新人訓練課程須設定及格分數及最低學習時間';
+  end if;
+  return new;
+end;
+$$;
+
+revoke all on function public.qiunai_guard_new_hire_learning() from public, anon, authenticated;
+
 -- Backfill the current version for eligible employees. Learners whose access
 -- requires a fresh Discord role check are handled by their next authorized heartbeat.
 insert into public.knowledge_course_completions
@@ -122,6 +166,15 @@ where course.managed and course.is_published and d.archived_at is null
   and (jsonb_array_length(course.quiz) = 0
     or p.quiz_score >= (course.requirements->>'passScore')::integer)
   and public.course_can_learn(p.organization_code, p.document_id, p.discord_id, false)
+  and (
+    p.organization_code <> 'qiunai'
+    or p.document_id <> '28df42e9-99d0-41aa-86f5-c26f99cf77ce'
+    or (
+      public.qiunai_new_hire_training_has_contract(p.discord_id)
+      and (course.requirements->>'minimumSeconds')::integer > 0
+      and jsonb_array_length(course.quiz) > 0
+    )
+  )
   and not exists (
     select 1 from public.knowledge_course_completions done
     where (done.organization_code, done.document_id, done.discord_id, done.document_version)

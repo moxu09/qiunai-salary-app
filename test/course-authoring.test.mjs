@@ -8,7 +8,20 @@ const course=()=>({title:'訓練課程',category:'客服',isPublished:true,chapt
 async function applyAutomaticCompletion(db) {
   await db.exec(await readFile(new URL('../supabase/migrations/20261118010000_hr_automatic_course_completion.sql', import.meta.url), 'utf8'));
 }
-async function fixture(automatic = true){const db=new PGlite();await db.exec(`create role anon;create role authenticated;create role service_role bypassrls;create table erp_role_assignments(organization_code text,discord_id text,is_active boolean,role text);create table admins(discord_id text,is_active boolean);create table qiunai_admins(discord_id text,is_active boolean);create table qiunai_staff(discord_id text,is_active boolean);create table players(discord_id text,is_active boolean);insert into qiunai_staff values('${actor}',true),('${manager}',true),('${other}',true);insert into players values('${actor}',true);insert into erp_role_assignments values('qiunai','${manager}',true,'store_manager');`);for(const file of ['20260929_eip_workspace.sql','20260929_eip_workflow_two_stage.sql','20261103000300_knowledge_course_completions.sql','20261103000400_private_service_courses.sql','20261103000500_service_content_versions.sql','20261103000600_course_authoring.sql','20261106000100_hr_workspace_management.sql'])await db.exec((await readFile(new URL('../supabase/migrations/'+file,import.meta.url),'utf8')).replace('create extension if not exists pgcrypto;',''));if (automatic) await applyAutomaticCompletion(db);return db;}
+async function fixture(automatic = true){const db=new PGlite();await db.exec(`create role anon;create role authenticated;create role service_role bypassrls;create table erp_role_assignments(organization_code text,discord_id text,is_active boolean,role text);create table admins(discord_id text,is_active boolean);create table qiunai_admins(discord_id text,is_active boolean);create table qiunai_staff(discord_id text,is_active boolean,created_at timestamptz default now());create table employment_contract_signings(discord_id text,status text,signed_at timestamptz);create table players(discord_id text,is_active boolean);insert into qiunai_staff values('${actor}',true),('${manager}',true),('${other}',true);insert into players values('${actor}',true);insert into erp_role_assignments values('qiunai','${manager}',true,'store_manager');`);for(const file of ['20260929_eip_workspace.sql','20260929_eip_workflow_two_stage.sql','20261103000300_knowledge_course_completions.sql','20261103000400_private_service_courses.sql','20261103000500_service_content_versions.sql','20261103000600_course_authoring.sql','20261106000100_hr_workspace_management.sql'])await db.exec((await readFile(new URL('../supabase/migrations/'+file,import.meta.url),'utf8')).replace('create extension if not exists pgcrypto;',''));
+await db.exec(`create function qiunai_guard_new_hire_learning() returns trigger language plpgsql as $$
+begin
+ if tg_table_name='knowledge_course_completions'
+   and new.document_id='28df42e9-99d0-41aa-86f5-c26f99cf77ce'
+   and not exists (select 1 from service_course_links where document_id=new.document_id
+     and requirements->>'allChapters'='true') then raise exception '舊逐章確認規則'; end if;
+ return new;
+end $$;
+create trigger qiunai_guard_new_hire_learning before insert or update on course_learning_progress
+ for each row execute function qiunai_guard_new_hire_learning();
+create trigger qiunai_guard_new_hire_completion before insert on knowledge_course_completions
+ for each row execute function qiunai_guard_new_hire_learning();`);
+if (automatic) await applyAutomaticCompletion(db);return db;}
 const save=async(db,data=course(),id=null,version=null)=>(await db.query('select save_managed_course($1,$2,$3,$4,$5) result',['qiunai',manager,id,version,validateCourse(data)])).rows[0].result;
 const learn=async(db,c,action,input={},employee=actor)=>(await db.query('select course_learning_atomic($1,$2,$3,$4,$5,$6) result',['qiunai',c.id,employee,c.version,action,input])).rows[0].result;
 async function satisfy(db,c,employee=actor){for(const chapter of ['one','two'])await learn(db,c,'read',{chapter},employee);await learn(db,c,'heartbeat',{},employee);await db.query('update course_learning_progress set last_seen=clock_timestamp()-interval \'16 seconds\' where discord_id=$1',[employee]);await learn(db,c,'heartbeat',{},employee);await learn(db,c,'quiz',{answers:{q1:0}},employee);}
@@ -120,6 +133,30 @@ test('the migration backfills eligible current versions and preserves accumulate
   await applyAutomaticCompletion(db);
   assert.equal((await rows()).rows.length,1);
   await assert.rejects(() => learn(db,c,'approve',{employee:other},manager), /學習資料不正確/);
+ } finally { await db.close(); }
+});
+
+test('autocompletion respects the separate Qiunai contract gate and backfills signed employees', async () => {
+ const db = await fixture(false);
+ const id = '28df42e9-99d0-41aa-86f5-c26f99cf77ce';
+ try {
+  await db.query(`insert into eip_workspace_documents
+    (id,organization_code,document_type,title,category,body,is_published,created_by)
+    values ($1,'qiunai','knowledge','新人訓練','教育訓練','內容',false,$2)`, [id,manager]);
+  await db.query(`insert into service_course_links
+    (document_id,organization_code,slug,is_published,managed,audience,chapters,requirements,quiz)
+    values ($1,'qiunai','training',true,true,$2,$3,$4,$5)`,
+    [id,course().audience,JSON.stringify(course().chapters),course().requirements,JSON.stringify(course().quiz)]);
+  await db.query(`insert into course_learning_progress
+    (organization_code,document_id,discord_id,document_version,study_seconds,quiz_score)
+    values ('qiunai',$1,$2,1,15,80), ('qiunai',$1,$3,1,15,80)`, [id,actor,other]);
+  await db.query("insert into employment_contract_signings values ($1,'signed',now())", [actor]);
+  await applyAutomaticCompletion(db);
+  const courseRef = {id,version:1};
+  assert.ok((await learn(db,courseRef,'heartbeat')).completion);
+  await assert.rejects(() => learn(db,courseRef,'heartbeat',{},other), /請先完成入職契約/);
+  const result = await db.query('select discord_id from knowledge_course_completions');
+  assert.deepEqual(result.rows,[{discord_id:actor}]);
  } finally { await db.close(); }
 });
 
