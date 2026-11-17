@@ -90,9 +90,9 @@ export async function GET(request) {
   try {
     const url = new URL(request.url);
     if (url.searchParams.get("admin") === "1") {
-      const { canManageActivity } = await requireHrActivityEditor(request, "qiunai");
+      const { canManageActivity, canCreateActivity } = await requireHrActivityEditor(request, "qiunai");
       if (canManageActivity) {
-        return NextResponse.json({ ok: true, canManageActivity, activities: await adminList() });
+        return NextResponse.json({ ok: true, canManageActivity, canCreateActivity, activities: await adminList() });
       }
       const { data: activities, error } = await supabaseAdmin.from("qiunai_activities")
         .select("id,title,description,location,starts_at,response_deadline,is_published,min_completed_orders,min_employment_days,allow_not_attending,allow_distance,eligibility_note,participant_note,capacity,allow_multiple_options")
@@ -104,7 +104,7 @@ export async function GET(request) {
         occupied: activity.capacity == null ? null : await activityOccupied(supabaseAdmin, "qiunai", activity.id),
         options: options.filter((option) => option.activity_id === activity.id),
       })));
-      return NextResponse.json({ ok: true, canManageActivity, activities: editableActivities });
+      return NextResponse.json({ ok: true, canManageActivity, canCreateActivity, activities: editableActivities });
     }
     const { discordId } = await getAuthUserFromRequest(supabaseAdmin, request);
     const { data: staff, error: staffError } = await supabaseAdmin.from("qiunai_staff").select("discord_id,display_name,discord_name,real_name,phone,created_at,is_active").eq("discord_id", discordId).maybeSingle();
@@ -134,7 +134,10 @@ export async function GET(request) {
 
 export async function POST(request) {
   try {
-    const access = await requireAdmin(request);
+    const access = await requireHrActivityEditor(request, "qiunai");
+    if (!access.canCreateActivity) {
+      return NextResponse.json({ ok: false, message: "只有秋奈 Manager 或最高管理員可以新增活動" }, { status: 403 });
+    }
     const body = await request.json().catch(() => ({}));
     const title = clean(body.title, 120);
     const startsAt = new Date(body.startsAt);

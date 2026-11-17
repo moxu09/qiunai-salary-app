@@ -66,6 +66,7 @@ const blank = () => ({
 
 export default function AdminActivityManager({ organization = "qiunai" }: { organization?: "qiunai" | "deepnight" }) {
   const [canManageActivity, setCanManageActivity] = useState(false);
+  const [canCreateActivity, setCanCreateActivity] = useState(false);
   const [activities, setActivities] = useState<Activity[]>([]);
   const [form, setForm] = useState(blank);
   const [loading, setLoading] = useState(true);
@@ -93,6 +94,7 @@ export default function AdminActivityManager({ organization = "qiunai" }: { orga
     try {
       const payload = await request();
       setCanManageActivity(payload.canManageActivity === true);
+      setCanCreateActivity(payload.canCreateActivity === true);
       setActivities(payload.activities || []);
     } catch (error) {
       alert(error instanceof Error ? error.message : "讀取活動失敗");
@@ -163,7 +165,7 @@ export default function AdminActivityManager({ organization = "qiunai" }: { orga
       });
       cancelEdit();
       await load();
-      alert(editingId ? "活動已更新" : "活動已發布");
+      alert(editingId ? "活動已更新" : form.isPublished ? "活動已發布" : "已儲存活動草稿");
     } catch (error) {
       alert(error instanceof Error ? error.message : "儲存活動失敗");
     } finally {
@@ -226,10 +228,10 @@ export default function AdminActivityManager({ organization = "qiunai" }: { orga
 
   return (
     <div className="space-y-6">
-      {(canManageActivity || editingId) && <section className="rounded-[30px] border border-pink-100 bg-white p-5 shadow-sm sm:p-6">
+      {(canManageActivity || canCreateActivity || editingId) && <section className="rounded-[30px] border border-pink-100 bg-white p-5 shadow-sm sm:p-6">
         <h2 className="flex items-center gap-2 text-xl font-black text-slate-900">
           <CalendarHeart className="text-pink-500" />
-          {editingId ? "編輯活動" : "發布活動"}
+          {editingId ? "編輯活動" : "新增活動"}
         </h2>
         <div className="mt-5 grid gap-4 sm:grid-cols-2">
           <Field label="活動名稱">
@@ -367,7 +369,7 @@ export default function AdminActivityManager({ organization = "qiunai" }: { orga
           </div>
           <p className="mt-2 text-xs text-slate-500">關閉後員工不能再選該回覆，既有回覆仍保留在名單中。</p>
         </div>
-        {canManageActivity && <label className="mt-4 flex items-center gap-2 text-sm font-bold text-slate-700">
+        {(canManageActivity || (canCreateActivity && !editingId)) && <label className="mt-4 flex items-center gap-2 text-sm font-bold text-slate-700">
           <input
             type="checkbox"
             checked={form.isPublished}
@@ -388,7 +390,7 @@ export default function AdminActivityManager({ organization = "qiunai" }: { orga
             className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-pink-500 px-5 py-3 font-black text-white disabled:opacity-40"
           >
             {busy ? <Loader2 className="animate-spin" size={18} /> : editingId ? <Pencil size={18} /> : <Plus size={18} />}
-            {editingId ? "儲存活動變更" : "發布活動"}
+            {editingId ? "儲存活動變更" : form.isPublished ? "發布活動" : "儲存草稿"}
           </button>
         </div>
       </section>}

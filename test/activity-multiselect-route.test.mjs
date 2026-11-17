@@ -30,6 +30,7 @@ function database(tables) {
           rows = rows.filter(row => kind === "in" ? value.includes(row[key]) : row[key] === value);
         }
         if (entry.operation === "upsert") rows = [{ id: "new-response", ...entry.value }];
+        if (entry.operation === "insert") rows = [{ id: "new-activity", ...entry.value }];
         if (entry.columns !== "*") rows = rows.map(row => Object.fromEntries(entry.columns.split(",").map(key => [key, row[key]])));
         return { data: entry.single ? rows[0] || null : rows, error: null, count: rows.length };
       }
@@ -42,6 +43,7 @@ function database(tables) {
         maybeSingle() { entry.single = true; return Promise.resolve(result()); },
         single() { entry.single = true; return Promise.resolve(result()); },
         upsert(value) { entry.operation = "upsert"; entry.value = value; writes.push(entry); return this; },
+        insert(value) { entry.operation = "insert"; entry.value = value; writes.push(entry); return this; },
         update(value) { entry.operation = "update"; entry.value = value; writes.push(entry); return this; },
         delete() { entry.operation = "delete"; writes.push(entry); return this; },
         then(resolve, reject) { return Promise.resolve(result()).then(resolve, reject); },
@@ -94,8 +96,8 @@ function fixture() {
   };
 }
 
-const request = body => new Request("https://example.test/api/qiunai/activities", {
-  method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
+const request = (body, method = "PATCH") => new Request("https://example.test/api/qiunai/activities", {
+  method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
 });
 
 test("實際 Excel route 逐場列出複選員工與親友，總人數不重複", async () => {
@@ -174,7 +176,7 @@ test("本店 Manager 能讀取並編輯活動，編輯資料不含名單且不�
     async () => { throw Object.assign(new Error("只有 PIC 可以執行此操作"), { status: 403 }); },
     async (_, organization) => {
       assert.equal(organization, "qiunai");
-      return { canManageActivity: false };
+      return { canManageActivity: false, canCreateActivity: true };
     },
   );
   const list = await activityRoute.GET(new Request("https://example.test/api/qiunai/activities?admin=1"));
@@ -182,6 +184,7 @@ test("本店 Manager 能讀取並編輯活動，編輯資料不含名單且不�
   const payload = await list.json();
   assert.equal(payload.activities.length, 1);
   assert.equal(payload.canManageActivity, false);
+  assert.equal(payload.canCreateActivity, true);
   assert.equal(db.calls.some(call => call.table.endsWith("_responses") || call.table.endsWith("_guests")), false);
 
   const response = await activityRoute.PATCH(request({
@@ -197,19 +200,49 @@ test("本店 Manager 能讀取並編輯活動，編輯資料不含名單且不�
   assert.equal(publish.status, 403);
 });
 
+test("秋奈 Manager 可新增並發布活動，但未獲授權的角色不可建立", async () => {
+  const input = { title: "新活動", startsAt: "2099-11-15T04:30:00Z", options: ["台北"] };
+  const restrictedOwnerAction = async () => { throw Object.assign(new Error("只有 PIC"), { status: 403 }); };
+  const db = database(fixture());
+  const { activityRoute } = await routes(db, restrictedOwnerAction, async (_, organization) => {
+    assert.equal(organization, "qiunai");
+    return { discordId: "manager", canManageActivity: false, canCreateActivity: true };
+  });
+  for (const isPublished of [true, false]) {
+    const response = await activityRoute.POST(request({ ...input, isPublished }, "POST"));
+    assert.equal(response.status, 200);
+    const { activity } = await response.json();
+    assert.equal(activity.is_published, isPublished);
+    assert.equal(activity.created_by, "manager");
+  }
+  assert.equal(db.writes.filter(write => write.table === "qiunai_activity_options").length, 2);
+
+  const deniedDb = database(fixture());
+  const { activityRoute: denied } = await routes(deniedDb, restrictedOwnerAction, async () => ({
+    discordId: "unprivileged-editor", canManageActivity: false, canCreateActivity: false,
+  }));
+  assert.equal((await denied.POST(request(input, "POST"))).status, 403);
+  assert.equal(deniedDb.writes.length, 0);
+});
+
 test("活動編輯使用本店 HR 角色，拒絕其他店主管及未登入者", async () => {
   const source = (await fs.readFile(new URL("../lib/hrAccess.js", import.meta.url), "utf8"))
     .replace(/^import .*;\r?$/gm, "").replace(/^export /gm, "");
   const db = { async rpc(name, { p_org, p_actor }) {
     assert.equal(name, "hr_salary_reviewer_role");
-    return { data: p_actor === "owner" ? "PIC" : p_org === "deepnight" && p_actor === "manager" ? "Manager" : "Staff" };
+    return { data: p_actor === "owner" ? "PIC" : (p_org === "deepnight" && p_actor === "manager") || (p_org === "qiunai" && p_actor === "qiunai-manager") ? "Manager" : "Staff" };
   } };
   const requireEditor = new Function("supabaseAdmin", "ERP_OWNER_DISCORD_ID", "getAuthUserFromRequest",
     source + "\nreturn requireHrActivityEditor;")(db, "owner", async (_, actor) => {
       if (!actor) throw Error("登入失效");
       return { discordId: actor };
     });
-  assert.equal((await requireEditor("manager", "deepnight")).canManageActivity, false);
+  const deepnightManager = await requireEditor("manager", "deepnight");
+  assert.equal(deepnightManager.canManageActivity, false);
+  assert.equal(deepnightManager.canCreateActivity, false);
+  const qiunaiManager = await requireEditor("qiunai-manager", "qiunai");
+  assert.equal(qiunaiManager.canManageActivity, false);
+  assert.equal(qiunaiManager.canCreateActivity, true);
   assert.equal((await requireEditor("owner", "qiunai")).canManageActivity, true);
   await assert.rejects(requireEditor("manager", "qiunai"), { status: 403 });
   await assert.rejects(requireEditor("staff", "deepnight"), { status: 403 });
