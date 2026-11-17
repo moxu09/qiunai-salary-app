@@ -1,7 +1,7 @@
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { courseManager,courseFailure } from '@/lib/courseAccess';
 import { CourseError } from '@/lib/courseRules.mjs';
-import { ADMIN_FILE_BUCKET,decodedName,uploadAdminFile,validateAdminFile,removeAdminFilePath } from '@/lib/adminFileStorage';
+import { ADMIN_FILE_BUCKET,createNamedAdminFileDownload,decodedName,uploadAdminFile,validateAdminFile,removeAdminFilePath } from '@/lib/adminFileStorage';
 export const dynamic='force-dynamic';
 async function contextFor(request,context){
  const {department,id}=await context.params;const actor=await courseManager(request,department);
@@ -14,7 +14,7 @@ async function contextFor(request,context){
  if(!link.data)throw new CourseError('請先儲存課程，再管理附件',409);
  return {department,id,actor:actor.discordId,version:data.version,folder,hidden:link.data?.hidden_files||[],files:listing.data.filter(file=>file.id).map(file=>({path:`${folder}/${file.name}`,name:decodedName(file.name),size:Number(file.metadata?.size||0),createdAt:file.created_at}))};
 }
-export async function GET(request,context){try{const c=await contextFor(request,context);const path=new URL(request.url).searchParams.get('download');if(path!==null){const file=c.files.find(file=>file.path===path);if(!file)throw new CourseError('找不到附件',404);const {data,error}=await supabaseAdmin.storage.from(ADMIN_FILE_BUCKET).createSignedUrl(path,60,{download:file.name});if(error)throw error;return Response.json({ok:true,url:data.signedUrl},{headers:{'Cache-Control':'no-store'}});}return Response.json({ok:true,files:c.files.filter(file=>!c.hidden.includes(file.path)),archivedFiles:c.files.filter(file=>c.hidden.includes(file.path))},{headers:{'Cache-Control':'no-store'}});}catch(error){return courseFailure(error);}}
+export async function GET(request,context){try{const c=await contextFor(request,context);const path=new URL(request.url).searchParams.get('download');if(path!==null){const file=c.files.find(file=>file.path===path);if(!file)throw new CourseError('找不到附件',404);const url=await createNamedAdminFileDownload(file.path,file.name);return Response.json({ok:true,url},{headers:{'Cache-Control':'no-store'}});}return Response.json({ok:true,files:c.files.filter(file=>!c.hidden.includes(file.path)),archivedFiles:c.files.filter(file=>c.hidden.includes(file.path))},{headers:{'Cache-Control':'no-store'}});}catch(error){return courseFailure(error);}}
 async function change(c,path,action){const {data,error}=await supabaseAdmin.rpc('change_course_attachment',{p_org:c.department,p_actor:c.actor,p_id:c.id,p_path:path,p_action:action});if(error)throw error;return data;}
 async function limitedForm(request){
  const chunks=[];let length=0;const reader=request.body?.getReader();if(!reader)throw new CourseError('請選擇附件');

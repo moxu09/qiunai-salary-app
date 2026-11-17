@@ -15,6 +15,10 @@ function setup() {
   const files = [];
   const documents = [{ id: documentId, organization_code: "qiunai", is_published: false }];
   const storage = {
+    async upload(path, buffer) {
+      files.push({ path, size: buffer.length });
+      return { error: null };
+    },
     list(folder) {
       return Promise.resolve({
         data: files.filter((item) => item.path.startsWith(`${folder}/`)).map((item) => ({
@@ -24,7 +28,14 @@ function setup() {
         error: null,
       });
     },
-    createSignedUrl(path) { return Promise.resolve({ data: { signedUrl: `https://private.test/${path}` }, error: null }); },
+    createSignedUrl(path, expiresIn, options) {
+      assert.equal(expiresIn, 60);
+      assert.equal(options, undefined);
+      return Promise.resolve({
+        data: { signedUrl: `https://private.test/${path}?token=fixture` },
+        error: null,
+      });
+    },
   };
   const supabaseAdmin = {
     from(table) {
@@ -39,12 +50,15 @@ function setup() {
         },
       };
     },
-    storage: { from() { return storage; } },
+    storage: { from() { return storage; }, async getBucket() { return { data: {} }; } },
   };
   const source = readFileSync(join(root, "lib/eipWorkspaceFiles.js"), "utf8")
     .replace(/^import .*;\s*$/gm, "")
     .replace(/import \{[\s\S]*?\} from "@\/lib\/adminFileStorage";\s*/, "")
     .replace("export function createEipWorkspaceFileHandlers", "function createEipWorkspaceFileHandlers");
+  const fileStorage = readFileSync(join(root, "lib/adminFileStorage.js"), "utf8")
+    .replace(/^import .*;\s*$/gm, "")
+    .replace(/^export /gm, "");
   const context = {
     supabaseAdmin,
     getAuthUserFromRequest: async (_db, request) => {
@@ -52,19 +66,11 @@ function setup() {
       return { discordId: request.discordId };
     },
     getHrRole: async (_org, discordId) => discordId === manager ? "Manager" : "Staff",
-    ADMIN_FILE_BUCKET: "salary-admin-files",
-    decodedName: (name) => name,
-    ensureAdminFileBucket: async () => {},
-    validateAdminFile: (file) => {
-      if (!file || file.size <= 0 || file.size > 25 * 1024 * 1024 || !file.name.endsWith(".pdf")) throw new Error("不支援此檔案");
-    },
-    uploadAdminFileBuffer: async ({ organization, category, name, buffer }) => {
-      files.push({ path: `${organization}/${category}/new--${name}`, size: buffer.length });
-    },
+    randomUUID: () => "fixture",
     Response: { json: (body, options = {}) => ({ body, status: options.status || 200 }) },
     console, URL, Date, String, Number, Buffer,
   };
-  runInNewContext(`${source}\nthis.create = createEipWorkspaceFileHandlers;`, context);
+  runInNewContext(`${fileStorage}\n${source}\nthis.create = createEipWorkspaceFileHandlers;`, context);
   return { route: context.create("qiunai", "qiunai_staff"), files, documents };
 }
 
@@ -83,11 +89,14 @@ test("unpublished attachments and uploads require scoped admin access", async ()
   assert.equal((await route.GET(get(employee, "&admin=1"))).status, 403);
   assert.equal((await route.GET(get(manager, "&admin=1"))).status, 200);
   assert.equal((await route.POST(post(employee, pdf))).status, 403);
-  assert.equal((await route.POST(post(manager, pdf))).status, 201);
+  const uploadedName = "新人手冊.pdf";
+  assert.equal((await route.POST(post(manager, { ...pdf, name: uploadedName }))).status, 201);
   assert.equal(files.length, 1);
   assert.equal((await route.GET(get(employee))).status, 404);
   documents[0].is_published = true;
   assert.equal((await route.GET(get(employee))).body.files.length, 1);
+  const download = await route.GET(get(employee, `&download=${encodeURIComponent(files[0].path)}`));
+  assert.equal(new URL(download.body.url).searchParams.get("download"), uploadedName);
   documents[0].organization_code = "deepnight";
   assert.equal((await route.GET(get(manager, "&admin=1"))).status, 404);
 });
@@ -95,12 +104,18 @@ test("unpublished attachments and uploads require scoped admin access", async ()
 test("download URLs are issued only for files listed under the same document", async () => {
   const { route, files, documents } = setup();
   documents[0].is_published = true;
-  const ownPath = `qiunai/workspace/${documentId}/one--manual.pdf`;
+  const originalName = "新人手冊 (秋奈 + 深夜) 100% #1 & 附錄.pdf";
+  const encodedName = Buffer.from(originalName, "utf8").toString("base64url");
+  const ownPath = `qiunai/workspace/${documentId}/one--${encodedName}`;
   files.push({ path: ownPath, size: 5 });
   assert.equal((await route.GET(get(employee, `&download=${encodeURIComponent("deepnight/workspace/" + documentId + "/secret.pdf")}`))).status, 404);
   const response = await route.GET(get(employee, `&download=${encodeURIComponent(ownPath)}`));
   assert.equal(response.status, 200);
-  assert.match(response.body.url, /private\.test/);
+  const downloadUrl = new URL(response.body.url);
+  assert.equal(downloadUrl.hostname, "private.test");
+  assert.equal(downloadUrl.searchParams.get("token"), "fixture");
+  assert.equal(downloadUrl.searchParams.get("download"), originalName);
+  assert.equal((await route.GET(get(employee))).body.files[0].name, originalName);
   assert.equal((await route.GET(get(employee))).body.files[0].url, undefined);
 });
 
