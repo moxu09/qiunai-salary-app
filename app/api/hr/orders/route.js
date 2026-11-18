@@ -3,6 +3,7 @@ import { hrAuth, hrFail, HR_CONFIG, allRows } from "@/lib/hrServer";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { monthInputToTaipeiRange } from "@/lib/taipeiTime";
 import { hrFinancialScope } from "@/lib/hrAccounts";
+import { hrNasSelected, hrReadHeaders, readHrNas } from "@/lib/hrNasRead.mjs";
 export const dynamic = "force-dynamic";
 export async function GET(request) {
   try {
@@ -11,8 +12,16 @@ export async function GET(request) {
     if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month || "")) throw Error("查詢月份格式錯誤");
     const { startIso, endIso } = monthInputToTaipeiRange(month);
     const departments = await hrFinancialScope(auth);
+    const nas = hrNasSelected(request);
     const result = await Promise.all(
       departments.map(async ({ key, ids }) => {
+        if (nas) {
+          const [data] = await readHrNas(supabaseAdmin, auth, "payroll", {
+            department: key, start_at: startIso, finish_at: endIso,
+          }, { payroll: [{ key, ids }] });
+          if (!data) throw Object.assign(Error("NAS 找不到已核准的薪資帳號範圍"), { status: 503 });
+          return { key, orders: filterShadowedSourceOrders(data.orders), bonuses: data.bonuses };
+        }
         const c = HR_CONFIG[key];
         const loadOrders = () => {
           let query = supabaseAdmin.from(c.orders).select("*");
@@ -42,7 +51,7 @@ export async function GET(request) {
     );
     return Response.json(
       { ok: true, departments: result },
-      { headers: { "Cache-Control": "no-store" } },
+      { headers: nas ? hrReadHeaders("payroll") : { "Cache-Control": "no-store" } },
     );
   } catch (error) {
     return hrFail(error);

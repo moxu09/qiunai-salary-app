@@ -4,6 +4,7 @@ import { privateCourseCatalog } from "@/lib/service/courses";
 import { hrAuth, hrFail } from "@/lib/hrServer";
 import { getHrSigningTasks } from "@/lib/hrDocumentSigning";
 import { hrSource, annotate } from "@/lib/hrUpstream";
+import { hrNasSelected, hrReadHeaders, readHrNas } from "@/lib/hrNasRead.mjs";
 export const dynamic = "force-dynamic";
 export async function GET(request) {
   try {
@@ -22,7 +23,8 @@ export async function GET(request) {
         ),
       );
     }
-    const personnel = await supabaseAdmin.from("salary_requests")
+    const nas = hrNasSelected(request);
+    const personnel = nas ? { data: await readHrNas(supabaseAdmin, auth, "personnel") } : await supabaseAdmin.from("salary_requests")
       .select("id,organization_code,request_type,approval_category,request_group,status,created_at,review_result,reviewed_at,first_reviewed_at,first_review_note")
       .eq("discord_id", discordId).in("organization_code", departments.map((department) => department.key))
       .order("created_at", { ascending: false }).limit(100);
@@ -41,7 +43,8 @@ export async function GET(request) {
       workflowStagesEnabled: false,
     };
     for (const { key } of departments) {
-      const data = await hrSource(request, key, "workspace");
+      const data = await hrSource(request, key, "workspace", { skipEmployeeDocuments: nas });
+      if (nas) data.documents = await readHrNas(supabaseAdmin, auth, "documents", { department: key });
       for (const field of ["events", "documents", "templates", "requests"])
         result[field].push(
           ...annotate(
@@ -57,7 +60,7 @@ export async function GET(request) {
     result.events.sort((a, b) => a.starts_at.localeCompare(b.starts_at));
     result.documents.sort((a, b) => b.updated_at.localeCompare(a.updated_at));
     result.requests.sort((a, b) => b.created_at.localeCompare(a.created_at));
-    return Response.json(result, { headers: { "Cache-Control": "no-store" } });
+    return Response.json(result, { headers: nas ? hrReadHeaders("personnel,documents") : { "Cache-Control": "no-store" } });
   } catch (error) {
     return hrFail(error);
   }

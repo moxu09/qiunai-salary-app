@@ -3,11 +3,14 @@ import { hrAuth, hrFail } from "@/lib/hrServer";
 import { ERP_OWNER_DISCORD_ID } from "@/lib/erpRoles";
 import { getHrRole } from "@/lib/hrAccess";
 import { getHrContractProfile } from "@/lib/hrDocumentSigning";
+import { hrNasSelected, hrReadHeaders, readHrNas } from "@/lib/hrNasRead.mjs";
 export const dynamic = "force-dynamic";
 export async function GET(request) {
   try {
-    const { discordId, departments } = await hrAuth(request);
-    const { data: profiles, error } = await supabaseAdmin
+    const actor = await hrAuth(request);
+    const { discordId, departments } = actor;
+    const nas = hrNasSelected(request);
+    const { data: profiles, error } = nas ? { data: await readHrNas(supabaseAdmin, actor, "profiles") } : await supabaseAdmin
       .from("salary_public_profiles")
       .select("app_key,display_name,avatar_url,intro,note,invite_url")
       .eq("discord_id", discordId)
@@ -39,7 +42,7 @@ export async function GET(request) {
           ? { financeErpUrl: "https://finance-erp-production.up.railway.app/erp" }
           : {}),
       },
-      { headers: { "Cache-Control": "no-store" } },
+      { headers: nas ? hrReadHeaders("profiles") : { "Cache-Control": "no-store" } },
     );
   } catch (error) {
     return hrFail(error);
