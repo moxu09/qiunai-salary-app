@@ -12,16 +12,18 @@ const EIP_FORWARD_HEADERS = [
   "next-url", "origin", "range", "referer", "rsc", "user-agent",
 ];
 
+function hasCanaryCookie(request: NextRequest) {
+  const expected = Buffer.from(process.env.EIP_NAS_CANARY_SECRET || "");
+  const provided = Buffer.from(request.cookies.get(CANARY_COOKIE)?.value || "");
+  return expected.length >= 32 && expected.length === provided.length && timingSafeEqual(expected, provided);
+}
+
 function nasRoute(request: NextRequest, hostname: string, target: URL) {
   if (!isSupervisorHost(hostname)) return null;
   const relayKey = process.env.EIP_NAS_RELAY_KEY;
   if (!relayKey || relayKey.length < 32) return null;
-  const selection = process.env.EIP_NAS_CANARY_SECRET;
-  const proof = request.cookies.get(CANARY_COOKIE)?.value;
-  const expected = Buffer.from(selection || "");
-  const provided = Buffer.from(proof || "");
-  if (expected.length < 32 || expected.length !== provided.length ||
-      !timingSafeEqual(expected, provided)) return null;
+  const live = process.env.EIP_NAS_MODE === "live";
+  if (!live && !hasCanaryCookie(request)) return null;
 
   const destination = new URL(NAS_RELAY);
   destination.pathname = target.pathname;
@@ -35,7 +37,7 @@ function nasRoute(request: NextRequest, hostname: string, target: URL) {
 
   const rewrite = NextResponse.rewrite(destination, { request: { headers } });
   rewrite.headers.set("cache-control", "private, no-store");
-  rewrite.headers.append("vary", "Cookie");
+  if (!live) rewrite.headers.append("vary", "Cookie");
   return rewrite;
 }
 
