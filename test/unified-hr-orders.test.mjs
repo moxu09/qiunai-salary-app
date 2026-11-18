@@ -2,13 +2,14 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {filterShadowedSourceOrders} from '../lib/playOrderDedupe.js';
+import {hrNasSelected} from '../lib/hrNasRead.mjs';
 const code=readFileSync(new URL('../app/api/hr/orders/route.js',import.meta.url),'utf8').replace(/^import[\s\S]*?;\n/gm,'').replace(/export const dynamic\s*=.*;\n/,'').replace('export async function GET','async function GET');
 async function route(departments,rows){
  const queries=[];
  const supabaseAdmin={from(table){const filters=[];const q={};for(const method of ['select','eq','in','or','gte','lte','order'])q[method]=(...args)=>{filters.push([method,...args]);return q;};q.range=async(from,to)=>{queries.push({table,filters,from,to});return {data:(rows[table]||[]).slice(from,to+1),error:null};};return q;}};
  const allRows=async(query)=>{const all=[];for(let from=0;;from+=1000){const {data,error}=await query().range(from,from+999);if(error)throw error;all.push(...data);if(data.length<1000)return all;}};
- const GET=new Function('hrAuth','hrFail','HR_CONFIG','allRows','supabaseAdmin','monthInputToTaipeiRange','filterShadowedSourceOrders','hrFinancialScope',code+';return GET;')(
-  async()=>({discordId:'authenticated-employee',departments}),e=>Response.json({message:e.message},{status:400}),{qiunai:{orders:'qorders',bonuses:'qbonus'},deepnight:{orders:'play_orders',bonuses:'dbonus'}},allRows,supabaseAdmin,()=>({startIso:'start',endIso:'end'}),filterShadowedSourceOrders,async ({discordId,departments})=>departments.map(d=>({...d,ids:d.ids||[discordId]})));
+ const GET=new Function('hrAuth','hrFail','HR_CONFIG','allRows','supabaseAdmin','monthInputToTaipeiRange','filterShadowedSourceOrders','hrFinancialScope','hrNasSelected',code+';return GET;')(
+  async()=>({discordId:'authenticated-employee',departments}),e=>Response.json({message:e.message},{status:400}),{qiunai:{orders:'qorders',bonuses:'qbonus'},deepnight:{orders:'play_orders',bonuses:'dbonus'}},allRows,supabaseAdmin,()=>({startIso:'start',endIso:'end'}),filterShadowedSourceOrders,async ({discordId,departments})=>departments.map(d=>({...d,ids:d.ids||[discordId]})),hrNasSelected);
  return {GET,queries};
 }
 test('single-store employee queries only their own department and authenticated identity',async()=>{
