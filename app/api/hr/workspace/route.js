@@ -7,8 +7,14 @@ import { hrSource, annotate } from "@/lib/hrUpstream";
 import { hrNasSelected, hrReadHeaders, readHrNas } from "@/lib/hrNasRead.mjs";
 export const dynamic = "force-dynamic";
 export async function GET(request) {
+  const timings = [];
+  async function timed(name, read) {
+    const start = performance.now();
+    try { return await read(); }
+    finally { timings.push(`${name};dur=${Math.round(performance.now() - start)}`); }
+  }
   try {
-    const auth = await hrAuth(request);
+    const auth = await timed("auth", () => hrAuth(request));
     const { departments, discordId } = auth;
     const url = new URL(request.url);
     if (url.searchParams.has("audit")) {
@@ -24,14 +30,27 @@ export async function GET(request) {
       );
     }
     const nas = hrNasSelected(request);
-    const personnel = nas ? { data: await readHrNas(supabaseAdmin, auth, "personnel") } : await supabaseAdmin.from("salary_requests")
-      .select("id,organization_code,request_type,approval_category,request_group,status,created_at,review_result,reviewed_at,first_reviewed_at,first_review_note")
-      .eq("discord_id", discordId).in("organization_code", departments.map((department) => department.key))
-      .order("created_at", { ascending: false }).limit(100);
+    const [personnel, signingTasks, workspaces] = await Promise.all([
+      timed("personnel", async () => nas
+        ? { data: await readHrNas(supabaseAdmin, auth, "personnel") }
+        : supabaseAdmin.from("salary_requests")
+          .select("id,organization_code,request_type,approval_category,request_group,status,created_at,review_result,reviewed_at,first_reviewed_at,first_review_note")
+          .eq("discord_id", discordId).in("organization_code", departments.map(({ key }) => key))
+          .order("created_at", { ascending: false }).limit(100)),
+      timed("signing", () => getHrSigningTasks(auth)),
+      Promise.all(departments.map(async ({ key }, index) => {
+        const [data, documents, courses] = await Promise.all([
+          timed(`workspace${index}`, () => hrSource(request, key, "workspace", { skipEmployeeDocuments: nas })),
+          nas ? timed(`documents${index}`, () => readHrNas(supabaseAdmin, auth, "documents", { department: key })) : null,
+          timed(`courses${index}`, () => privateCourseCatalog(key, discordId)).catch(() => null),
+        ]);
+        return { key, data, documents: nas ? documents : data.documents, courses };
+      })),
+    ]);
     if (personnel.error) throw personnel.error;
     const result = {
       ok: true,
-      signingTasks: await getHrSigningTasks(auth),
+      signingTasks,
       events: [],
       documents: [],
       templates: [],
@@ -42,25 +61,24 @@ export async function GET(request) {
       workflowTargetHours: 48,
       workflowStagesEnabled: false,
     };
-    for (const { key } of departments) {
-      const data = await hrSource(request, key, "workspace", { skipEmployeeDocuments: nas });
-      if (nas) data.documents = await readHrNas(supabaseAdmin, auth, "documents", { department: key });
+    for (const { key, data, documents, courses } of workspaces) {
       for (const field of ["events", "documents", "templates", "requests"])
         result[field].push(
           ...annotate(
-            data[field],
+            field === "documents" ? documents : data[field],
             key,
             field === "templates" ? "name" : field === "requests" ? null : "title",
           ),
         );
-      try { result.documents.push(...await privateCourseCatalog(key, discordId)); }
-      catch { result.serviceCoursesUnavailable = true; }
+      if (courses) result.documents.push(...courses);
+      else result.serviceCoursesUnavailable = true;
       result.workflowStagesEnabled ||= data.workflowStagesEnabled === true;
     }
     result.events.sort((a, b) => a.starts_at.localeCompare(b.starts_at));
     result.documents.sort((a, b) => b.updated_at.localeCompare(a.updated_at));
     result.requests.sort((a, b) => b.created_at.localeCompare(a.created_at));
-    return Response.json(result, { headers: nas ? hrReadHeaders("personnel,documents") : { "Cache-Control": "no-store" } });
+    const headers = nas ? hrReadHeaders("personnel,documents") : { "Cache-Control": "no-store" };
+    return Response.json(result, { headers: { ...headers, "Server-Timing": timings.join(", ") } });
   } catch (error) {
     return hrFail(error);
   }
