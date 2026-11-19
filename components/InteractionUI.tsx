@@ -22,10 +22,6 @@ const EASE_OUT = "cubic-bezier(0.2, 0.8, 0.2, 1)";
 
 const GESTURE_EXCLUDE = [
   "input",
-  ".ui-sort",
-  ".ui-interaction-swipe",
-  ".ui-interaction-longpress",
-  ".eip-messages-panel",
   "textarea",
   "select",
   '[contenteditable=""]',
@@ -266,7 +262,7 @@ export function PullToRefresh({ children, onRefresh, enabled = true }: PullToRef
         reset();
         return;
       }
-      if (refreshingRef.current || isGestureExcluded(event.target) || !isAtTop(event.target, root)) return;
+      if (refreshingRef.current || isGestureExcluded(event.target) || (event.target instanceof Element && event.target.closest(".ui-sort, .ui-interaction-swipe, .ui-interaction-longpress, .eip-messages-panel")) || !isAtTop(event.target, root)) return;
       start = { x: event.touches[0].clientX, y: event.touches[0].clientY };
     };
 
