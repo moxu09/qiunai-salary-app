@@ -1,5 +1,5 @@
 "use client";
-import { LoadingButton } from "@/components/InteractionUI";
+import { LoadingButton, StatusProgress } from "@/components/InteractionUI";
 
 import { Skeleton } from "@/components/MotionUI";
 import { useCallback, useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
@@ -44,6 +44,8 @@ export default function StaffCollaboration({ organization, section, employeeName
   const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [sending, setSending] = useState(false);
+  const [submissionState, setSubmissionState] = useState<"idle" | "sending" | "success" | "error">("idle");
+  useEffect(()=>setSubmissionState("idle"),[section]);
   const [notice, setNotice] = useState("");
   const [referenceTime, setReferenceTime] = useState(0);
   const [workflowTargetHours, setWorkflowTargetHours] = useState(48);
@@ -102,14 +104,16 @@ export default function StaffCollaboration({ organization, section, employeeName
 
   async function submit(event: FormEvent) {
     event.preventDefault();
-    if (!selectedTemplate) return;
+    if (!selectedTemplate || sending) return;
     try {
+      setSubmissionState("sending");
       setSending(true); setError(""); setNotice("");
       await authorizedFetch("POST", { kind: "request", templateId: selectedTemplate.id, formData: answers, ...(organization === "hr" ? { organization: selectedTemplate.organization } : {}) });
+      setSubmissionState("success");
       setSelectedTemplate(null); setAnswers({});
       setNotice("申請已送出，可在「我的申請」追蹤結果。");
       await refresh();
-    } catch (caught) { setError(caught instanceof Error ? caught.message : "送出失敗"); }
+    } catch (caught) { setSubmissionState("error"); setError(caught instanceof Error ? caught.message : "送出失敗"); }
     finally { setSending(false); }
   }
   async function showRequestHistory(id: string) {
@@ -133,6 +137,7 @@ export default function StaffCollaboration({ organization, section, employeeName
       {error ? <p className="eip-collab-alert" role="alert">{error}</p> : null}
       {section === "knowledge" && data.serviceCoursesUnavailable ? <p className="eip-collab-alert" role="alert">客服課程暫時無法載入，請重新整理或稍後再試。</p> : null}
       {notice ? <p className="eip-collab-notice" role="status">{notice}</p> : null}
+      {section === "workflows" ? <StatusProgress state={submissionState} label="發送簽核申請" /> : null}
       {loading ? <Skeleton rows={3} label="正在同步工作資料…" /> : null}
       {!loading && section === "workspace" ? (
         <>
