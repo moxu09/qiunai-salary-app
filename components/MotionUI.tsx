@@ -387,6 +387,8 @@ export function transitionUI(update: () => void): void {
 /* Skeleton                                                            */
 /* ------------------------------------------------------------------ */
 
+export function LoadingStatus({label = "\u8b80\u53d6\u4e2d"}: {label?: string; rows?: number; cards?: boolean}) { return <p className="hr-loading-status" role="status">{label}</p>; }
+
 export type SkeletonProps = {
   rows?: number;
   label?: string;

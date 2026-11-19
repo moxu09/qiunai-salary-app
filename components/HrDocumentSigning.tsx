@@ -1,7 +1,7 @@
 "use client";
 import { LoadingButton } from "@/components/InteractionUI";
 
-import { Skeleton } from "@/components/MotionUI";
+import { LoadingStatus } from "@/components/MotionUI";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import Link from "next/link";
 import HrCryptoPayoutQuote from "@/components/HrCryptoPayoutQuote";
@@ -250,7 +250,7 @@ export default function HrDocumentSigning({ documentKey }: { documentKey: Key })
         <Link className="text-sm font-bold underline" href="/collaboration/workspace">返回 HR 工作台</Link>
         <h1 className="text-2xl font-black">{document.title}</h1>
         {error && !confirmed ? <p role="alert" className="rounded-lg bg-rose-50 p-3 text-rose-800">{error}</p> : null}
-        {loading ? <Skeleton rows={3} label="正在讀取簽署待辦…" /> : null}
+        {loading ? <LoadingStatus rows={3} label="正在讀取簽署待辦…" /> : null}
         {!loading && needsLogin ? <LoadingButton className={actionClass} disabled={busy} onClick={() => void login()} loading={Boolean(busy)} loadingLabel="處理中…">使用 Discord 登入</LoadingButton> : null}
         {!loading && !needsLogin && error && !loaded ? (
           <LoadingButton className={actionClass} disabled={busy} onClick={() => void load()} loading={Boolean(busy)} loadingLabel="處理中…">重新讀取</LoadingButton>

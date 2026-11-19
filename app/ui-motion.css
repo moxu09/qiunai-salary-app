@@ -434,3 +434,5 @@ body:has(.hr-theme-black), :root[data-service-theme="dark"] {
 @media (prefers-reduced-motion: reduce) {
   .ui-motion-page { animation: none; }
 }
+
+.hr-loading-status { margin:12px 0; padding:12px 16px; font-size:14px; opacity:.7; }

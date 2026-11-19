@@ -1,6 +1,6 @@
 "use client";
 import { LoadingButton } from "@/components/InteractionUI";
-import { Skeleton } from "@/components/MotionUI";
+import { LoadingStatus } from "@/components/MotionUI";
 import {ArrowUpRight,ClipboardPlus,RefreshCw} from 'lucide-react';
 import {useCallback,useEffect,useState,type FormEvent} from 'react';
 import {serviceRequest} from './client';
@@ -47,6 +47,6 @@ export default function ServiceProxyOrders({department}:{department:Department})
   </form>
   {error?<p className="svc-error" role="alert">{error}</p>:null}{notice?<p className="svc-notice" role="status">{notice}</p>:null}
   <div className="svc-section-title"><h2>我代建的訂單</h2><button type="button" className="svc-secondary" onClick={()=>void refresh()}><RefreshCw size={16}/> 重新整理</button></div>
-  {loading?<Skeleton rows={3} label="正在讀取代建紀錄…" />:rows.length?<div className="svc-desk-grid">{rows.map(row=><article key={row.requestId} className="svc-panel svc-desk-card"><div className="svc-section-title"><h3>{choices.find(choice=>choice.value===row.kind)?.label||'訂單'}</h3><span className="svc-badge">{labels[row.status]||row.status}</span></div><p>老闆：{row.customerId}</p><small className="svc-muted">{date(row.createdAt)}</small>{row.channelUrl?<a href={row.channelUrl} target="_blank" rel="noreferrer">前往 Discord 訂單頻道 <ArrowUpRight size={15}/></a>:null}</article>)}</div>:<p className="svc-empty">目前沒有代建紀錄。</p>}
+  {loading?<LoadingStatus rows={3} label="正在讀取代建紀錄…" />:rows.length?<div className="svc-desk-grid">{rows.map(row=><article key={row.requestId} className="svc-panel svc-desk-card"><div className="svc-section-title"><h3>{choices.find(choice=>choice.value===row.kind)?.label||'訂單'}</h3><span className="svc-badge">{labels[row.status]||row.status}</span></div><p>老闆：{row.customerId}</p><small className="svc-muted">{date(row.createdAt)}</small>{row.channelUrl?<a href={row.channelUrl} target="_blank" rel="noreferrer">前往 Discord 訂單頻道 <ArrowUpRight size={15}/></a>:null}</article>)}</div>:<p className="svc-empty">目前沒有代建紀錄。</p>}
  </section>;
 }

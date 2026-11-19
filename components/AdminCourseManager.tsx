@@ -1,7 +1,7 @@
 "use client";
 import { LoadingButton, SortableList } from "@/components/InteractionUI";
 import { confirmUI } from "@/components/ConfirmationUI";
-import { Skeleton } from "@/components/MotionUI";
+import { LoadingStatus } from "@/components/MotionUI";
 import { useCallback,useEffect,useState,type FormEvent } from 'react';
 import { BookOpenText,Plus,Save,Trash2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
@@ -45,7 +45,7 @@ export default function AdminCourseManager({organization}:{organization:'qiunai'
  return <section className="course-admin" aria-label="課程管理">
   <div className="eip-collab-panel-head"><div><h2><BookOpenText size={22}/> 課程管理</h2><p>安排章節、附件、對象與結訓條件。</p></div><LoadingButton type="button" onClick={()=>choose()} disabled={busy} loading={Boolean(busy)} loadingLabel="處理中…"><Plus size={17}/> 新增課程</LoadingButton></div>
   {error?<p className="eip-collab-alert" role="alert">{error}</p>:null}{notice?<p className="eip-collab-notice" role="status">{notice}</p>:null}
-  {loading?<Skeleton rows={3} label="正在讀取課程…" />:<div className="course-admin-layout"><aside className="eip-collab-panel course-admin-list"><label>搜尋課程<input value={query} onChange={event=>setQuery(event.target.value)} placeholder="課程名稱或分類"/></label>{data.courses.filter(course=>`${course.title} ${course.category}`.includes(query)).map(course=><LoadingButton type="button" aria-pressed={editing?.id===course.id} key={course.id} onClick={()=>choose(course)} disabled={busy} loading={Boolean(busy)} loadingLabel="處理中…"><strong>{course.title}</strong><span>{course.settings?.is_published?'已發布':course.settings?'草稿':'知識文章'} · 版本 {course.version}</span></LoadingButton>)}{!data.courses.length?<p>尚無課程，按「新增課程」開始。</p>:null}</aside>
+  {loading?<LoadingStatus rows={3} label="正在讀取課程…" />:<div className="course-admin-layout"><aside className="eip-collab-panel course-admin-list"><label>搜尋課程<input value={query} onChange={event=>setQuery(event.target.value)} placeholder="課程名稱或分類"/></label>{data.courses.filter(course=>`${course.title} ${course.category}`.includes(query)).map(course=><LoadingButton type="button" aria-pressed={editing?.id===course.id} key={course.id} onClick={()=>choose(course)} disabled={busy} loading={Boolean(busy)} loadingLabel="處理中…"><strong>{course.title}</strong><span>{course.settings?.is_published?'已發布':course.settings?'草稿':'知識文章'} · 版本 {course.version}</span></LoadingButton>)}{!data.courses.length?<p>尚無課程，按「新增課程」開始。</p>:null}</aside>
    <div>{form?<form className="eip-collab-panel course-admin-form" onSubmit={event=>void save(event)}>
     <h3>{editing?'編輯課程':'新增課程'}</h3><p>修改內容或條件會產生新版本，舊版結訓紀錄會保留。</p>
     {form.audience.kind==='selected'?form.audience.ids.filter(id=>!data.staff.some(staff=>staff.id===id)).map(id=><div className="eip-collab-alert" key={id}><span>{id}（目前不在在職名單）</span><button type="button" onClick={()=>update({audience:{...form.audience,ids:form.audience.ids.filter(value=>value!==id)}})}>移除此對象</button></div>):null}

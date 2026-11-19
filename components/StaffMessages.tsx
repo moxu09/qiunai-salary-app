@@ -2,7 +2,7 @@
 import { LongPressMenu } from "@/components/InteractionUI";
 import { LoadingButton } from "@/components/InteractionUI";
 
-import { Skeleton, notify } from "@/components/MotionUI";
+import { LoadingStatus, notify } from "@/components/MotionUI";
 import { useCallback, useEffect, useRef, useState, type Dispatch, type FormEvent, type SetStateAction } from "react";
 import { ArrowLeft, MessageCircle, Search, Send, UsersRound, X } from "lucide-react";
 import { supabase } from "@/lib/supabase";
@@ -249,7 +249,7 @@ export default function StaffMessages({ organization, myDiscordId, open, onOpenC
       <div className="eip-messages-layout">
         <aside className={`eip-messages-contacts ${selectedPeerId ? "has-selection" : ""}`}>
           <label className="eip-messages-search"><Search size={17} /><span className="sr-only">搜尋員工</span><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="搜尋員工暱稱" /></label>
-          {loadingContacts ? <Skeleton rows={3} label="載入通訊錄中…" />
+          {loadingContacts ? <LoadingStatus rows={3} label="載入通訊錄中…" />
             : visibleContacts.length ? <div className="eip-messages-contact-list">{visibleContacts.map((contact) => (
               <button type="button" key={contact.discordId} onClick={() => openContact(contact.discordId)}
                 aria-pressed={selectedPeerId === contact.discordId}
@@ -264,7 +264,7 @@ export default function StaffMessages({ organization, myDiscordId, open, onOpenC
           {!selectedPeerId ? <div className="eip-messages-placeholder"><MessageCircle size={42} /><h3>選擇一位員工開始對話</h3><p>訊息只會顯示給對話雙方，不會公開在公告或訂單裡。</p></div> : <>
             <header className="eip-messages-thread-header"><button type="button" className="eip-messages-back" onClick={() => { currentPeerRef.current = null; setSelectedPeerId(null); }} aria-label="返回通訊錄" title="返回通訊錄"><ArrowLeft size={20} /></button><span className="eip-messages-avatar">{selected?.name.slice(0, 1) || "員"}</span><strong>{selected?.name || "員工"}</strong></header>
             <div className="eip-messages-history" ref={threadRef} aria-live="polite">
-              {loadingThread ? <Skeleton rows={3} label="載入對話中…" /> : messages.length ? messages.map((message) => (
+              {loadingThread ? <LoadingStatus rows={3} label="載入對話中…" /> : messages.length ? messages.map((message) => (
                 <div key={message.id} className={`eip-messages-bubble-row ${message.sender_discord_id === myDiscordId ? "is-mine" : ""}`}>
                   <LongPressMenu label="訊息操作" items={[{label:"複製訊息",onSelect:()=>{void Promise.resolve().then(()=>navigator.clipboard.writeText(message.body)).then(()=>notify("訊息已複製", "success")).catch(()=>notify("無法複製訊息", "error"));}}]}><div className="eip-messages-bubble"><p>{message.body}</p><div className="eip-messages-bubble-meta"><time dateTime={message.created_at}>{dateText(message.created_at)}</time>{message.sender_discord_id === myDiscordId ? <span className="eip-messages-receipt" title={message.read_at ? `對方於 ${dateText(message.read_at)} 閱讀` : "對方尚未閱讀"}>{message.read_at ? "已讀" : "未讀"}</span> : null}</div></div></LongPressMenu>
                 </div>

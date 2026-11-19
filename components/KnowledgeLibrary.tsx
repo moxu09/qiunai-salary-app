@@ -1,6 +1,6 @@
 "use client";
 
-import { Skeleton } from "@/components/MotionUI";
+import { LoadingStatus } from "@/components/MotionUI";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
@@ -99,7 +99,7 @@ export default function KnowledgeLibrary({ documents, organization, loading, bas
       <label className="eip-collab-search"><Search size={18} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜尋課程、分類或內文" aria-label="搜尋課程" /></label>
       {availableDepartments.length > 1 ? <label>店家<select value={filter} onChange={(event) => setFilter(event.target.value)}><option value="all">所有店家</option>{availableDepartments.map((store) => <option key={store} value={store}>{departmentName(store)}</option>)}</select></label> : null}
     </div>
-    {loading ? <Skeleton rows={3} label="正在讀取知識與課程…" /> : <div className="hr-course-grid">
+    {loading ? <LoadingStatus rows={3} label="正在讀取知識與課程…" /> : <div className="hr-course-grid">
       {found.map((course) => <Link className="hr-course-card" key={`${course.organization}:${course.id}`} href={href(course.organization, course.id)}>
         <div className="hr-course-card-meta"><BookOpenText size={22} /><span>{departmentName(course.organization)}</span></div>
         <span className="hr-course-category">{course.category || "一般知識"}</span>
@@ -135,7 +135,7 @@ export default function KnowledgeLibrary({ documents, organization, loading, bas
   const references = referenceMap(relatedLinks, course?.references || [], [...chapterLinks, ...adjacentLinks]);
   return <section className="hr-course-reader" aria-label="課程閱讀">
     <div className="hr-course-reader-tools"><Link href={libraryHref || basePath}><ArrowLeft size={17} /> 返回知識庫</Link><button type="button" onClick={() => setRetry((value) => value + 1)} disabled={current?.loading}>重新載入課程</button></div>
-    {!current || current.loading ? <Skeleton rows={3} label="正在讀取課程…" /> : current.error ? <div className="eip-collab-panel"><p className="eip-collab-alert" role="alert">{current.error}</p></div> : course ? <>
+    {!current || current.loading ? <LoadingStatus rows={3} label="正在讀取課程…" /> : current.error ? <div className="eip-collab-panel"><p className="eip-collab-alert" role="alert">{current.error}</p></div> : course ? <>
       <header className="eip-collab-panel hr-course-heading"><span>{departmentName(location.department)} · {course.category || "一般知識"}</span><h2>{course.title}</h2><p>版本 {course.version} · 更新於 {dateLabel(course.updated_at)} · {chapters.length} 個章節</p></header>
       <div className="hr-course-layout">
         {chapters.length ? <label className="eip-collab-panel hr-course-select">章節目錄

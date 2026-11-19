@@ -1,7 +1,7 @@
 "use client";
 import { LoadingButton } from "@/components/InteractionUI";
 
-import { Skeleton } from "@/components/MotionUI";
+import { LoadingStatus } from "@/components/MotionUI";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 
 type Department = { key: "qiunai" | "deepnight"; name: string };
@@ -60,7 +60,7 @@ export default function HrMemberManager({ departments, request }: Props) {
       </form>
       {error && <p role="alert">{error}</p>}
       {notice && <p role="status">{notice}</p>}
-      {loading ? <Skeleton rows={3} label="正在讀取成員…" /> : members.length ? members.map((member) => (
+      {loading ? <LoadingStatus rows={3} label="正在讀取成員…" /> : members.length ? members.map((member) => (
         <div className="eip-collab-row" key={member.id}>
           <span>{member.name} · {member.id}{member.active ? "" : "（停用）"}</span>
           <LoadingButton type="button" className="qiunai-soft-button" disabled={busy} onClick={() => {

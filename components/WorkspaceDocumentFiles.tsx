@@ -1,6 +1,6 @@
 "use client";
 import { LoadingButton } from "@/components/InteractionUI";
-import { Skeleton } from "@/components/MotionUI";
+import { LoadingStatus } from "@/components/MotionUI";
 /* eslint-disable @next/next/no-img-element -- private signed attachment URLs must not be sent to the public image optimizer */
 
 import { useCallback, useEffect, useState } from "react";
@@ -110,7 +110,7 @@ export default function WorkspaceDocumentFiles({ organization, documentId, admin
     <div className="eip-collab-panel-head"><h3><Paperclip size={17} /> 附件</h3><span>{shown.length}{admin ? " / 20" : ""} 個</span></div>
     {error ? <p className="eip-collab-alert" role="alert">{error}</p> : null}
     {notice ? <p className="eip-collab-notice" role="status">{notice}</p> : null}
-    {loading ? <Skeleton rows={3} label="正在讀取附件…" /> : shown.length ? <div className="eip-workspace-file-list">
+    {loading ? <LoadingStatus rows={3} label="正在讀取附件…" /> : shown.length ? <div className="eip-workspace-file-list">
       {shown.map((file) => admin&&allowRemove?<div key={file.path} className="course-attachment-row"><button type="button" onClick={()=>void download(file)}><span><strong>{file.name}</strong><small>{fileSize(file.size)}</small></span><Download size={17}/></button><LoadingButton type="button" disabled={busy} onClick={()=>void toggle(file)} loading={Boolean(busy)} loadingLabel="處理中…">移除附件</LoadingButton></div> : <div key={file.path} className={inlineImages ? "course-inline-attachment" : undefined}>
         {inlineImages && file.previewUrl && !unavailable.includes(file.path) ? <figure><img src={file.previewUrl} alt={file.name} loading="lazy" referrerPolicy="no-referrer" onError={()=>setUnavailable(old=>old.includes(file.path)?old:[...old,file.path])}/></figure> : null}
         <button type="button" onClick={()=>void download(file)}><span><strong>{file.name}</strong><small>{fileSize(file.size)}</small></span><Download size={17}/></button>

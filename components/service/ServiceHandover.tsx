@@ -1,6 +1,6 @@
 "use client";
 import { LoadingButton } from "@/components/InteractionUI";
-import { Skeleton } from "@/components/MotionUI";
+import { LoadingStatus } from "@/components/MotionUI";
 import {ArrowUpRight,Clock3,Plus,RefreshCw} from 'lucide-react';
 import {useEffect,useMemo,useState} from 'react';
 import {serviceRequest} from './client';
@@ -49,7 +49,7 @@ export default function ServiceHandover({api,activeUrls,onTracked}:{api:string;a
  return <section className="svc-handover" aria-labelledby="svc-handover-title">
   <div className="svc-handover-heading"><div><span className="svc-kicker"><Clock3 size={17}/> LIVE HANDOVER</span><h2 id="svc-handover-title">交班內容</h2><p>自動讀取秋奈 #交接班，依臺北時間每 3 小時分組。點「加入追蹤」即可放進自己的待追蹤清單。</p></div><button type="button" className="svc-secondary" onClick={()=>setAttempt(value=>value+1)}><RefreshCw size={16}/> 重新整理</button></div>
   {error?<p className="svc-error" role="alert">{error}</p>:null}{notice?<p className="svc-notice" role="status">{notice}</p>:null}
-  {loading?<Skeleton rows={3} label="正在讀取交班內容…" />:null}
+  {loading?<LoadingStatus rows={3} label="正在讀取交班內容…" />:null}
   {!loading&&!groups.length?<p className="svc-empty">目前沒有可顯示的交班內容。</p>:null}
   {groups.map(([slot,entries],index)=><details className="svc-handover-slot ui-motion-details" key={slot} open={index<2}><summary>{stamp(slot)} ～ {stamp(new Date(Date.parse(slot)+3*60*60*1000).toISOString())} <span>（{entries.length} 則）</span></summary><div className="svc-handover-grid">{entries.map(message=><article className="svc-panel svc-handover-card" key={message.id}>
    <div className="svc-handover-meta"><strong>{message.author}</strong><time dateTime={message.createdAt}>{stamp(message.createdAt)}</time><a href={message.sourceUrl} target="_blank" rel="noreferrer">查看交班原文 <ArrowUpRight size={14}/></a></div>

@@ -1,8 +1,8 @@
 "use client";
 import { LoadingButton, StatusProgress } from "@/components/InteractionUI";
 
-import { Skeleton } from "@/components/MotionUI";
-import { useCallback, useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
+import { LoadingStatus } from "@/components/MotionUI";
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { ArrowRight, BookOpenText, CalendarDays, CheckCircle2, ClipboardCheck, FileText, MessageSquareText, Search, Send, Sparkles } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import WorkspaceDocumentFiles from "@/components/WorkspaceDocumentFiles";
@@ -38,6 +38,10 @@ const departmentLabel = (key: "qiunai" | "deepnight") => key === "qiunai" ? "秋
 export default function StaffCollaboration({ organization, section, employeeName, onSelect, workspaceActions }: Props) {
   const [data, setData] = useState<Data>(emptyData);
   const [loading, setLoading] = useState(true);
+  const [loadedOrganization, setLoadedOrganization] = useState<string | null>(null);
+  const requestSequence = useRef(0);
+  const [workspaceRevision, setWorkspaceRevision] = useState(0);
+  const ready = loadedOrganization === organization;
   const [error, setError] = useState("");
   const [query, setQuery] = useState("");
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
@@ -45,7 +49,7 @@ export default function StaffCollaboration({ organization, section, employeeName
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [sending, setSending] = useState(false);
   const [submissionState, setSubmissionState] = useState<"idle" | "sending" | "success" | "error">("idle");
-  useEffect(()=>setSubmissionState("idle"),[section]);
+  useEffect(()=>{ setSubmissionState("idle"); setNotice(""); setSelectedTemplate(null); setSelectedDocument(null); setAnswers({}); setQuery(""); setRequestHistory(null); },[section]);
   const [notice, setNotice] = useState("");
   const [referenceTime, setReferenceTime] = useState(0);
   const [workflowTargetHours, setWorkflowTargetHours] = useState(48);
@@ -71,26 +75,32 @@ export default function StaffCollaboration({ organization, section, employeeName
     return result;
   }, [organization]);
   const refresh = useCallback(async () => {
+    const sequence = ++requestSequence.current;
     try {
       setLoading(true);
       const result = await authorizedFetch("GET");
+      if (sequence !== requestSequence.current) return;
+      setLoadedOrganization(organization);
+      setWorkspaceRevision(value => value + 1);
       setData({ signingTasks: result.signingTasks || [], serviceCoursesUnavailable: result.serviceCoursesUnavailable === true, events: result.events || [], documents: result.documents || [], templates: result.templates || [], requests: result.requests || [], personnelRequests: result.personnelRequests || [] });
       setReferenceTime(Date.now());
       setWorkflowTargetHours(Number(result.workflowTargetHours || 48));
       setWorkflowStagesEnabled(result.workflowStagesEnabled === true);
-      if (section === "workspace") {
-        const [announcements, hr] = await Promise.allSettled([
-          authorizedFetch("GET", undefined, "announcements"),
-          authorizedFetch("GET", undefined, organization === "hr" ? "personnel" : "hr"),
-        ]);
-        setExistingAnnouncements(announcements.status === "fulfilled" ? announcements.value.announcements || [] : []);
-        setExistingRequests(hr.status === "fulfilled" ? hr.value.requests || [] : []);
-      }
       setError("");
-    } catch (caught) { setError(caught instanceof Error ? caught.message : "讀取失敗"); }
-    finally { setLoading(false); }
-  }, [authorizedFetch, section]);
-  useEffect(() => { void Promise.resolve().then(refresh); }, [refresh]);
+    } catch (caught) { if (sequence === requestSequence.current) setError(caught instanceof Error ? caught.message : "讀取失敗"); }
+    finally { if (sequence === requestSequence.current) setLoading(false); }
+  }, [authorizedFetch, organization]);
+  useEffect(() => { void refresh(); return () => { requestSequence.current += 1; }; }, [refresh]);
+  useEffect(() => {
+    if (section !== "workspace" || !ready) return;
+    let current = true;
+    void Promise.allSettled([authorizedFetch("GET", undefined, "announcements"), authorizedFetch("GET", undefined, organization === "hr" ? "personnel" : "hr")]).then(([announcements,hr]) => {
+      if (!current) return;
+      setExistingAnnouncements(announcements.status === "fulfilled" ? announcements.value.announcements || [] : []);
+      setExistingRequests(hr.status === "fulfilled" ? hr.value.requests || [] : []);
+    });
+    return () => { current = false; };
+  }, [section, organization, authorizedFetch, ready, workspaceRevision]);
   useEffect(() => {
     const timer = window.setInterval(() => setReferenceTime(Date.now()), 60_000);
     return () => window.clearInterval(timer);
@@ -125,7 +135,7 @@ export default function StaffCollaboration({ organization, section, employeeName
   }
   const go = (tab: string) => { onSelect(tab); window.scrollTo({ top: 0, behavior: "smooth" }); };
   return (
-    <section className="eip-collaboration">
+    <section className="eip-collaboration" aria-busy={loading || undefined}>
       <div className="eip-collab-hero">
         <div>
           <p className="eip-collab-eyebrow"><Sparkles size={15} /> TEAM WORKSPACE</p>
@@ -138,8 +148,8 @@ export default function StaffCollaboration({ organization, section, employeeName
       {section === "knowledge" && data.serviceCoursesUnavailable ? <p className="eip-collab-alert" role="alert">客服課程暫時無法載入，請重新整理或稍後再試。</p> : null}
       {notice ? <p className="eip-collab-notice" role="status">{notice}</p> : null}
       {section === "workflows" ? <StatusProgress state={submissionState} label="發送簽核申請" /> : null}
-      {loading ? <Skeleton rows={3} label="正在同步工作資料…" /> : null}
-      {!loading && section === "workspace" ? (
+      {loading && !ready ? <LoadingStatus rows={3} label="正在同步工作資料…" /> : null}
+      {ready && section === "workspace" ? (
         <>
           <div className="eip-collab-metrics">
             <button onClick={() => go("calendar")}><CalendarDays size={21} /><strong>{upcoming.length}</strong><span>近期團隊日程</span></button>
@@ -199,12 +209,12 @@ export default function StaffCollaboration({ organization, section, employeeName
           </div>
         </>
       ) : null}
-      {!loading && section === "calendar" ? <div className="eip-collab-panel">
+      {ready && section === "calendar" ? <div className="eip-collab-panel">
         <div className="eip-collab-panel-head"><h2>團隊行事曆</h2><span>台灣時間 · 近期活動與會議</span></div>
         {data.events.length ? data.events.map((item) => <article className="eip-collab-event" key={item.id}><div className="eip-collab-event-time">{time(item.starts_at)}<br />至 {time(item.ends_at)}</div><div><h3>{item.title}</h3>{item.location ? <p>地點：{item.location}</p> : null}{item.details ? <p>{item.details}</p> : null}</div></article>) : <p className="eip-collab-empty">目前沒有已發布的日程。</p>}
       </div> : null}
       {section === "knowledge" ? <KnowledgeLibrary organization={organization} documents={data.documents.filter((item) => item.document_type === "knowledge")} loading={loading} /> : null}
-      {!loading && section === "documents" ? <div className="eip-collab-panel">
+      {ready && section === "documents" ? <div className="eip-collab-panel">
         <div className="eip-collab-panel-head"><h2>共享文件</h2><span>{filteredDocuments.length} 篇</span></div>
         <label className="eip-collab-search"><Search size={18} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜尋標題、分類或內容" /></label>
         <div className="eip-collab-document-layout">
@@ -212,7 +222,7 @@ export default function StaffCollaboration({ organization, section, employeeName
           <article className="eip-collab-document-body">{selectedDocument && filteredDocuments.some((item) => item.id === selectedDocument.id) ? <><span>{selectedDocument.category} · 版本 {selectedDocument.version}</span><h3>{selectedDocument.title}</h3><div>{selectedDocument.body}</div><WorkspaceDocumentFiles key={selectedDocument.id} organization={selectedDocument.organization || (organization === "hr" ? "qiunai" : organization)} documentId={selectedDocument.id} /></> : <p className="eip-collab-empty">選擇左側文件以閱讀全文。</p>}</article>
         </div>
       </div> : null}
-      {!loading && section === "workflows" ? <div className="eip-collab-columns">
+      {ready && section === "workflows" ? <div className="eip-collab-columns">
         <div className="eip-collab-panel">
           <div className="eip-collab-panel-head"><h2>提出新申請</h2></div>
           <p className="eip-collab-helper">選擇部門已開放的表單，填好送出後會交給相應的簽核人。送出後可在「我的申請」查看目前關卡和結果。</p>

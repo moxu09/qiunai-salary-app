@@ -2,7 +2,7 @@
 import { LoadingButton } from "@/components/InteractionUI";
 
 import { confirmUI } from "@/components/ConfirmationUI";
-import { notify, Skeleton } from "@/components/MotionUI";
+import { notify, LoadingStatus } from "@/components/MotionUI";
 import { useCallback, useEffect, useEffectEvent, useState } from "react";
 import { BarChart3, BellRing, Check, Edit3, FileSignature, Loader2, Paperclip, Plus, RefreshCw, Trash2, Users, X } from "lucide-react";
 import { supabase } from "@/lib/supabase";
@@ -220,7 +220,7 @@ export default function AnnouncementManager({ apiPath, accent }: { apiPath: stri
       </div>
 
       <div className="mt-5 space-y-3">
-        {loading ? <Skeleton rows={3} label="讀取公告中…" /> : announcements.length ? announcements.map((item) => (
+        {loading ? <LoadingStatus rows={3} label="讀取公告中…" /> : announcements.length ? announcements.map((item) => (
           <article key={item.id} className={`min-w-0 rounded-2xl border p-4 ${theme.border}`}>
             <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div className="min-w-0">

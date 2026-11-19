@@ -5,7 +5,7 @@ import {existsSync} from 'node:fs';
 test('every staff item has a concrete deep link, including the requested dot paths',()=>{
  assert.equal(HR_ROUTES.profile,'/personal/data');assert.equal(HR_ROUTES.orders,'/order/order.details');assert.equal(HR_ROUTES.tips,'/order/reward.details');
  assert.equal(new Set(Object.values(HR_ROUTES)).size,Object.keys(HR_ROUTES).length);
- for(const [tab,path] of Object.entries(HR_ROUTES)){assert.equal(hrTabForPath(path),tab);assert.ok(existsSync(new URL(`../app${path}/page.tsx`,import.meta.url)));}
+ for(const [tab,path] of Object.entries(HR_ROUTES)){assert.equal(hrTabForPath(path),tab);assert.ok(existsSync(new URL(`../app/(employee)${path}/page.tsx`,import.meta.url)));}
  for(const path of ['https://evil.example','//evil.example','/personal/unknown','/admin'])assert.equal(hrTabForPath(path),null);
 });
 test('combined withdrawal uses available balances and preserves the integer total',()=>{

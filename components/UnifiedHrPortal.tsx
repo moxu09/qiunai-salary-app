@@ -1,9 +1,9 @@
 "use client";
 import { LoadingButton } from "@/components/InteractionUI";
 import { confirmUI } from "@/components/ConfirmationUI";
-import { Skeleton } from "@/components/MotionUI";
+import { LoadingStatus } from "@/components/MotionUI";
 /* eslint-disable @next/next/no-img-element */
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { LogOut, RefreshCw, WalletCards, Save, UserRound, LockKeyhole, Landmark, ArrowUpRight } from "lucide-react";
 import { supabase } from "@/lib/supabase";
@@ -123,7 +123,7 @@ const profileFields = [
 ] as const;
 export async function hrFetch(path: string, init: RequestInit = {}) {
   const { data } = await supabase.auth.getSession();
-  if (!data.session) throw Error("登入已失效，請重新登入");
+  if (!data.session) throw Object.assign(Error("登入已失效，請重新登入"), {status:401});
   const response = await fetch(path, {
     ...init,
     headers: {
@@ -136,7 +136,7 @@ export async function hrFetch(path: string, init: RequestInit = {}) {
     cache: "no-store",
   });
   const result = await response.json().catch(() => ({}));
-  if (!response.ok) throw Error(result.message || "服務暫時無法使用");
+  if (!response.ok) throw Object.assign(Error(result.message || "服務暫時無法使用"), {status: response.status});
   return result;
 }
 function Logos({ departments }: { departments: Department[] }) {
@@ -177,7 +177,9 @@ export default function UnifiedHrPortal() {
   const router = useRouter();
   const pathname = usePathname();
   const activeTab = (hrTabForPath(pathname) || "workspace") as PortalTab;
-  const authPath = activeTab === "knowledge" ? HR_ROUTES.knowledge : pathname;
+  const initSequence = useRef(0);
+  const authUserId = useRef<string | null>(null);
+  const [panelRevision, setPanelRevision] = useState(0);
   const [accountRevision, setAccountRevision] = useState(0);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
@@ -238,19 +240,25 @@ export default function UnifiedHrPortal() {
     };
   }, [session]);
   const init = useCallback(async () => {
+    const sequence = ++initSequence.current;
     setLoading(true);
     setError("");
     try {
       const { data } = await supabase.auth.getSession();
       if (!data.session) {
-        router.replace(`/?next=${encodeURIComponent(window.location.pathname || authPath)}`);
+        initSequence.current += 1;
+        authUserId.current = null;
+        setSession(null);
+        router.replace(`/?next=${encodeURIComponent(window.location.pathname || HR_ROUTES.workspace)}`);
         return;
       }
       const result = await hrFetch("/api/hr/session");
       const { data: currentAuth } = await supabase.auth.getSession();
-      if (currentAuth.session?.user.id !== data.session.user.id) return;
+      if (sequence !== initSequence.current || currentAuth.session?.user.id !== data.session.user.id) return;
+      if (!result.departments.length) { setSession(null); setCanAudit(false); }
       if (!result.departments.length)
         throw Error("你目前沒有在職員工權限，請確認 Discord 身分組及入職資料");
+      authUserId.current = data.session.user.id;
       setSession(result);
       const access = await Promise.all(
         result.departments.map(async (d: Department) => {
@@ -261,25 +269,47 @@ export default function UnifiedHrPortal() {
           }
         }),
       );
+      if (sequence !== initSequence.current) return;
       setCanAudit(access.some((a) => a?.access?.role === "audit_reviewer"));
     } catch (caught) {
-      setError(errorText(caught));
+      if (sequence === initSequence.current) {
+        const status = (caught as {status?:number} | null)?.status;
+        if (status === 401 || status === 403) { setSession(null); setCanAudit(false); }
+        setError(errorText(caught));
+      }
     } finally {
-      setLoading(false);
+      if (sequence === initSequence.current) setLoading(false);
     }
-  }, [authPath, router]);
+  }, [router]);
   useEffect(() => {
     void init();
+    return () => { initSequence.current += 1; };
   }, [init]);
+  useEffect(() => { setManagedDepartment(null); setApprovalDepartment(null); }, [activeTab]);
   useEffect(() => {
     setChatOpen(activeTab === "messages");
   }, [activeTab]);
   useEffect(() => {
-    const { data } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "SIGNED_OUT") setSession(null);
+    let pending: ReturnType<typeof setTimeout> | undefined;
+    const { data } = supabase.auth.onAuthStateChange((event, auth) => {
+      if (event === "SIGNED_OUT") {
+        initSequence.current += 1;
+        authUserId.current = null;
+        setSession(null); setCanAudit(false); setLoading(true);
+        router.replace("/");
+      } else if ((event === "SIGNED_IN" || event === "USER_UPDATED") && auth && auth.user.id !== authUserId.current) {
+        initSequence.current += 1;
+        authUserId.current = auth.user.id;
+        setSession(null); setCanAudit(false); setLoading(true);
+        setManagedDepartment(null); setApprovalDepartment(null);
+        if (pending) clearTimeout(pending);
+        // Run outside Supabase's synchronous auth callback to avoid locking auth requests.
+        pending = setTimeout(() => { void init(); }, 0);
+      }
     });
-    return () => data.subscription.unsubscribe();
-  }, []);
+    return () => { if (pending) clearTimeout(pending); data.subscription.unsubscribe(); };
+  }, [init, router]);
+  async function refreshAll() { await init(); setPanelRevision(value => value + 1); }
   async function logout() {
     await supabase.auth.signOut();
     router.replace("/");
@@ -291,11 +321,11 @@ export default function UnifiedHrPortal() {
       router.push(next);
     }
   }
-  if (loading)
+  if (loading && !session)
     return (
-      <main className="ui-motion-loading"><Skeleton rows={6} cards label="正在整合員工資料…" /></main>
+      <main className="ui-motion-loading"><LoadingStatus rows={6} cards label="正在整合員工資料…" /></main>
     );
-  if (error || !session)
+  if (!session)
     return (
       <main className="ui-motion-page qiunai-page hr-loading hr-unified">
         <Card title="無法進入員工 HR">
@@ -345,8 +375,8 @@ export default function UnifiedHrPortal() {
             <p>{employeeName} · {session.departments.map((d) => `${nameOf(d.key)} ${d.hrRole || "Staff"}`).join("／")}</p>
           </div>
           <div className="hr-header-actions">
-            <button className="qiunai-soft-button" onClick={() => void init()}>
-              <RefreshCw size={16} />
+            <button className="qiunai-soft-button" disabled={loading} aria-busy={loading || undefined} onClick={() => void refreshAll()}>
+              <RefreshCw size={16} className={loading ? "animate-spin" : undefined} />
               重新整理
             </button>
             <button className="qiunai-soft-button" onClick={() => void logout()}>
@@ -368,8 +398,9 @@ export default function UnifiedHrPortal() {
             showPendingApprovals={managers.length > 0}
             approvalCounts={approvalCounts?.session === session ? approvalCounts : undefined}
           />
-          <div className="staff-main-column min-w-0">
-            <HrThemeBanner />
+          <div key={panelRevision} className="staff-main-column min-w-0">
+            {error ? <Notice>{error}</Notice> : null}
+        <HrThemeBanner />
             {activeTab === "workspace" && session.canManageHrMembers ? (
               <Card title="HR 成員管理">
                 <details className="ui-motion-details">
@@ -932,7 +963,7 @@ export function WalletPanel({ departments, primary }: { departments: Department[
         <p className="hr-note">已合併小號餘額。轉入 ASD 會入到各來源帳號。</p>
       ) : null}
       {usesPrimaryBank ? <p className="hr-note">銀行提領一律匯到主帳號的銀行帳戶。</p> : null}
-      {loading ? <Skeleton rows={3} label="同步錢包中…" /> : null}
+      {loading ? <LoadingStatus rows={3} label="同步錢包中…" /> : null}
       {error ? (
         <Notice>
           {error}

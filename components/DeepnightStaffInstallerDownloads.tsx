@@ -1,7 +1,7 @@
 "use client";
 import { LoadingButton } from "@/components/InteractionUI";
 
-import { Skeleton } from "@/components/MotionUI";
+import { LoadingStatus } from "@/components/MotionUI";
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 
@@ -69,7 +69,7 @@ export default function StaffInstallerDownloads({ admin = false }: { admin?: boo
       <label className="sm:col-span-2">安裝包（單檔最多 50 MB）<input className="mt-2 block" required type="file" accept={platform === "windows-x64" ? ".exe" : platform === "android" ? ".apk" : ".zip"} onChange={(event) => setFile(event.target.files?.[0] || null)} /></label>
       <LoadingButton disabled={Boolean(busy)} className="rounded-xl bg-sky-700 px-4 py-3 font-bold text-white disabled:opacity-50" loading={Boolean(busy === "upload")} loadingLabel="上傳中…">{busy === "upload" ? "上傳中…" : "上傳並發布"}</LoadingButton>
     </form> : null}
-    {loading ? <Skeleton rows={3} label="讀取安裝包中…" /> : <div className="mt-5 grid gap-3 sm:grid-cols-2">{platforms.map(([key, label]) => {
+    {loading ? <LoadingStatus rows={3} label="讀取安裝包中…" /> : <div className="mt-5 grid gap-3 sm:grid-cols-2">{platforms.map(([key, label]) => {
       const item = files.find((entry) => entry.platform === key);
       return <article key={key} className="rounded-2xl border border-slate-200 p-4"><h2 className="font-bold">{label}</h2>{item ? <><p className="my-2 text-sm text-slate-600">v{item.version}・{(item.size / 1024 / 1024).toFixed(1)} MB</p><LoadingButton disabled={Boolean(busy)} onClick={() => void download(item)} className="rounded-xl bg-sky-700 px-4 py-2 text-white disabled:opacity-50" loading={Boolean(busy === key)} loadingLabel="下載中…">{busy === key ? "下載中…" : "下載"}</LoadingButton></> : <p className="mt-2 text-sm text-slate-500">尚未發布此平台安裝包</p>}</article>;
     })}</div>}

@@ -1,5 +1,1 @@
-import { Skeleton } from "@/components/MotionUI";
-
-export default function Loading() {
-  return <main className="ui-motion-loading"><Skeleton rows={6} cards label="正在載入頁面" /></main>;
-}
+export default function Loading() { return <p className="hr-loading-status" role="status">{"\u8b80\u53d6\u4e2d"}</p>; }

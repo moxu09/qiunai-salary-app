@@ -2,7 +2,7 @@
 import { LoadingButton } from "@/components/InteractionUI";
 
 import { confirmUI } from "@/components/ConfirmationUI";
-import { Skeleton } from "@/components/MotionUI";
+import { LoadingStatus } from "@/components/MotionUI";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { ArrowRight, BookOpenText, CalendarDays, ClipboardCheck, FileText, FileUp, GraduationCap, LayoutDashboard, Plus, Save } from "lucide-react";
 import { supabase } from "@/lib/supabase";
@@ -283,7 +283,7 @@ export default function AdminWorkspaceManager({ organization, initialSection = "
       )}
     </nav> : null}
     {section==='course'?<AdminCourseManager key={organization} organization={organization}/>:null}
-    {loading && section!=='course' ? <Skeleton rows={3} label="正在讀取管理資料…" /> : null}
+    {loading && section!=='course' ? <LoadingStatus rows={3} label="正在讀取管理資料…" /> : null}
     {!loading && section === "overview" ? <>
       <div className="eip-admin-overview-stats">
         <button onClick={() => choose("decision")}><ClipboardCheck size={21} /><strong>{requestSummary.pending}</strong><span>待處理流程申請</span><ArrowRight size={16} /></button>
