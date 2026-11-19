@@ -1,0 +1,29 @@
+/* Compact shared HR header; the selected theme still supplies its colors. */
+.hr-unified .staff-workspace-header .hr-header-inner {
+  padding: 12px 24px;
+  gap: 16px;
+}
+.hr-unified .hr-header-identity {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  column-gap: 18px;
+  row-gap: 2px;
+  min-width: 0;
+}
+.hr-unified .hr-header-brand { grid-column: 1; grid-row: 1 / 3; }
+.hr-unified .hr-header-brand img { width: 28px; height: 28px; }
+.hr-unified .hr-header-brand .staff-portal-eyebrow { margin: 0; font-size: 11px; letter-spacing: .14em; }
+.hr-unified .hr-header-inner .hr-header-title { grid-column: 2; margin: 0; font-size: 21px; line-height: 1.3; }
+.hr-unified .hr-header-inner .hr-header-description { grid-column: 2; margin: 0; font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
+.hr-unified .staff-workspace-header .hr-header-actions { flex-shrink: 0; gap: 8px; }
+.hr-unified .staff-workspace-header .hr-header-actions button { min-height: 34px; padding: 7px 12px; font-size: 12px; line-height: 1.4; }
+@media (max-width: 760px) {
+  .hr-unified .staff-workspace-header .hr-header-inner { padding: 10px 14px !important; gap: 10px; }
+  .hr-unified .hr-header-identity { column-gap: 12px; }
+  .hr-unified .hr-header-brand .staff-portal-eyebrow { font-size: 10px; letter-spacing: .08em; }
+  .hr-unified .hr-header-brand img { width: 24px; height: 24px; }
+  .hr-unified .hr-header-inner .hr-header-title { font-size: 19px; }
+  .hr-unified .hr-header-inner .hr-header-description { font-size: 11px; }
+  .hr-unified .staff-workspace-header .hr-header-actions button { min-height: 32px; padding: 6px 10px; }
+}

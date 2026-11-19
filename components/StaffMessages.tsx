@@ -3,9 +3,21 @@ import { LongPressMenu } from "@/components/InteractionUI";
 import { LoadingButton } from "@/components/InteractionUI";
 
 import { LoadingStatus, notify } from "@/components/MotionUI";
-import { useCallback, useEffect, useRef, useState, type Dispatch, type FormEvent, type SetStateAction } from "react";
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type AnimationEvent, type Dispatch, type FocusEvent, type FormEvent, type KeyboardEvent, type SetStateAction } from "react";
 import { ArrowLeft, MessageCircle, Search, Send, UsersRound, X } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import "./StaffMessages.css";
+
+type PanelState = "closed" | "open" | "closing";
+
+const PANEL_EXIT_ANIMATION = "eip-messages-panel-out";
+// Only guarantees unmount if animationend never arrives (hidden tab, interrupted style).
+const PANEL_EXIT_FALLBACK_MS = 260;
+
+function prefersReducedMotion() {
+  return typeof window !== "undefined" && typeof window.matchMedia === "function"
+    && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
 
 type Contact = {
   discordId: string;
@@ -58,7 +70,20 @@ export default function StaffMessages({ organization, myDiscordId, open, onOpenC
   const currentPeerRef = useRef<string | null>(null);
   const initialScrollRef = useRef(false);
   const threadRef = useRef<HTMLDivElement | null>(null);
-  const selected = contacts.find((contact) => contact.discordId === selectedPeerId);
+  const panelId = useId();
+  const panelRef = useRef<HTMLDivElement | null>(null);
+  const launcherRef = useRef<HTMLButtonElement | null>(null);
+  const focusInsideRef = useRef(false);
+  const wasOpenRef = useRef(open);
+  // Derived during render so the exiting panel and the returning launcher land in one commit.
+  const [panelState, setPanelState] = useState<PanelState>(open ? "open" : "closed");
+  const [panelOpenProp, setPanelOpenProp] = useState(open);
+  if (panelOpenProp !== open) {
+    setPanelOpenProp(open);
+    setPanelState(open ? "open" : prefersReducedMotion() ? "closed" : "closing");
+  }
+  const closing = panelState === "closing";
+  const selected =contacts.find((contact) => contact.discordId === selectedPeerId);
   const unreadCount = contacts.reduce((total, contact) => total + contact.unreadCount, 0);
   const visibleContacts = contacts.filter((contact) =>
     !search.trim() || [contact.name, contact.discordId].some((text) =>
@@ -79,7 +104,7 @@ export default function StaffMessages({ organization, myDiscordId, open, onOpenC
       cache: "no-store",
     });
     const payload = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(payload.message || "讀取員工訊息失敗");
+    if (!response.ok) throw new Error(payload.message || "讀取訊息失敗");
     return payload;
   }, []);
 
@@ -190,6 +215,49 @@ export default function StaffMessages({ organization, myDiscordId, open, onOpenC
     return () => window.clearTimeout(timer);
   }, [loadingThread, messages.length]);
 
+  useEffect(() => {
+    if (panelState !== "closing") return;
+    const timer = window.setTimeout(() => {
+      setPanelState((current) => current === "closing" ? "closed" : current);
+    }, PANEL_EXIT_FALLBACK_MS);
+    return () => window.clearTimeout(timer);
+  }, [panelState]);
+
+  useLayoutEffect(() => {
+    const wasOpen = wasOpenRef.current;
+    wasOpenRef.current = open;
+    if (!wasOpen || open) return;
+    const active = document.activeElement;
+    const panel = panelRef.current;
+    // Reduced motion removes the panel in this commit, leaving focus on <body>.
+    const focusWasInside = (panel && active && panel.contains(active))
+      || (focusInsideRef.current && (!active || active === document.body));
+    focusInsideRef.current = false;
+    if (focusWasInside) launcherRef.current?.focus();
+  }, [open]);
+
+  function finishPanelExit(event: AnimationEvent<HTMLDivElement>) {
+    if (event.target !== event.currentTarget || event.animationName !== PANEL_EXIT_ANIMATION) return;
+    setPanelState((current) => current === "closing" ? "closed" : current);
+  }
+
+  function closePanel() {
+    focusInsideRef.current = true;
+    onOpenChange(false);
+  }
+
+  function onPanelKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+    // LongPressMenu handles (and prevents) its own Escape first.
+    if (event.key !== "Escape" || event.defaultPrevented || event.nativeEvent.isComposing || closing) return;
+    event.preventDefault();
+    closePanel();
+  }
+
+  function onPanelBlur(event: FocusEvent<HTMLDivElement>) {
+    const next = event.relatedTarget;
+    if (next instanceof Node && !event.currentTarget.contains(next)) focusInsideRef.current = false;
+  }
+
   function openContact(discordId: string) {
     if (discordId === selectedPeerId) return;
     currentPeerRef.current = discordId;
@@ -206,7 +274,7 @@ export default function StaffMessages({ organization, myDiscordId, open, onOpenC
   async function send(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const body = draft.trim();
-    if (!selectedPeerId || !body || sending) return;
+    if (!open || !selectedPeerId || !body || sending) return;
     const retry = retryRef.current;
     const nonce = retry?.peerId === selectedPeerId && retry.body === body
       ? retry.nonce : crypto.randomUUID();
@@ -236,14 +304,16 @@ export default function StaffMessages({ organization, myDiscordId, open, onOpenC
   }
 
   return (
-    <section className={`eip-messages eip-messages-${organization}`} aria-label="員工通訊與對話">
-      {!open ? <button type="button" className="eip-messages-launcher" onClick={() => onOpenChange(true)} aria-label={`開啟員工訊息${unreadCount ? `，${unreadCount} 則未讀` : ""}`}>
-        <MessageCircle size={21} /><span>員工訊息</span>{unreadCount > 0 ? <b>{unreadCount > 99 ? "99+" : unreadCount}</b> : null}
-      </button> : <div className="eip-messages-panel">
+    <section className={`eip-messages eip-messages-${organization}${closing ? " is-panel-closing" : ""}`} aria-label="員工通訊與對話">
+      {panelState !== "closed" ? <div ref={panelRef} id={panelId} role="region" aria-label="訊息"
+        className={`eip-messages-panel ${closing ? "is-closing" : "is-open"}`}
+        inert={closing} aria-hidden={closing || undefined}
+        onAnimationEnd={finishPanelExit} onKeyDown={onPanelKeyDown}
+        onFocus={() => { focusInsideRef.current = true; }} onBlur={onPanelBlur}>
       <div className="eip-messages-heading">
         <span className="eip-messages-heading-icon"><UsersRound size={23} /></span>
-        <div><p>TEAM COMMUNICATION</p><h2>員工訊息</h2><span>與同公司的在職員工一對一聯絡</span></div>
-        <button type="button" className="eip-messages-close" onClick={() => onOpenChange(false)} aria-label="收合員工訊息" title="收合員工訊息"><X size={19} /></button>
+        <div><p>TEAM COMMUNICATION</p><h2>訊息</h2><span>與同公司的在職員工一對一聯絡</span></div>
+        <button type="button" className="eip-messages-close" onClick={closePanel} aria-label="收合訊息" title="收合訊息" aria-controls={panelId} aria-expanded={open}><X size={19} /></button>
       </div>
       {error ? <div role="alert" className="eip-messages-error">{error}</div> : null}
       <div className="eip-messages-layout">
@@ -275,7 +345,12 @@ export default function StaffMessages({ organization, myDiscordId, open, onOpenC
           </>}
         </div>
       </div>
-      </div>}
+      </div> : null}
+      {!open ? <button ref={launcherRef} type="button" className="eip-messages-launcher" onClick={() => onOpenChange(true)}
+        aria-expanded={open} aria-controls={panelState !== "closed" ? panelId : undefined}
+        aria-label={`開啟訊息${unreadCount ? `，${unreadCount} 則未讀` : ""}`}>
+        <MessageCircle size={21} /><span>訊息</span>{unreadCount > 0 ? <b>{unreadCount > 99 ? "99+" : unreadCount}</b> : null}
+      </button> : null}
     </section>
   );
 }

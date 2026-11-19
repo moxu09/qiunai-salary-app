@@ -19,6 +19,7 @@ import AdminApprovals from "@/components/AdminApprovals";
 import AdminWorkspaceManager from "@/components/AdminWorkspaceManager";
 import AdminActivityManager from "@/components/AdminActivityManager";
 import StaffMessages from "@/components/StaffMessages";
+import "./HrWorkspaceHeader.css";
 import HrPortalPanel from "@/components/HrPortalPanel";
 import ActivityPortal from "@/components/ActivityPortal";
 import DeepnightStaffInstallerDownloads from "@/components/DeepnightStaffInstallerDownloads";
@@ -366,13 +367,13 @@ export default function UnifiedHrPortal() {
       <HrThemeDecorations />
       <header className="staff-workspace-header">
         <div className="hr-header-inner">
-          <div>
-            <div className="flex items-center gap-2">
+          <div className="hr-header-identity">
+            <div className="hr-header-brand flex items-center gap-2">
               <img src="/as-stu-mark.png" alt="" width={32} height={32} className="rounded-lg bg-white p-1" />
               <p className="staff-portal-eyebrow">As_Stu.HR</p>
             </div>
-            <h1>員工工作台</h1>
-            <p>{employeeName} · {session.departments.map((d) => `${nameOf(d.key)} ${d.hrRole || "Staff"}`).join("／")}</p>
+            <h1 className="hr-header-title">員工工作台</h1>
+            <p className="hr-header-description">{employeeName} · {session.departments.map((d) => `${nameOf(d.key)} ${d.hrRole || "Staff"}`).join("／")}</p>
           </div>
           <div className="hr-header-actions">
             <button className="qiunai-soft-button" disabled={loading} aria-busy={loading || undefined} onClick={() => void refreshAll()}>
@@ -400,7 +401,7 @@ export default function UnifiedHrPortal() {
           />
           <div key={panelRevision} className="staff-main-column min-w-0">
             {error ? <Notice>{error}</Notice> : null}
-        <HrThemeBanner />
+            {activeTab === "appearance" ? <HrThemeBanner /> : null}
             {activeTab === "workspace" && session.canManageHrMembers ? (
               <Card title="HR 成員管理">
                 <details className="ui-motion-details">
@@ -522,10 +523,10 @@ export default function UnifiedHrPortal() {
             ) : null}
             {activeTab === "device-audit" && canAudit ? <StaffDeviceAuditPanel /> : null}
             {activeTab === "messages" ? (
-              <Card title="員工訊息">
+              <Card title="訊息">
                 <p>兩家店的同事與對話一併顯示。</p>
                 <button className="qiunai-button" onClick={() => setChatOpen(true)}>
-                  開啟員工訊息
+                  開啟訊息
                 </button>
               </Card>
             ) : null}

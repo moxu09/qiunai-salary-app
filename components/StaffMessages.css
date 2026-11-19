@@ -1,0 +1,44 @@
+/* Floating message panel motion. Animates the panel only; the fixed .eip-messages wrapper keeps its position. */
+.eip-messages-panel.is-open {
+  transform-origin: 100% 100%;
+  animation: eip-messages-panel-in 360ms cubic-bezier(.2, .9, .25, 1.05) both;
+}
+
+/* The exiting panel leaves the flow so the returning launcher sits where it belongs. */
+.eip-messages-panel.is-closing {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  pointer-events: none;
+  transform-origin: 100% 100%;
+  animation: eip-messages-panel-out 160ms cubic-bezier(.4, 0, 1, 1) both;
+}
+
+.eip-messages.is-panel-closing .eip-messages-launcher {
+  animation: eip-messages-launcher-in 220ms cubic-bezier(.2, .9, .25, 1.1) 60ms both;
+}
+
+@keyframes eip-messages-panel-in {
+  0% { opacity: 0; transform: translate3d(12px, 22px, 0) scale(.9); }
+  55% { opacity: 1; transform: translate3d(0, -3px, 0) scale(1.012); }
+  100% { opacity: 1; transform: none; }
+}
+
+@keyframes eip-messages-panel-out {
+  0% { opacity: 1; transform: none; }
+  100% { opacity: 0; transform: translate3d(8px, 14px, 0) scale(.94); }
+}
+
+@keyframes eip-messages-launcher-in {
+  0% { opacity: 0; transform: translate3d(0, 6px, 0) scale(.92); }
+  100% { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .eip-messages-panel.is-open,
+  .eip-messages-panel.is-closing,
+  .eip-messages.is-panel-closing .eip-messages-launcher {
+    animation: none;
+  }
+}
