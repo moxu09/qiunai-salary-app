@@ -1,7 +1,17 @@
-/* Compact shared HR header; the selected theme still supplies its colors. */
+/* Match the working cards and their gutters; keep the selected theme. */
+.hr-unified .staff-workspace-header {
+  padding: 24px clamp(20px, 2.2vw, 40px) 0;
+  background: transparent;
+  border: 0;
+}
 .hr-unified .staff-workspace-header .hr-header-inner {
-  padding: 12px 24px;
+  padding: 14px 22px !important;
   gap: 16px;
+  min-width: 0;
+  border: 1px solid var(--hr-border, #eadff0);
+  border-radius: 28px;
+  background: var(--hr-paper, #fff);
+  box-shadow: 0 8px 28px #1426410a;
 }
 .hr-unified .hr-header-identity {
   display: grid;
@@ -18,12 +28,18 @@
 .hr-unified .hr-header-inner .hr-header-description { grid-column: 2; margin: 0; font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
 .hr-unified .staff-workspace-header .hr-header-actions { flex-shrink: 0; gap: 8px; }
 .hr-unified .staff-workspace-header .hr-header-actions button { min-height: 34px; padding: 7px 12px; font-size: 12px; line-height: 1.4; }
+@media (max-width: 1023px) {
+  .hr-unified .staff-workspace-header { padding: 14px 14px 12px; }
+}
 @media (max-width: 760px) {
-  .hr-unified .staff-workspace-header .hr-header-inner { padding: 10px 14px !important; gap: 10px; }
+  .hr-unified .staff-workspace-header .hr-header-inner { padding: 12px 14px !important; gap: 10px; border-radius: 22px; }
   .hr-unified .hr-header-identity { column-gap: 12px; }
   .hr-unified .hr-header-brand .staff-portal-eyebrow { font-size: 10px; letter-spacing: .08em; }
   .hr-unified .hr-header-brand img { width: 24px; height: 24px; }
   .hr-unified .hr-header-inner .hr-header-title { font-size: 19px; }
   .hr-unified .hr-header-inner .hr-header-description { font-size: 11px; }
   .hr-unified .staff-workspace-header .hr-header-actions button { min-height: 32px; padding: 6px 10px; }
+}
+@media (max-width: 640px) {
+  .hr-unified .staff-workspace-header { padding: 10px 10px 0; }
 }

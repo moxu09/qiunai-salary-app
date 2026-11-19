@@ -190,6 +190,7 @@ export default function UnifiedHrPortal() {
   const [canAudit, setCanAudit] = useState(false);
   const [managedDepartment, setManagedDepartment] = useState<DepartmentKey | null>(null);
   const [approvalDepartment, setApprovalDepartment] = useState<DepartmentKey | null>(null);
+  const [renderedTab, setRenderedTab] = useState(activeTab);
   const [approvalCounts, setApprovalCounts] = useState<{
     session: Session;
     workflows?: number;
@@ -286,10 +287,14 @@ export default function UnifiedHrPortal() {
     void init();
     return () => { initSequence.current += 1; };
   }, [init]);
-  useEffect(() => { setManagedDepartment(null); setApprovalDepartment(null); }, [activeTab]);
-  useEffect(() => {
+  // Reset before committing the new tab. An effect first mounted the previous
+  // department's panel and started its requests, then mounted the default again.
+  if (renderedTab !== activeTab) {
+    setRenderedTab(activeTab);
+    setManagedDepartment(null);
+    setApprovalDepartment(null);
     setChatOpen(activeTab === "messages");
-  }, [activeTab]);
+  }
   useEffect(() => {
     let pending: ReturnType<typeof setTimeout> | undefined;
     const { data } = supabase.auth.onAuthStateChange((event, auth) => {
@@ -318,7 +323,7 @@ export default function UnifiedHrPortal() {
   function select(tab: string) {
     const next = HR_ROUTES[tab as keyof typeof HR_ROUTES];
     if (next) {
-      setManagedDepartment(null);
+      if (tab === activeTab) setManagedDepartment(null);
       router.push(next);
     }
   }

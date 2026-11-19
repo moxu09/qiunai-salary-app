@@ -63,7 +63,8 @@
   background-size: 73px 73px, 127px 127px;
   background-position: 10px 20px, 41px 59px;
 }
-.hr-theme-root .hr-unified .staff-workspace-header { background: var(--hr-paper); border-bottom: 1px solid var(--hr-border); }
+.hr-theme-root .hr-unified .staff-workspace-header { background: transparent; border: 0; }
+.hr-theme-root .hr-unified .staff-workspace-header .hr-header-inner { border-color: var(--hr-border); background: var(--hr-paper); box-shadow: 0 8px 28px #1426410a; }
 .hr-theme-root .hr-unified .staff-workspace-header .staff-portal-eyebrow { color: var(--hr-accent) !important; }
 .hr-theme-root .hr-unified .hr-header-inner p:last-child { color: var(--hr-muted); }
 .hr-theme-root .hr-unified .staff-portal-nav {
@@ -212,7 +213,7 @@
 .hr-theme-option-preview .hr-theme-artwork img { width: 80px; height: 80px; }
 .hr-theme-option-preview .hr-art-deepnight { background: #15243dee; border-color: #cbb574aa; }
 .hr-theme-option-preview .hr-theme-artwork :is(.hr-art-orbit, .hr-art-sparkle, .hr-art-star, .hr-art-moon) { display: none; }
-.hr-scene-decorations { position: fixed; inset: 0; pointer-events: none; z-index: -1; overflow: hidden; }
+.hr-scene-decorations { position: fixed; inset: 0; pointer-events: none; z-index: -1; overflow: hidden; contain: strict; }
 .hr-scene-sticker { position: absolute; display: grid; place-items: center; width: 80px; height: 80px; border: 2px solid #ffffffb0; border-radius: 26px; background: #edf5ffbd; color: #668ac0; box-shadow: 0 8px 24px #5b84b81a; }
 .hr-scene-sticker svg { width: 46px; height: 46px; }
 .hr-scene-sticker-0 { top: 15%; right: 2%; transform: rotate(14deg); }
