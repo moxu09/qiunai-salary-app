@@ -1,5 +1,8 @@
 "use client";
+import { LoadingButton } from "@/components/InteractionUI";
 
+import { confirmUI } from "@/components/ConfirmationUI";
+import { notify } from "@/components/MotionUI";
 /* eslint-disable @next/next/no-img-element */
 
 import { useEffect, useMemo, useState } from "react";
@@ -133,7 +136,7 @@ export default function AdminStaffPage() {
 
     if (staffError) {
       console.error("讀取員工資料失敗:", staffError);
-      alert("讀取員工資料失敗");
+      notify("讀取員工資料失敗");
       setLoading(false);
       return;
     }
@@ -197,10 +200,10 @@ export default function AdminStaffPage() {
     const result = await response.json().catch(() => ({}));
     setFeaturedSaving(false);
     if (!response.ok || !result.ok) {
-      alert(result.message || "儲存金榜名單失敗");
+      notify(result.message || "儲存金榜名單失敗");
       return;
     }
-    alert("本月金榜陪陪已更新");
+    notify("本月金榜陪陪已更新");
   }
 
   function updateLocalStaff(
@@ -242,7 +245,7 @@ export default function AdminStaffPage() {
 
     if (staffError) {
       console.error("儲存員工資料失敗:", staffError);
-      alert("儲存員工資料失敗");
+      notify("儲存員工資料失敗");
       setSavingId(null);
       return;
     }
@@ -251,7 +254,7 @@ export default function AdminStaffPage() {
     const token = sessionData.session?.access_token;
     if (!token) {
       setSavingId(null);
-      alert("員工資料已儲存，但登入已過期，官網顯示狀態尚未同步");
+      notify("員工資料已儲存，但登入已過期，官網顯示狀態尚未同步");
       return;
     }
 
@@ -271,11 +274,11 @@ export default function AdminStaffPage() {
 
     if (!syncResponse.ok || !syncResult.ok) {
       console.error("同步官網顯示狀態失敗:", syncResult);
-      alert("員工資料已儲存，但官網顯示狀態同步失敗，請稍後再試");
+      notify("員工資料已儲存，但官網顯示狀態同步失敗，請稍後再試");
       return;
     }
 
-    alert("已儲存");
+    notify("已儲存");
     await loadStaff();
   }
 
@@ -283,7 +286,7 @@ export default function AdminStaffPage() {
     const name = getStaffDisplayName(staff);
     if (
       archived &&
-      !window.confirm(
+      !await confirmUI(
         `確定要封存「${name}」嗎？\n\n` +
           "封存後會立即停用、下線並禁止接單，也不會出現在官網及一般員工清單。之後仍可從「查看已封存員工」重新啟用。",
       )
@@ -294,7 +297,7 @@ export default function AdminStaffPage() {
     const { data } = await supabase.auth.getSession();
     const token = data.session?.access_token;
     if (!token) {
-      alert("登入已過期，請重新登入後再試");
+      notify("登入已過期，請重新登入後再試");
       return;
     }
 
@@ -315,7 +318,7 @@ export default function AdminStaffPage() {
     setArchivingId(null);
 
     if (!response.ok || !result.ok) {
-      alert(result.message || "更新員工封存狀態失敗");
+      notify(result.message || "更新員工封存狀態失敗");
       return;
     }
 
@@ -336,18 +339,18 @@ export default function AdminStaffPage() {
       setSelectedStaffId(
         nextStaffList.find((item) => item.is_active)?.id || null,
       );
-      alert(`已封存員工「${name}」`);
+      notify(`已封存員工「${name}」`);
       return;
     }
 
     setShowArchived(false);
     setSelectedStaffId(staff.id);
-    alert(`已重新啟用員工「${name}」`);
+    notify(`已重新啟用員工「${name}」`);
   }
 
   if (adminLoading || !isAdmin) {
     return (
-      <main className="qiunai-page flex items-center justify-center px-4">
+      <main className="ui-motion-page qiunai-page flex items-center justify-center px-4">
         <div className="qiunai-card rounded-[32px] p-8 text-center">
           <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-4 border-pink-300 border-t-transparent" />
           <p className="text-sm text-[#8b5a8f]">檢查後台權限中...</p>
@@ -357,7 +360,7 @@ export default function AdminStaffPage() {
   }
 
   return (
-    <main className="qiunai-page admin-page">
+    <main className="ui-motion-page qiunai-page admin-page">
       <div className="qiunai-glow left-[-90px] top-[-90px] h-72 w-72 bg-pink-300" />
       <div className="qiunai-glow right-[-100px] top-32 h-80 w-80 bg-purple-300" />
       <div className="qiunai-glow bottom-[-120px] left-1/2 h-80 w-80 -translate-x-1/2 bg-rose-200" />
@@ -400,9 +403,9 @@ export default function AdminStaffPage() {
                 可複選；儲存後這些陪陪會優先顯示在官網。
               </p>
             </div>
-            <button onClick={saveFeatured} disabled={featuredSaving} className="qiunai-button px-5 py-2.5 text-sm font-bold">
+            <LoadingButton onClick={saveFeatured} disabled={featuredSaving} className="qiunai-button px-5 py-2.5 text-sm font-bold" loading={Boolean(featuredSaving)} loadingLabel="儲存中...">
               {featuredSaving ? "儲存中..." : "儲存金榜名單"}
-            </button>
+            </LoadingButton>
           </div>
           <div className="mt-4 flex items-center gap-2 rounded-2xl border border-pink-100 bg-pink-50/60 px-3 py-2">
             <Search size={17} className="shrink-0 text-pink-500" />
@@ -582,14 +585,10 @@ export default function AdminStaffPage() {
                           </div>
                         </div>
 
-                        <button
-                          onClick={() => saveStaff(staff)}
-                          disabled={savingId === staff.id}
-                          className="qiunai-button flex items-center justify-center gap-2 px-5 py-3 font-bold"
-                        >
+                        <LoadingButton onClick={() => saveStaff(staff)} disabled={savingId === staff.id} className="qiunai-button flex items-center justify-center gap-2 px-5 py-3 font-bold" loading={Boolean(savingId === staff.id)} loadingLabel="儲存中...">
                           <Save size={18} />
                           {savingId === staff.id ? "儲存中..." : "儲存此員工"}
-                        </button>
+                        </LoadingButton>
                       </div>
 
                       <div className="mt-5 grid gap-4 md:grid-cols-3">

@@ -1,4 +1,5 @@
 "use client";
+import { LoadingButton } from "@/components/InteractionUI";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
@@ -192,9 +193,9 @@ export default function StaffDeviceAuditPanel() {
               只顯示秋奈的掃描結果；風險指標僅供審核參考，不作為外掛定論。
             </p>
           </div>
-          <button type="button" onClick={() => void loadReports()} disabled={loading} className="inline-flex items-center gap-2 rounded-full bg-white px-5 py-2.5 text-sm font-black text-slate-900 disabled:opacity-60">
+          <LoadingButton type="button" onClick={() => void loadReports()} disabled={loading} className="inline-flex items-center gap-2 rounded-full bg-white px-5 py-2.5 text-sm font-black text-slate-900 disabled:opacity-60" loading={Boolean(loading)} loadingLabel="處理中…">
             {loading ? <Loader2 size={16} className="animate-spin" /> : <RefreshCw size={16} />}重新整理
-          </button>
+          </LoadingButton>
         </div>
       </header>
 

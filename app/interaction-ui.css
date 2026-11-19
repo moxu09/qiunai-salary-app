@@ -1,0 +1,487 @@
+/*
+ * Interaction primitives for InteractionUI.tsx.
+ * Only ui-interaction-*, ui-sort-*, ui-field-*, ui-confetti-* names. Override any --ui-* variable per project.
+ */
+
+:root {
+  --ui-interaction-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ui-interaction-fast: 180ms;
+  --ui-interaction-accent: #2563eb;
+  --ui-interaction-error: #dc2626;
+  --ui-interaction-success: #16a34a;
+  --ui-interaction-surface: Canvas;
+  --ui-interaction-border: color-mix(in srgb, currentColor 22%, transparent);
+  --ui-interaction-menu-z: 10040;
+  --ui-confetti-z: 10060;
+}
+
+/* ------------------------------------------------------------------ */
+/* Keyframes                                                           */
+/* ------------------------------------------------------------------ */
+
+@keyframes ui-interaction-spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes ui-interaction-shake {
+  0%, 100% { transform: none; }
+  20% { transform: translateX(-6px); }
+  40% { transform: translateX(5px); }
+  60% { transform: translateX(-4px); }
+  80% { transform: translateX(2px); }
+}
+
+@keyframes ui-interaction-indeterminate {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(250%); }
+}
+
+@keyframes ui-interaction-menu-in {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes ui-confetti-fall {
+  0% { opacity: 1; transform: translate3d(0, 0, 0) rotate(0); }
+  80% { opacity: 1; }
+  100% { opacity: 0; transform: translate3d(var(--ui-confetti-dx), 105vh, 0) rotate(var(--ui-confetti-rotate)); }
+}
+
+/* ------------------------------------------------------------------ */
+/* Shared                                                              */
+/* ------------------------------------------------------------------ */
+
+.ui-interaction-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Add (and re-add) on validation failure; the caller removes it after animationend. */
+.ui-interaction-shake {
+  animation: ui-interaction-shake 360ms var(--ui-interaction-ease);
+}
+
+.ui-interaction-spinner {
+  display: inline-block;
+  flex: none;
+  vertical-align: -0.125em;
+  animation: ui-interaction-spin 0.8s linear infinite;
+}
+
+/* ------------------------------------------------------------------ */
+/* LoadingButton                                                       */
+/* ------------------------------------------------------------------ */
+
+.ui-interaction-button[aria-busy="true"] {
+  cursor: progress;
+}
+
+.ui-interaction-button > .ui-interaction-spinner {
+  margin-inline-end: 0.45em;
+}
+
+/* ------------------------------------------------------------------ */
+/* FloatingInput                                                       */
+/* ------------------------------------------------------------------ */
+
+.ui-field {
+  position: relative;
+  display: block;
+}
+
+.ui-field-input {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 1.35em 0.85em 0.45em;
+  border: 1px solid var(--ui-field-border, var(--ui-interaction-border));
+  border-radius: var(--ui-field-radius, 10px);
+  background: var(--ui-field-bg, transparent);
+  color: inherit;
+  font: inherit;
+  line-height: 1.2;
+  transition: border-color var(--ui-interaction-fast), box-shadow var(--ui-interaction-fast);
+}
+
+.ui-field-input:focus {
+  outline: none;
+  border-color: var(--ui-field-accent, var(--ui-interaction-accent));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ui-field-accent, var(--ui-interaction-accent)) 22%, transparent);
+}
+
+/* Real placeholders only show once the label has floated out of the way. */
+.ui-field-input::placeholder { color: transparent; }
+.ui-field-input:focus::placeholder { color: color-mix(in srgb, currentColor 45%, transparent); }
+
+.ui-field-label {
+  position: absolute;
+  top: 0;
+  left: 0.85em;
+  max-width: calc(100% - 1.7em);
+  overflow: hidden;
+  color: color-mix(in srgb, currentColor 62%, transparent);
+  line-height: 1.2;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  pointer-events: none;
+  transform: translateY(0.9em);
+  transform-origin: left top;
+  transition: transform var(--ui-interaction-fast) var(--ui-interaction-ease), color var(--ui-interaction-fast);
+}
+
+.ui-field-input:focus + .ui-field-label,
+.ui-field-input:not(:placeholder-shown) + .ui-field-label,
+.ui-field-input:is([type="date"], [type="time"], [type="datetime-local"], [type="month"], [type="week"]) + .ui-field-label {
+  transform: translateY(0.35em) scale(0.78);
+}
+
+/* Separate rules: an unknown autofill pseudo-class must not invalidate the others. */
+.ui-field-input:-webkit-autofill + .ui-field-label {
+  transform: translateY(0.35em) scale(0.78);
+}
+
+.ui-field-input:autofill + .ui-field-label {
+  transform: translateY(0.35em) scale(0.78);
+}
+
+.ui-field-input:focus + .ui-field-label {
+  color: var(--ui-field-accent, var(--ui-interaction-accent));
+}
+
+.ui-field-input[aria-invalid="true"] {
+  border-color: var(--ui-field-error, var(--ui-interaction-error));
+}
+
+.ui-field-input[aria-invalid="true"]:focus {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ui-field-error, var(--ui-interaction-error)) 22%, transparent);
+}
+
+.ui-field-input[aria-invalid="true"] + .ui-field-label {
+  color: var(--ui-field-error, var(--ui-interaction-error));
+}
+
+/* ------------------------------------------------------------------ */
+/* StatusProgress                                                      */
+/* ------------------------------------------------------------------ */
+
+.ui-interaction-status {
+  display: grid;
+  gap: 6px;
+}
+
+.ui-interaction-progress {
+  position: relative;
+  height: var(--ui-interaction-progress-height, 4px);
+  overflow: hidden;
+  border-radius: 999px;
+  background: color-mix(in srgb, currentColor 12%, transparent);
+}
+
+.ui-interaction-progress-bar {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 0;
+  border-radius: inherit;
+  background: var(--ui-interaction-accent);
+  transition: width 320ms var(--ui-interaction-ease), background-color var(--ui-interaction-fast);
+}
+
+.ui-interaction-status[data-state="sending"] .ui-interaction-progress-bar {
+  width: 40%;
+  transition: none;
+  animation: ui-interaction-indeterminate 1.1s var(--ui-interaction-ease) infinite;
+}
+
+.ui-interaction-status[data-state="success"] .ui-interaction-progress-bar {
+  width: 100%;
+  background: var(--ui-interaction-success);
+}
+
+/* Freeze where it was: the request did not complete. */
+.ui-interaction-status[data-state="error"] .ui-interaction-progress-bar {
+  width: 40%;
+  background: var(--ui-interaction-error);
+  animation: ui-interaction-indeterminate 1.1s var(--ui-interaction-ease) infinite paused;
+}
+
+.ui-interaction-status-text {
+  font-size: 0.875em;
+  min-height: 1.2em;
+}
+
+.ui-interaction-status[data-state="success"] .ui-interaction-status-text { color: var(--ui-interaction-success); }
+.ui-interaction-status[data-state="error"] .ui-interaction-status-text { color: var(--ui-interaction-error); }
+
+/* ------------------------------------------------------------------ */
+/* Confetti                                                            */
+/* ------------------------------------------------------------------ */
+
+.ui-confetti-layer {
+  position: fixed;
+  inset: 0;
+  z-index: var(--ui-confetti-z);
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.ui-confetti-piece {
+  position: absolute;
+  top: -16px;
+  left: var(--ui-confetti-x);
+  width: 8px;
+  height: 12px;
+  border-radius: 2px;
+  background: var(--ui-confetti-color);
+  animation: ui-confetti-fall var(--ui-confetti-duration) var(--ui-confetti-delay) cubic-bezier(0.3, 0.6, 0.6, 1) both;
+}
+
+.ui-confetti-piece:nth-child(3n) { width: 6px; height: 6px; border-radius: 50%; }
+
+/* ------------------------------------------------------------------ */
+/* PullToRefresh                                                       */
+/* ------------------------------------------------------------------ */
+
+.ui-interaction-pull {
+  position: relative;
+}
+
+.ui-interaction-pull-indicator {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45em;
+  padding: 6px 12px;
+  border: 1px solid var(--ui-interaction-border);
+  border-radius: 999px;
+  background: var(--ui-interaction-surface);
+  box-shadow: 0 6px 18px -10px rgb(0 0 0 / 0.4);
+  font-size: 0.875rem;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, calc(var(--ui-interaction-pull-offset, 0px) - 100%));
+  transition: transform 240ms var(--ui-interaction-ease), opacity var(--ui-interaction-fast);
+}
+
+.ui-interaction-pull:not([data-phase="idle"]) > .ui-interaction-pull-indicator { opacity: 1; }
+
+/* Track the finger directly while pulling. */
+.ui-interaction-pull:is([data-phase="pulling"], [data-phase="armed"]) > .ui-interaction-pull-indicator { transition: none; }
+
+.ui-interaction-pull-arrow {
+  transition: transform var(--ui-interaction-fast) var(--ui-interaction-ease);
+}
+
+.ui-interaction-pull[data-phase="armed"] .ui-interaction-pull-arrow {
+  transform: rotate(180deg);
+  color: var(--ui-interaction-accent);
+}
+
+/* ------------------------------------------------------------------ */
+/* SwipePager                                                          */
+/* ------------------------------------------------------------------ */
+
+.ui-interaction-swipe-track {
+  touch-action: pan-y pinch-zoom; /* vertical scroll stays native; horizontal reaches us */
+  transform: translateX(var(--ui-interaction-swipe-x, 0px));
+  transition: transform 220ms var(--ui-interaction-ease);
+}
+
+.ui-interaction-swipe-track[data-dragging] { transition: none; }
+
+.ui-interaction-swipe-controls {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+/* ------------------------------------------------------------------ */
+/* LongPressMenu                                                       */
+/* ------------------------------------------------------------------ */
+
+.ui-interaction-longpress {
+  -webkit-touch-callout: none;
+}
+
+@media (pointer: coarse) {
+  .ui-interaction-longpress { -webkit-user-select: none; user-select: none; }
+}
+
+.ui-interaction-menu {
+  position: fixed;
+  z-index: var(--ui-interaction-menu-z);
+  display: grid;
+  min-width: 180px;
+  max-width: min(320px, calc(100vw - 16px));
+  padding: 4px;
+  border: 1px solid var(--ui-interaction-border);
+  border-radius: 10px;
+  background: var(--ui-interaction-surface);
+  color: CanvasText;
+  box-shadow: 0 12px 32px -12px rgb(0 0 0 / 0.4), 0 2px 6px rgb(0 0 0 / 0.08);
+  transform-origin: top left;
+  animation: ui-interaction-menu-in 140ms var(--ui-interaction-ease) both;
+}
+
+.ui-interaction-menu-item {
+  padding: 8px 12px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+.ui-interaction-menu-item:is(:hover, :focus-visible):not(:disabled) {
+  outline: none;
+  background: color-mix(in srgb, var(--ui-interaction-accent) 14%, transparent);
+}
+
+.ui-interaction-menu-item:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* ------------------------------------------------------------------ */
+/* SortableList                                                        */
+/* ------------------------------------------------------------------ */
+
+.ui-sort-list {
+  position: relative; /* offsetParent for FLIP measurements */
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ui-sort-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  border: 1px solid var(--ui-interaction-border);
+  border-radius: 10px;
+  background: var(--ui-interaction-surface);
+}
+
+.ui-sort-item[data-dragging] {
+  z-index: 1;
+  box-shadow: 0 12px 28px -14px rgb(0 0 0 / 0.45);
+  opacity: 0.92;
+}
+
+.ui-sort-handle {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  color: color-mix(in srgb, currentColor 55%, transparent);
+  cursor: grab;
+  touch-action: none; /* only the handle blocks scrolling */
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.ui-sort-item[data-dragging] .ui-sort-handle { cursor: grabbing; }
+
+.ui-sort-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.ui-sort-controls {
+  display: flex;
+  flex: none;
+  gap: 4px;
+}
+
+.ui-sort-move {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid var(--ui-interaction-border);
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.ui-sort-move[aria-disabled="true"] {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* ------------------------------------------------------------------ */
+/* Reduced motion                                                      */
+/* ------------------------------------------------------------------ */
+
+@media (prefers-reduced-motion: reduce) {
+  .ui-interaction-shake,
+  .ui-interaction-menu,
+  .ui-confetti-piece {
+    animation: none;
+  }
+
+  .ui-confetti-layer { display: none; }
+
+  /* Static arc instead of a spinning one. */
+  .ui-interaction-spinner { animation: none; }
+
+  /* Indeterminate bar: steady dimmed track instead of a sweep. */
+  .ui-interaction-status[data-state="sending"] .ui-interaction-progress-bar {
+    width: 100%;
+    animation: none;
+    opacity: 0.45;
+  }
+
+  .ui-interaction-status[data-state="error"] .ui-interaction-progress-bar { animation: none; }
+
+  .ui-field-label,
+  .ui-field-input,
+  .ui-interaction-progress-bar,
+  .ui-interaction-pull-indicator,
+  .ui-interaction-pull-arrow,
+  .ui-interaction-swipe-track {
+    transition: none;
+  }
+
+  .ui-interaction-swipe-track { transform: none; }
+}
+
+/* Contextual feedback shared by the real forms and conversations. */
+.ui-interaction-button[data-loading] .animate-spin { display:none; }
+.ui-field:has(input[aria-invalid="true"]) { animation: ui-interaction-shake 360ms ease-out; }
+.ui-interaction-pull { min-width:0; flex:1; }
+.ui-interaction-swipe-track { transition:transform 380ms cubic-bezier(.22,1.55,.36,1); }
+.ui-dialog-panel { animation-timing-function:cubic-bezier(.22,1.35,.36,1); animation-duration:320ms; }
+.ui-dialog-closing > .ui-dialog-panel { animation-timing-function:ease-in; animation-duration:160ms; }
+.ui-interaction-typing { display:flex; gap:8px; align-items:center; font-size:12px; padding:8px 12px; opacity:.72; }
+.ui-interaction-typing > span { display:flex; gap:3px; }
+.ui-interaction-typing i { height:5px; width:5px; border-radius:50%; background:currentColor; animation:ui-typing-dot 1s ease-in-out infinite; }
+.ui-interaction-typing i:nth-child(2) { animation-delay:120ms; }
+.ui-interaction-typing i:nth-child(3) { animation-delay:240ms; }
+@keyframes ui-typing-dot { 0%,70%,100% { transform:none; opacity:.4; } 35% { transform:translateY(-3px); opacity:1; } }
+.ui-interaction-carousel-controls { display:flex; justify-content:flex-end; gap:8px; margin-block:12px; }
+.ui-interaction-carousel-controls button { border:1px solid currentColor; border-radius:20px; padding:6px 16px; font:inherit; cursor:pointer; }
+.game-grid.ui-interaction-pricing-carousel { display:flex; overflow-x:auto; scroll-snap-type:x mandatory; padding-bottom:14px; overscroll-behavior-x:contain; }
+.game-grid.ui-interaction-pricing-carousel > article { flex:0 0 calc((100% - 40px)/3); min-width:0; scroll-snap-align:start; }
+@media(max-width:900px) { .game-grid.ui-interaction-pricing-carousel > article { flex-basis:calc((100% - 20px)/2); } }
+@media(max-width:600px) { .game-grid.ui-interaction-pricing-carousel > article { flex-basis:88%; } }
+@media(prefers-reduced-motion:reduce) { .ui-field:has(input[aria-invalid="true"]), .ui-interaction-typing i { animation:none; } .ui-dialog-panel,.ui-dialog-closing > .ui-dialog-panel { animation-duration:1ms; } .ui-interaction-swipe-track { transition:none; } }

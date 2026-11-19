@@ -1,4 +1,5 @@
 "use client";
+import { LoadingButton } from "@/components/InteractionUI";
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { serviceRequest } from "./client";
@@ -338,32 +339,24 @@ export default function ServiceReview({ department, initial }: { department: Dep
                         )}
                       </div>
                       <div className="mt-4 flex gap-2">
-                        <button
-                          disabled={busy}
-                          onClick={() =>
+                        <LoadingButton disabled={busy} onClick={() =>
                             action({
                               action: "review_redemption",
                               requestId: r.id,
                               approved: true,
                             })
-                          }
-                          className="rounded-md bg-emerald-700 px-3 py-2 text-xs font-bold text-white transition hover:bg-emerald-800 disabled:opacity-50"
-                        >
+                          } className="rounded-md bg-emerald-700 px-3 py-2 text-xs font-bold text-white transition hover:bg-emerald-800 disabled:opacity-50" loading={Boolean(busy)} loadingLabel="處理中…">
                           同意
-                        </button>
-                        <button
-                          disabled={busy}
-                          onClick={() =>
+                        </LoadingButton>
+                        <LoadingButton disabled={busy} onClick={() =>
                             openReject("駁回兌換申請", {
                               action: "review_redemption",
                               requestId: r.id,
                               approved: false,
                             })
-                          }
-                          className="rounded-md border border-slate-300 bg-white px-3 py-2 text-xs font-bold transition hover:bg-slate-50 disabled:opacity-50"
-                        >
+                          } className="rounded-md border border-slate-300 bg-white px-3 py-2 text-xs font-bold transition hover:bg-slate-50 disabled:opacity-50" loading={Boolean(busy)} loadingLabel="處理中…">
                           駁回
-                        </button>
+                        </LoadingButton>
                       </div>
                     </article>
                   ))}
@@ -427,12 +420,9 @@ export default function ServiceReview({ department, initial }: { department: Dep
                   placeholder="調整原因"
                   className="rounded-md border border-slate-200 bg-[#fbfcfb] px-3 py-2 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
                 />
-                <button
-                  disabled={busy}
-                  className="rounded-md bg-[#183d32] px-4 py-2 font-bold text-white transition hover:bg-[#102f27] disabled:opacity-50"
-                >
+                <LoadingButton disabled={busy} className="rounded-md bg-[#183d32] px-4 py-2 font-bold text-white transition hover:bg-[#102f27] disabled:opacity-50" loading={Boolean(busy)} loadingLabel="處理中…">
                   確定
-                </button>
+                </LoadingButton>
               </form>
               <div className="mt-4 flex items-center rounded-lg border border-[#d8e3dd] bg-white px-3 shadow-sm focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-100">
                 <Search size={17} className="text-slate-400" />
@@ -526,21 +516,17 @@ export default function ServiceReview({ department, initial }: { department: Dep
                                 等待回覆
                               </span>
                             ) : (
-                              <button
-                                disabled={busy}
-                                onClick={() =>
+                              <LoadingButton disabled={busy} onClick={() =>
                                   action({
                                     action: "invite_exclusive_member",
                                     discordUserId: m.discord_user_id,
                                   })
-                                }
-                                className="inline-flex items-center gap-1.5 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-900 transition hover:bg-amber-100 disabled:opacity-40"
-                              >
+                                } className="inline-flex items-center gap-1.5 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-900 transition hover:bg-amber-100 disabled:opacity-40" loading={Boolean(busy)} loadingLabel="處理中…">
                                 <Crown size={14} />
                                 {invitation?.status === "declined"
                                   ? "再次邀請"
                                   : "邀請尊享"}
-                              </button>
+                              </LoadingButton>
                             )}
                           </td>
                           <td className="px-4 py-3">
@@ -847,28 +833,19 @@ export default function ServiceReview({ department, initial }: { department: Dep
               </p>
             )}
             <div className="mt-5 flex justify-end gap-2">
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => {
+              <LoadingButton type="button" disabled={busy} onClick={() => {
                   setRejectRequest(null);
                   setRejectError("");
-                }}
-                className="rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-bold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
-              >
+                }} className="rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-bold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50" loading={Boolean(busy)} loadingLabel="處理中…">
                 取消
-              </button>
-              <button
-                type="submit"
-                disabled={busy}
-                className="inline-flex min-w-24 items-center justify-center rounded-md bg-red-600 px-4 py-2 text-sm font-bold text-white transition hover:bg-red-700 disabled:opacity-50"
-              >
+              </LoadingButton>
+              <LoadingButton type="submit" disabled={busy} className="inline-flex min-w-24 items-center justify-center rounded-md bg-red-600 px-4 py-2 text-sm font-bold text-white transition hover:bg-red-700 disabled:opacity-50" loading={Boolean(busy)} loadingLabel="處理中…">
                 {busy ? (
                   <Loader2 className="animate-spin" size={17} />
                 ) : (
                   "確認駁回"
                 )}
-              </button>
+              </LoadingButton>
             </div>
           </form>
         </div>

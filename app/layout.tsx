@@ -1,3 +1,8 @@
+import PageRefresh from "@/components/PageRefresh";
+import "./interaction-ui.css";
+import MotionUI from "@/components/MotionUI";
+import ConfirmationUI from "@/components/ConfirmationUI";
+import "./ui-motion.css";
 import { Geist, Geist_Mono } from "next/font/google";
 import AppLanguageProvider from "@/components/AppLanguageProvider";
 import HrThemeProvider from "@/components/HrThemeProvider";
@@ -34,8 +39,8 @@ export default function RootLayout({
       lang="zh-Hant"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">
-        <HrThemeProvider>{children}</HrThemeProvider>
+      <body className="min-h-full flex flex-col"><MotionUI /><ConfirmationUI />
+        <HrThemeProvider><PageRefresh>{children}</PageRefresh></HrThemeProvider>
         <AppLanguageProvider />
       </body>
     </html>

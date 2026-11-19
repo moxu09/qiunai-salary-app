@@ -1,5 +1,7 @@
 "use client";
+import { LoadingButton } from "@/components/InteractionUI";
 
+import { Skeleton } from "@/components/MotionUI";
 import { useCallback, useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { ArrowRight, BookOpenText, CalendarDays, CheckCircle2, ClipboardCheck, FileText, MessageSquareText, Search, Send, Sparkles } from "lucide-react";
 import { supabase } from "@/lib/supabase";
@@ -131,7 +133,7 @@ export default function StaffCollaboration({ organization, section, employeeName
       {error ? <p className="eip-collab-alert" role="alert">{error}</p> : null}
       {section === "knowledge" && data.serviceCoursesUnavailable ? <p className="eip-collab-alert" role="alert">客服課程暫時無法載入，請重新整理或稍後再試。</p> : null}
       {notice ? <p className="eip-collab-notice" role="status">{notice}</p> : null}
-      {loading ? <p className="eip-collab-empty">正在同步工作資料…</p> : null}
+      {loading ? <Skeleton rows={3} label="正在同步工作資料…" /> : null}
       {!loading && section === "workspace" ? (
         <>
           <div className="eip-collab-metrics">
@@ -222,7 +224,7 @@ export default function StaffCollaboration({ organization, section, employeeName
                 field.type === "choice" ? <select value={answers[field.key] || ""} onChange={(event) => setAnswers({ ...answers, [field.key]: event.target.value })} required={field.required}><option value="">請選擇</option>{field.options.map((option) => <option key={option}>{option}</option>)}</select> :
                   <input type={field.type === "date" ? "date" : "text"} value={answers[field.key] || ""} onChange={(event) => setAnswers({ ...answers, [field.key]: event.target.value })} required={field.required} maxLength={3000} />}
             </label>)}
-            <div className="eip-collab-form-actions"><button type="button" onClick={() => setSelectedTemplate(null)}>取消</button><button disabled={sending} type="submit"><Send size={15} /> {sending ? "送出中…" : "送出申請"}</button></div>
+            <div className="eip-collab-form-actions"><button type="button" onClick={() => setSelectedTemplate(null)}>取消</button><LoadingButton disabled={sending} type="submit" loading={Boolean(sending)} loadingLabel="送出中…"><Send size={15} /> {sending ? "送出中…" : "送出申請"}</LoadingButton></div>
           </form> : null}
         </div>
         <div className="eip-collab-panel">

@@ -1,4 +1,5 @@
 "use client";
+import { LoadingButton } from "@/components/InteractionUI";
 
 import { useState } from "react";
 import { Download, Loader2, MonitorDown, Smartphone } from "lucide-react";
@@ -61,15 +62,10 @@ export default function StaffInstallerDownloads() {
               <h3 className="font-black text-[#3f2947]">{installer.label}</h3>
               <p className="text-xs text-[#80647d]">{installer.detail}・{installer.size}</p>
             </div>
-            <button
-              type="button"
-              onClick={() => void download(installer.platform)}
-              disabled={downloading !== null}
-              className="qiunai-button inline-flex shrink-0 items-center gap-2 rounded-full px-4 py-2 text-sm font-black disabled:opacity-50"
-            >
+            <LoadingButton type="button" onClick={() => void download(installer.platform)} disabled={downloading !== null} className="qiunai-button inline-flex shrink-0 items-center gap-2 rounded-full px-4 py-2 text-sm font-black disabled:opacity-50" loading={Boolean(downloading === installer.platform)} loadingLabel="處理中…">
               {downloading === installer.platform ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
               下載
-            </button>
+            </LoadingButton>
           </div>
         ))}
       </div>

@@ -223,7 +223,7 @@ export default function AdminShell({
 
   if (loading || !access?.isAdmin || !allowedPath) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-[#fff7fb]">
+      <main className="ui-motion-page flex min-h-screen items-center justify-center bg-[#fff7fb]">
         <p className="rounded-2xl bg-white px-6 py-4 text-sm font-bold text-[#80647d] shadow-sm">
           {embedded ? "正在連接共同 EIP 後台…" : "正在驗證 EIP 權限…"}
         </p>

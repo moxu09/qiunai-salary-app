@@ -1,5 +1,9 @@
 "use client";
+import { LoadingButton } from "@/components/InteractionUI";
+import { MotionDialog } from "@/components/MotionUI";
 
+import { confirmUI } from "@/components/ConfirmationUI";
+import { notify } from "@/components/MotionUI";
 import type { ReactNode } from "react";
 import { useEffect, useEffectEvent, useMemo, useState } from "react";
 import Link from "next/link";
@@ -410,31 +414,31 @@ export default function AdminPayrollPage() {
 
     if (staffRes.error) {
       console.error("讀取員工失敗:", staffRes.error);
-      alert("讀取員工失敗");
+      notify("讀取員工失敗");
       return;
     }
 
     if (orderRes.error) {
       console.error("讀取待發薪訂單失敗:", orderRes.error);
-      alert("讀取待發薪訂單失敗");
+      notify("讀取待發薪訂單失敗");
       return;
     }
 
     if (bonusRes.error) {
       console.error("讀取獎金失敗:", bonusRes.error);
-      alert("讀取獎金 / 扣除失敗");
+      notify("讀取獎金 / 扣除失敗");
       return;
     }
 
     if (giftRes.error) {
       console.error("讀取打賞禮物失敗:", giftRes.error);
-      alert("讀取打賞禮物失敗");
+      notify("讀取打賞禮物失敗");
       return;
     }
 
     if (walletEntryRes.error) {
       console.error("讀取錢包入帳來源失敗:", walletEntryRes.error);
-      alert("讀取錢包入帳來源失敗");
+      notify("讀取錢包入帳來源失敗");
       return;
     }
 
@@ -471,7 +475,7 @@ export default function AdminPayrollPage() {
       setWithdrawRequests((payload.requests || []) as WithdrawRequest[]);
     } catch (error) {
       console.error("讀取提領申請失敗:", error);
-      alert(error instanceof Error ? error.message : "讀取提領申請失敗");
+      notify(error instanceof Error ? error.message : "讀取提領申請失敗");
     }
   }
 
@@ -530,7 +534,7 @@ export default function AdminPayrollPage() {
       window.dispatchEvent(new Event("erp-notifications-changed"));
     } catch (error) {
       console.error("更新提領申請失敗:", error);
-      alert(error instanceof Error ? error.message : "更新提領申請失敗");
+      notify(error instanceof Error ? error.message : "更新提領申請失敗");
     } finally {
       setReviewingId(null);
     }
@@ -538,12 +542,12 @@ export default function AdminPayrollPage() {
 
   async function copyPayrollList() {
     if (!rows.length) {
-      alert("目前沒有可複製的發薪資料");
+      notify("目前沒有可複製的發薪資料");
       return;
     }
 
     await navigator.clipboard.writeText(buildCopyText(rows));
-    alert("已複製發薪清單");
+    notify("已複製發薪清單");
   }
 
   function openWalletModal(row: PayrollRow) {
@@ -589,7 +593,7 @@ export default function AdminPayrollPage() {
     const scrollTop = window.scrollY;
 
     if (types.length === 0 && manualAmount <= 0) {
-      alert("請至少勾選一個發送項目，或輸入手動發送金額");
+      notify("請至少勾選一個發送項目，或輸入手動發送金額");
       return;
     }
 
@@ -635,14 +639,14 @@ export default function AdminPayrollPage() {
       setTimeout(() => {
         window.scrollTo({ top: scrollTop, behavior: "auto" });
       }, 120);
-      alert(
+      notify(
         `已發送到員工錢包：${money(payload.result?.amount || 0)}（${
           payload.result?.count || 0
         } 筆）`
       );
     } catch (error) {
       console.error("發送到錢包失敗:", error);
-      alert(error instanceof Error ? error.message : "發送到錢包失敗");
+      notify(error instanceof Error ? error.message : "發送到錢包失敗");
     } finally {
       setWalletSendingId(null);
     }
@@ -656,12 +660,12 @@ export default function AdminPayrollPage() {
 
   async function sendBulkWallet() {
     if (!bulkStartDate || !bulkEndDate) {
-      alert("請選擇完整的開始與結束日期");
+      notify("請選擇完整的開始與結束日期");
       return;
     }
 
     if (bulkStartDate > bulkEndDate) {
-      alert("開始日期不能晚於結束日期");
+      notify("開始日期不能晚於結束日期");
       return;
     }
 
@@ -698,25 +702,25 @@ export default function AdminPayrollPage() {
       await loadPayrollData({ silent: true });
 
       if (!result?.count) {
-        alert("這個時間區間沒有尚未匯入錢包的薪資項目");
+        notify("這個時間區間沒有尚未匯入錢包的薪資項目");
         return;
       }
 
-      alert(
+      notify(
         `批次匯入完成：${result.staffCount || 0} 位員工、${
           result.count || 0
         } 筆，共 ${money(result.amount || 0)}`
       );
     } catch (error) {
       console.error("批次匯入錢包失敗:", error);
-      alert(error instanceof Error ? error.message : "批次匯入錢包失敗");
+      notify(error instanceof Error ? error.message : "批次匯入錢包失敗");
     } finally {
       setBulkWalletSending(false);
     }
   }
 
   async function markStaffPaid(row: PayrollRow) {
-    const ok = confirm(
+    const ok = await confirmUI(
       `確定要將「${row.staffName}」目前查詢範圍內的未入帳訂單標記為已入帳嗎？`
     );
     if (!ok) return;
@@ -751,24 +755,24 @@ export default function AdminPayrollPage() {
 
     if (orderResult.error || bonusResult.error) {
       console.error("標記發薪失敗:", orderResult.error || bonusResult.error);
-      alert("標記發薪失敗");
+      notify("標記發薪失敗");
       return;
     }
 
-    alert(`已將 ${row.staffName} 的薪資項目標記為已入帳`);
+    notify(`已將 ${row.staffName} 的薪資項目標記為已入帳`);
     await loadPayrollData({ silent: true });
   }
 
   if (adminLoading || !isAdmin) {
     return (
-      <main className="min-h-screen bg-[#0f0b1f] text-white flex items-center justify-center">
+      <main className="ui-motion-page min-h-screen bg-[#0f0b1f] text-white flex items-center justify-center">
         <p className="text-sm text-zinc-300">檢查後台權限中...</p>
       </main>
     );
   }
 
   return (
-    <main className="admin-page min-h-screen bg-[#fff7fb] text-[#3f2947]">
+    <main className="ui-motion-page admin-page min-h-screen bg-[#fff7fb] text-[#3f2947]">
       <header className="admin-page-header border border-pink-100 bg-white">
         <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-5 md:flex-row md:items-center md:justify-between">
           <div>
@@ -804,14 +808,10 @@ export default function AdminPayrollPage() {
               複製清單
             </button>
 
-            <button
-              onClick={() => loadPayrollData()}
-              disabled={loading}
-              className="inline-flex items-center gap-2 rounded-2xl bg-violet-500 px-4 py-2 text-sm font-bold text-white hover:bg-violet-400 disabled:opacity-60"
-            >
+            <LoadingButton onClick={() => loadPayrollData()} disabled={loading} className="inline-flex items-center gap-2 rounded-2xl bg-violet-500 px-4 py-2 text-sm font-bold text-white hover:bg-violet-400 disabled:opacity-60" loading={Boolean(loading)} loadingLabel="處理中…">
               <RefreshCw size={16} className={loading ? "animate-spin" : ""} />
               重新整理
-            </button>
+            </LoadingButton>
           </div>
         </div>
       </header>
@@ -863,14 +863,10 @@ export default function AdminPayrollPage() {
             </Field>
 
             <div className="flex items-end">
-              <button
-                onClick={() => loadPayrollData()}
-                disabled={loading}
-                className="flex w-full items-center justify-center gap-2 rounded-2xl bg-violet-500 px-4 py-3 text-sm font-bold text-white hover:bg-violet-400 disabled:opacity-60"
-              >
+              <LoadingButton onClick={() => loadPayrollData()} disabled={loading} className="flex w-full items-center justify-center gap-2 rounded-2xl bg-violet-500 px-4 py-3 text-sm font-bold text-white hover:bg-violet-400 disabled:opacity-60" loading={Boolean(loading)} loadingLabel="處理中…">
                 <CalendarDays size={16} />
                 查詢
-              </button>
+              </LoadingButton>
             </div>
           </div>
         </section>
@@ -1202,7 +1198,7 @@ export default function AdminPayrollPage() {
       </section>
 
       {canSendToWallet && walletModalRow ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 py-6">
+        <MotionDialog label="發送薪資到錢包" onClose={() => setWalletModalRow(null)} className="ui-dialog-content-shell">{closeDialog => <>
           <div className="w-full max-w-md rounded-3xl border border-white/10 bg-[#181127] p-5 shadow-2xl">
             <div className="flex items-start justify-between gap-4">
               <div>
@@ -1216,7 +1212,7 @@ export default function AdminPayrollPage() {
               </div>
 
               <button
-                onClick={() => setWalletModalRow(null)}
+                onClick={closeDialog}
                 disabled={walletSendingId === walletModalRow.discordId}
                 className="rounded-2xl border border-white/10 px-3 py-2 text-xs font-bold text-zinc-300 hover:bg-white/10 disabled:opacity-60"
               >
@@ -1286,22 +1282,18 @@ export default function AdminPayrollPage() {
               <p className="mt-1 text-xs text-zinc-500">備注：後台手動新增</p>
             </div>
 
-            <button
-              onClick={sendWalletToStaff}
-              disabled={walletSendingId === walletModalRow.discordId}
-              className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-violet-500 px-4 py-3 text-sm font-bold text-white hover:bg-violet-400 disabled:opacity-60"
-            >
+            <LoadingButton onClick={sendWalletToStaff} disabled={walletSendingId === walletModalRow.discordId} className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-violet-500 px-4 py-3 text-sm font-bold text-white hover:bg-violet-400 disabled:opacity-60" loading={Boolean(walletSendingId === walletModalRow.discordId)} loadingLabel="發送中...">
               <WalletCards size={16} />
               {walletSendingId === walletModalRow.discordId
                 ? "發送中..."
                 : "發送"}
-            </button>
+            </LoadingButton>
           </div>
-        </div>
+        </>}</MotionDialog>
       ) : null}
 
       {canSendToWallet && bulkWalletOpen ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 py-6">
+        <MotionDialog label="批次匯入錢包" onClose={() => setBulkWalletOpen(false)} className="ui-dialog-content-shell">{closeDialog => <>
           <div className="w-full max-w-md rounded-3xl border border-white/10 bg-[#181127] p-5 shadow-2xl">
             <div className="flex items-start justify-between gap-4">
               <div>
@@ -1313,7 +1305,7 @@ export default function AdminPayrollPage() {
                 </h3>
               </div>
               <button
-                onClick={() => setBulkWalletOpen(false)}
+                onClick={closeDialog}
                 disabled={bulkWalletSending}
                 className="rounded-2xl border border-white/10 px-3 py-2 text-xs font-bold text-zinc-300 hover:bg-white/10 disabled:opacity-60"
               >
@@ -1344,20 +1336,16 @@ export default function AdminPayrollPage() {
               會匯入此區間內所有尚未入帳的訂單、打賞、獎金與扣除。訂單與打賞使用已計算抽成後的員工實得薪資；已匯入的來源會自動略過。
             </div>
 
-            <button
-              onClick={sendBulkWallet}
-              disabled={bulkWalletSending}
-              className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-500 px-4 py-3 text-sm font-bold text-white hover:bg-emerald-400 disabled:opacity-60"
-            >
+            <LoadingButton onClick={sendBulkWallet} disabled={bulkWalletSending} className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-500 px-4 py-3 text-sm font-bold text-white hover:bg-emerald-400 disabled:opacity-60" loading={Boolean(bulkWalletSending)} loadingLabel="處理中…">
               {bulkWalletSending ? (
                 <Loader2 size={16} className="animate-spin" />
               ) : (
                 <WalletCards size={16} />
               )}
               {bulkWalletSending ? "批次匯入中..." : "確認批次匯入"}
-            </button>
+            </LoadingButton>
           </div>
-        </div>
+        </>}</MotionDialog>
       ) : null}
     </main>
   );

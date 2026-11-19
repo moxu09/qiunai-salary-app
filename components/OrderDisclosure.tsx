@@ -27,7 +27,7 @@ export default function OrderDisclosure({
   return (
     <details id={id} open={initiallyOpen} onToggle={(event) => {
       if (event.currentTarget.open) setHasOpened(true);
-    }} className="group min-w-0 rounded-xl border border-slate-200 bg-white">
+    }} className="group min-w-0 rounded-xl border border-slate-200 bg-white ui-motion-details">
       <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-black text-slate-900 [&::-webkit-details-marker]:hidden">
         {title}
         <ChevronDown aria-hidden="true" size={16} className="shrink-0 group-open:rotate-180" />

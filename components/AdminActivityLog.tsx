@@ -1,4 +1,5 @@
 "use client";
+import { LoadingButton } from "@/components/InteractionUI";
 
 import { useCallback, useEffect, useEffectEvent, useState } from "react";
 import { Loader2, RefreshCw } from "lucide-react";
@@ -72,12 +73,12 @@ export default function AdminActivityLog({ organization }: { organization: "deep
     return () => window.clearTimeout(timer);
   }, [category, date]);
 
-  return <main className="min-h-screen bg-[#fff7fb] p-4 text-[#3f2947] sm:p-7"><div className="mx-auto max-w-6xl space-y-5">
+  return <main className="ui-motion-page min-h-screen bg-[#fff7fb] p-4 text-[#3f2947] sm:p-7"><div className="mx-auto max-w-6xl space-y-5">
     <header><p className="text-xs font-black tracking-[.2em] text-pink-500">DAILY AUDIT LOG</p><h1 className="mt-2 text-2xl font-black">每日異動日誌</h1><p className="mt-2 text-sm font-semibold text-[#80647d]">訂單、薪資、提領與錢包餘額的所有異動。</p></header>
     <section className="grid gap-3 rounded-3xl border border-pink-100 bg-white p-4 shadow-sm sm:grid-cols-[220px_220px_auto]">
       <label className="text-xs font-black">日期<input type="date" value={date} onChange={(event) => setDate(event.target.value)} className="mt-2 block w-full rounded-xl border border-pink-100 px-3 py-2.5"/></label>
       <label className="text-xs font-black">類型<select value={category} onChange={(event) => setCategory(event.target.value)} className="mt-2 block w-full rounded-xl border border-pink-100 px-3 py-2.5"><option value="all">全部</option><option value="order">訂單</option><option value="money">金錢</option><option value="system">系統</option></select></label>
-      <button type="button" onClick={() => void load()} disabled={loading} className="mt-auto inline-flex items-center justify-center gap-2 rounded-xl bg-pink-500 px-5 py-2.5 text-sm font-black text-white disabled:opacity-50"><RefreshCw size={16}/>{loading ? "讀取中" : "重新整理"}</button>
+      <LoadingButton type="button" onClick={() => void load()} disabled={loading} className="mt-auto inline-flex items-center justify-center gap-2 rounded-xl bg-pink-500 px-5 py-2.5 text-sm font-black text-white disabled:opacity-50" loading={Boolean(loading)} loadingLabel="讀取中"><RefreshCw size={16}/>{loading ? "讀取中" : "重新整理"}</LoadingButton>
     </section>
     {error ? <p className="rounded-2xl bg-red-50 p-4 text-sm font-bold text-red-600">{error}</p> : null}
     {loading ? <div className="flex justify-center p-12"><Loader2 className="animate-spin text-pink-500"/></div> : rows.length === 0 ? <p className="rounded-3xl bg-white p-10 text-center font-bold text-[#aa8aa4]">這一天尚無異動紀錄</p> : <section className="space-y-3">{rows.map((row) => {

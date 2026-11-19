@@ -1,5 +1,8 @@
 "use client";
+import { LoadingButton } from "@/components/InteractionUI";
 
+import { confirmUI } from "@/components/ConfirmationUI";
+import { notify, Skeleton } from "@/components/MotionUI";
 import { useCallback, useEffect, useEffectEvent, useState } from "react";
 import { BarChart3, BellRing, Check, Edit3, FileSignature, Loader2, Paperclip, Plus, RefreshCw, Trash2, Users, X } from "lucide-react";
 import { supabase } from "@/lib/supabase";
@@ -71,7 +74,7 @@ export default function AnnouncementManager({ apiPath, accent }: { apiPath: stri
       const payload = await request();
       setAnnouncements(payload.announcements || []);
     } catch (error) {
-      alert(error instanceof Error ? error.message : "讀取公告失敗");
+      notify(error instanceof Error ? error.message : "讀取公告失敗");
     } finally {
       setLoading(false);
     }
@@ -97,20 +100,20 @@ export default function AnnouncementManager({ apiPath, accent }: { apiPath: stri
 
   async function save() {
     if (!form.title.trim() || !form.content.trim()) {
-      alert("請填寫公告標題與內容");
+      notify("請填寫公告標題與內容");
       return;
     }
     if (!editingId && form.requiresSignature && !attachment) {
-      alert("要求簽署時必須上傳 PDF 文件");
+      notify("要求簽署時必須上傳 PDF 文件");
       return;
     }
     if (attachment && form.requiresSignature && attachment.type !== "application/pdf" && !attachment.name.toLowerCase().endsWith(".pdf")) {
-      alert("簽署文件僅支援 PDF 格式");
+      notify("簽署文件僅支援 PDF 格式");
       return;
     }
     const pollOptions = form.pollOptions.map((item) => item.trim()).filter(Boolean);
     if (form.isPoll && pollOptions.length < 2) {
-      alert("投票至少需要兩個選項");
+      notify("投票至少需要兩個選項");
       return;
     }
     setWorking(true);
@@ -131,23 +134,23 @@ export default function AnnouncementManager({ apiPath, accent }: { apiPath: stri
       }
       reset();
       await load();
-      alert(editingId ? "公告已更新" : formatNotificationResult(notification, form.isActive));
+      notify(editingId ? "公告已更新" : formatNotificationResult(notification, form.isActive));
     } catch (error) {
-      alert(error instanceof Error ? error.message : "儲存公告失敗");
+      notify(error instanceof Error ? error.message : "儲存公告失敗");
     } finally {
       setWorking(false);
     }
   }
 
   async function remove(item: Announcement) {
-    if (!window.confirm(`確定刪除公告「${item.title}」？`)) return;
+    if (!await confirmUI(`確定刪除公告「${item.title}」？`)) return;
     setWorking(true);
     try {
       await request("DELETE", { id: item.id });
       if (editingId === item.id) reset();
       await load();
     } catch (error) {
-      alert(error instanceof Error ? error.message : "刪除公告失敗");
+      notify(error instanceof Error ? error.message : "刪除公告失敗");
     } finally {
       setWorking(false);
     }
@@ -163,9 +166,9 @@ export default function AnnouncementManager({ apiPath, accent }: { apiPath: stri
           </h2>
           <p className="mt-2 text-sm leading-6 text-slate-500">發布後，員工會在個人資料的「公告事項」看到內容；立即顯示的公告也會由官方機器人逐一私訊在職員工。</p>
         </div>
-        <button type="button" onClick={() => void load()} disabled={loading} className={`inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-bold ${theme.soft} ${theme.text}`}>
+        <LoadingButton type="button" onClick={() => void load()} disabled={loading} className={`inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-bold ${theme.soft} ${theme.text}`} loading={Boolean(loading)} loadingLabel="處理中…">
           <RefreshCw size={16} className={loading ? "animate-spin" : ""} />重新整理
-        </button>
+        </LoadingButton>
       </div>
 
       <div id="announcement-editor" className={`mt-5 rounded-2xl border p-4 ${theme.border} ${theme.soft}`}>
@@ -207,17 +210,17 @@ export default function AnnouncementManager({ apiPath, accent }: { apiPath: stri
             立即顯示給員工
           </label>
           <div className="flex flex-col gap-2 min-[380px]:flex-row">
-            <button type="button" onClick={() => void save()} disabled={working} className={`inline-flex flex-1 items-center justify-center gap-2 rounded-xl px-5 py-3 font-black text-white disabled:opacity-50 ${theme.button}`}>
+            <LoadingButton type="button" onClick={() => void save()} disabled={working} className={`inline-flex flex-1 items-center justify-center gap-2 rounded-xl px-5 py-3 font-black text-white disabled:opacity-50 ${theme.button}`} loading={Boolean(working)} loadingLabel="處理中…">
               {working ? <Loader2 size={17} className="animate-spin" /> : editingId ? <Check size={17} /> : <Plus size={17} />}
               {editingId ? "儲存公告修改" : "發布公告"}
-            </button>
+            </LoadingButton>
             {editingId ? <button type="button" onClick={reset} className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-200 px-5 py-3 font-black text-slate-700"><X size={17} />取消編輯</button> : null}
           </div>
         </div>
       </div>
 
       <div className="mt-5 space-y-3">
-        {loading ? <p className="rounded-2xl bg-slate-50 p-6 text-center text-sm text-slate-400">讀取公告中…</p> : announcements.length ? announcements.map((item) => (
+        {loading ? <Skeleton rows={3} label="讀取公告中…" /> : announcements.length ? announcements.map((item) => (
           <article key={item.id} className={`min-w-0 rounded-2xl border p-4 ${theme.border}`}>
             <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div className="min-w-0">
@@ -235,7 +238,7 @@ export default function AnnouncementManager({ apiPath, accent }: { apiPath: stri
               </div>
               <div className="flex shrink-0 gap-2">
                 <button type="button" onClick={() => edit(item)} className={`inline-flex flex-1 items-center justify-center gap-1 rounded-xl px-3 py-2 text-xs font-black sm:flex-none ${theme.soft} ${theme.text}`}><Edit3 size={14} />編輯</button>
-                <button type="button" onClick={() => void remove(item)} disabled={working} className="inline-flex flex-1 items-center justify-center gap-1 rounded-xl bg-rose-50 px-3 py-2 text-xs font-black text-rose-600 disabled:opacity-50 sm:flex-none"><Trash2 size={14} />刪除</button>
+                <LoadingButton type="button" onClick={() => void remove(item)} disabled={working} className="inline-flex flex-1 items-center justify-center gap-1 rounded-xl bg-rose-50 px-3 py-2 text-xs font-black text-rose-600 disabled:opacity-50 sm:flex-none" loading={Boolean(working)} loadingLabel="處理中…"><Trash2 size={14} />刪除</LoadingButton>
               </div>
             </div>
           </article>

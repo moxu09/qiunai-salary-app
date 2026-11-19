@@ -1,4 +1,5 @@
 "use client";
+import { LoadingButton } from "@/components/InteractionUI";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CheckCircle2, FileSignature, Loader2, RotateCcw, ShieldCheck } from "lucide-react";
@@ -361,11 +362,11 @@ export default function EmploymentSigningFlow({ token, organization }: { token: 
     }
   }
 
-  if (loading) return <main className="flex min-h-screen items-center justify-center bg-slate-50"><Loader2 className="animate-spin text-slate-500" size={36} /></main>;
-  if (error && !signing) return <main className="flex min-h-screen items-center justify-center bg-slate-50 px-4"><div className="max-w-lg rounded-3xl border border-rose-200 bg-white p-8 text-center shadow-xl"><h1 className="text-2xl font-black text-rose-700">無法開啟簽署文件</h1><p className="mt-4 leading-7 text-slate-600">{error}</p><button type="button" onClick={() => void openInvitation()} className="mt-6 rounded-xl bg-slate-900 px-5 py-3 font-bold text-white">重新讀取</button></div></main>;
+  if (loading) return <main className="ui-motion-page flex min-h-screen items-center justify-center bg-slate-50"><Loader2 className="animate-spin text-slate-500" size={36} /></main>;
+  if (error && !signing) return <main className="ui-motion-page flex min-h-screen items-center justify-center bg-slate-50 px-4"><div className="max-w-lg rounded-3xl border border-rose-200 bg-white p-8 text-center shadow-xl"><h1 className="text-2xl font-black text-rose-700">無法開啟簽署文件</h1><p className="mt-4 leading-7 text-slate-600">{error}</p><button type="button" onClick={() => void openInvitation()} className="mt-6 rounded-xl bg-slate-900 px-5 py-3 font-bold text-white">重新讀取</button></div></main>;
 
   return (
-    <main className="min-h-screen bg-slate-100 px-4 py-8 text-slate-900 sm:px-6">
+    <main className="ui-motion-page min-h-screen bg-slate-100 px-4 py-8 text-slate-900 sm:px-6">
       <div className="mx-auto max-w-5xl">
         <header className="rounded-3xl bg-white p-6 shadow-sm sm:p-8">
           <div className="flex flex-wrap items-center justify-between gap-4">
@@ -402,7 +403,7 @@ export default function EmploymentSigningFlow({ token, organization }: { token: 
               <input type="checkbox" checked={confirmed} disabled={!reachedBottom} onChange={(event) => setConfirmed(event.target.checked)} className="mt-1 h-5 w-5" />
               <span className="font-bold leading-7">我確認已詳閱全部內容，並同意使用電子文件及電子簽章完成本契約。</span>
             </label>
-            <button type="button" onClick={confirmRead} disabled={!reachedBottom || !confirmed || busy} className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl px-6 py-4 text-lg font-black text-white disabled:cursor-not-allowed disabled:opacity-40" style={{ background: brand.accent }}>{busy ? <Loader2 className="animate-spin" size={20} /> : <FileSignature size={20} />} 已詳閱全部內容，開始填寫資料</button>
+            <LoadingButton type="button" onClick={confirmRead} disabled={!reachedBottom || !confirmed || busy} className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl px-6 py-4 text-lg font-black text-white disabled:cursor-not-allowed disabled:opacity-40" style={{ background: brand.accent }} loading={Boolean(busy)} loadingLabel="處理中…">{busy ? <Loader2 className="animate-spin" size={20} /> : <FileSignature size={20} />} 已詳閱全部內容，開始填寫資料</LoadingButton>
           </section>
         ) : null}
 
@@ -412,7 +413,7 @@ export default function EmploymentSigningFlow({ token, organization }: { token: 
             <h2 className="mt-4 text-2xl font-black">先驗證受邀 Discord 帳號</h2>
             <p className="mx-auto mt-3 max-w-xl leading-7 text-slate-600">驗證成功後才會開啟資料與簽名欄位，避免填寫完成後因登入跳轉而需要重新輸入。</p>
             {discordAccess === "mismatch" ? <p role="alert" className="mt-3 font-bold text-rose-700">目前登入的帳號與邀請不符，請改用受邀的 Discord 帳號。</p> : null}
-            <button type="button" onClick={() => void discordLogin()} disabled={busy} className="mt-6 inline-flex items-center justify-center gap-2 rounded-2xl px-7 py-4 text-lg font-black text-white disabled:opacity-50" style={{ background: brand.accent }}><ShieldCheck size={20} /> 使用 Discord 驗證後開始填寫</button>
+            <LoadingButton type="button" onClick={() => void discordLogin()} disabled={busy} className="mt-6 inline-flex items-center justify-center gap-2 rounded-2xl px-7 py-4 text-lg font-black text-white disabled:opacity-50" style={{ background: brand.accent }} loading={Boolean(busy)} loadingLabel="處理中…"><ShieldCheck size={20} /> 使用 Discord 驗證後開始填寫</LoadingButton>
           </section>
         ) : null}
 
@@ -437,10 +438,10 @@ export default function EmploymentSigningFlow({ token, organization }: { token: 
             {needsReauth ? (
               <div role="status" className="rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-900">
                 <p>請保留此分頁。在新分頁登入受邀的 Discord 帳號後，回到這裡再按「送出簽署」。</p>
-                <button type="button" disabled={busy} onClick={() => void discordLogin(true)} className="mt-2 font-bold underline disabled:opacity-50">在新分頁重新登入 Discord</button>
+                <LoadingButton type="button" disabled={busy} onClick={() => void discordLogin(true)} className="mt-2 font-bold underline disabled:opacity-50" loading={Boolean(busy)} loadingLabel="處理中…">在新分頁重新登入 Discord</LoadingButton>
               </div>
             ) : null}
-            <button type="submit" disabled={busy || !signaturesComplete} className="flex w-full items-center justify-center gap-2 rounded-2xl px-6 py-4 text-lg font-black text-white disabled:cursor-not-allowed disabled:opacity-50" style={{ background: brand.accent }}>{busy ? <Loader2 className="animate-spin" size={20} /> : <ShieldCheck size={20} />} 送出簽署</button>
+            <LoadingButton type="submit" disabled={busy || !signaturesComplete} className="flex w-full items-center justify-center gap-2 rounded-2xl px-6 py-4 text-lg font-black text-white disabled:cursor-not-allowed disabled:opacity-50" style={{ background: brand.accent }} loading={Boolean(busy)} loadingLabel="處理中…">{busy ? <Loader2 className="animate-spin" size={20} /> : <ShieldCheck size={20} />} 送出簽署</LoadingButton>
           </form>
         ) : null}
 

@@ -1,5 +1,8 @@
 "use client";
+import { LongPressMenu } from "@/components/InteractionUI";
+import { LoadingButton } from "@/components/InteractionUI";
 
+import { Skeleton, notify } from "@/components/MotionUI";
 import { useCallback, useEffect, useRef, useState, type Dispatch, type FormEvent, type SetStateAction } from "react";
 import { ArrowLeft, MessageCircle, Search, Send, UsersRound, X } from "lucide-react";
 import { supabase } from "@/lib/supabase";
@@ -46,6 +49,8 @@ export default function StaffMessages({ organization, myDiscordId, open, onOpenC
   const [loadingContacts, setLoadingContacts] = useState(true);
   const [loadingThread, setLoadingThread] = useState(false);
   const [sending, setSending] = useState(false);
+  const [typingUntil, setTypingUntil] = useState(0);
+  const typingSent = useRef({ peer: "", at: 0, active: false });
   const [error, setError] = useState("");
   const retryRef = useRef<{ peerId: string; body: string; nonce: string } | null>(null);
   const currentPeerRef = useRef<string | null>(null);
@@ -75,6 +80,33 @@ export default function StaffMessages({ organization, myDiscordId, open, onOpenC
     if (!response.ok) throw new Error(payload.message || "讀取員工訊息失敗");
     return payload;
   }, []);
+
+  const reportTyping = useCallback(async (active: boolean, peer = currentPeerRef.current) => {
+    if (!peer) return;
+    const now = Date.now();
+    const previous = typingSent.current;
+    if (previous.peer === peer && previous.active === active && (!active || now - previous.at < 5000)) return;
+    typingSent.current = { peer, at: now, active };
+    try {
+      await authorizedFetch(apiPath, { method: "POST", body: JSON.stringify({ recipientId: peer, typing: active }) });
+    } catch { /* Presence expires automatically when the connection is unavailable. */ }
+  }, [apiPath, authorizedFetch]);
+
+  useEffect(() => {
+    if (!typingUntil) return;
+    const timer = window.setTimeout(() => setTypingUntil(0), Math.max(0, typingUntil - Date.now()));
+    return () => window.clearTimeout(timer);
+  }, [typingUntil]);
+
+  useEffect(() => {
+    const peer = selectedPeerId;
+    const stop = () => { if (document.visibilityState !== "visible") void reportTyping(false, peer); };
+    document.addEventListener("visibilitychange", stop);
+    return () => {
+      document.removeEventListener("visibilitychange", stop);
+      if (peer) void reportTyping(false, peer);
+    };
+  }, [selectedPeerId, open, reportTyping]);
 
   const loadContacts = useCallback(async (silent = false) => {
     try {
@@ -117,6 +149,7 @@ export default function StaffMessages({ organization, myDiscordId, open, onOpenC
         const payload = await authorizedFetch(`${apiPath}?peer=${encodeURIComponent(selectedPeerId!)}`);
         if (cancelled) return;
         setMessages(Array.isArray(payload.messages) ? payload.messages : []);
+        setTypingUntil(payload.typing ? Date.now() + 8000 : 0);
         setError("");
         // A background tab has not actually shown the conversation to its recipient.
         if (document.visibilityState === "visible") {
@@ -157,6 +190,7 @@ export default function StaffMessages({ organization, myDiscordId, open, onOpenC
     setSelectedPeerId(discordId);
     setMessages([]);
     setDraft("");
+    setTypingUntil(0);
     setError("");
     setLoadingThread(true);
   }
@@ -169,6 +203,7 @@ export default function StaffMessages({ organization, myDiscordId, open, onOpenC
     const nonce = retry?.peerId === selectedPeerId && retry.body === body
       ? retry.nonce : crypto.randomUUID();
     retryRef.current = { peerId: selectedPeerId, body, nonce };
+    void reportTyping(false);
     setSending(true);
     setError("");
     try {
@@ -206,7 +241,7 @@ export default function StaffMessages({ organization, myDiscordId, open, onOpenC
       <div className="eip-messages-layout">
         <aside className={`eip-messages-contacts ${selectedPeerId ? "has-selection" : ""}`}>
           <label className="eip-messages-search"><Search size={17} /><span className="sr-only">搜尋員工</span><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="搜尋員工暱稱" /></label>
-          {loadingContacts ? <p className="eip-messages-empty">載入通訊錄中…</p>
+          {loadingContacts ? <Skeleton rows={3} label="載入通訊錄中…" />
             : visibleContacts.length ? <div className="eip-messages-contact-list">{visibleContacts.map((contact) => (
               <button type="button" key={contact.discordId} onClick={() => openContact(contact.discordId)}
                 aria-pressed={selectedPeerId === contact.discordId}
@@ -221,13 +256,14 @@ export default function StaffMessages({ organization, myDiscordId, open, onOpenC
           {!selectedPeerId ? <div className="eip-messages-placeholder"><MessageCircle size={42} /><h3>選擇一位員工開始對話</h3><p>訊息只會顯示給對話雙方，不會公開在公告或訂單裡。</p></div> : <>
             <header className="eip-messages-thread-header"><button type="button" className="eip-messages-back" onClick={() => { currentPeerRef.current = null; setSelectedPeerId(null); }} aria-label="返回通訊錄" title="返回通訊錄"><ArrowLeft size={20} /></button><span className="eip-messages-avatar">{selected?.name.slice(0, 1) || "員"}</span><strong>{selected?.name || "員工"}</strong></header>
             <div className="eip-messages-history" ref={threadRef} aria-live="polite">
-              {loadingThread ? <p className="eip-messages-empty">載入對話中…</p> : messages.length ? messages.map((message) => (
+              {loadingThread ? <Skeleton rows={3} label="載入對話中…" /> : messages.length ? messages.map((message) => (
                 <div key={message.id} className={`eip-messages-bubble-row ${message.sender_discord_id === myDiscordId ? "is-mine" : ""}`}>
-                  <div className="eip-messages-bubble"><p>{message.body}</p><div className="eip-messages-bubble-meta"><time dateTime={message.created_at}>{dateText(message.created_at)}</time>{message.sender_discord_id === myDiscordId ? <span className="eip-messages-receipt" title={message.read_at ? `對方於 ${dateText(message.read_at)} 閱讀` : "對方尚未閱讀"}>{message.read_at ? "已讀" : "未讀"}</span> : null}</div></div>
+                  <LongPressMenu label="訊息操作" items={[{label:"複製訊息",onSelect:()=>{void navigator.clipboard.writeText(message.body).then(()=>notify("訊息已複製", "success")).catch(()=>notify("無法複製訊息", "error"));}}]}><div className="eip-messages-bubble"><p>{message.body}</p><div className="eip-messages-bubble-meta"><time dateTime={message.created_at}>{dateText(message.created_at)}</time>{message.sender_discord_id === myDiscordId ? <span className="eip-messages-receipt" title={message.read_at ? `對方於 ${dateText(message.read_at)} 閱讀` : "對方尚未閱讀"}>{message.read_at ? "已讀" : "未讀"}</span> : null}</div></div></LongPressMenu>
                 </div>
               )) : <p className="eip-messages-empty">還沒有訊息，打聲招呼吧。</p>}
             </div>
-            <form className="eip-messages-compose" onSubmit={send}><label className="sr-only" htmlFor="eip-message-draft">輸入訊息</label><textarea id="eip-message-draft" value={draft} disabled={sending} maxLength={2000} rows={2} placeholder="輸入訊息…" onChange={(event) => { setDraft(event.target.value); retryRef.current = null; }} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); event.currentTarget.form?.requestSubmit(); } }} /><button type="submit" disabled={!draft.trim() || sending}>{sending ? "傳送中" : <><Send size={16} /> 送出</>}</button></form>
+            {typingUntil > Date.now() ? <div className="ui-interaction-typing" role="status"><span aria-hidden="true"><i /><i /><i /></span>{selected?.name || "對方"}正在輸入…</div> : null}
+            <form className="eip-messages-compose" onSubmit={send}><label className="sr-only" htmlFor="eip-message-draft">輸入訊息</label><textarea id="eip-message-draft" onBlur={() => void reportTyping(false)} value={draft} disabled={sending} maxLength={2000} rows={2} placeholder="輸入訊息…" onChange={(event) => { setDraft(event.target.value); retryRef.current = null; void reportTyping(Boolean(event.target.value.trim())); }} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); event.currentTarget.form?.requestSubmit(); } }} /><LoadingButton type="submit" disabled={!draft.trim() || sending} loading={Boolean(sending)} loadingLabel="傳送中">{sending ? "傳送中" : <><Send size={16} /> 送出</>}</LoadingButton></form>
           </>}
         </div>
       </div>

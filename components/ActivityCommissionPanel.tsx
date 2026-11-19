@@ -1,5 +1,7 @@
 "use client";
+import { LoadingButton } from "@/components/InteractionUI";
 
+import { notify } from "@/components/MotionUI";
 import { useEffect, useEffectEvent, useMemo, useState } from "react";
 import { CalendarClock, Save } from "lucide-react";
 import { supabase } from "@/lib/supabase";
@@ -67,11 +69,11 @@ export default function ActivityCommissionPanel({
       numericRate <= 0 ||
       numericRate > 100
     ) {
-      alert("活動抽成請輸入 1 到 100");
+      notify("活動抽成請輸入 1 到 100");
       return;
     }
     if (!startsAt || !endsAt || new Date(startsAt) >= new Date(endsAt)) {
-      alert("請輸入正確的活動開始與結束時間");
+      notify("請輸入正確的活動開始與結束時間");
       return;
     }
 
@@ -89,10 +91,10 @@ export default function ActivityCommissionPanel({
 
     if (error) {
       console.error("save activity commission error", error);
-      alert("活動抽成儲存失敗");
+      notify("活動抽成儲存失敗");
       return;
     }
-    alert("活動抽成已設定");
+    notify("活動抽成已設定");
   }
 
   const tones = {
@@ -159,18 +161,13 @@ export default function ActivityCommissionPanel({
 
       <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm font-bold text-slate-600">目前狀態：{status}</p>
-        <button
-          type="button"
-          onClick={save}
-          disabled={saving}
-          className={`inline-flex items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-bold text-white disabled:opacity-60 ${tones
+        <LoadingButton type="button" onClick={save} disabled={saving} className={`inline-flex items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-bold text-white disabled:opacity-60 ${tones
             .split(" ")
             .slice(3)
-            .join(" ")}`}
-        >
+            .join(" ")}`} loading={Boolean(saving)} loadingLabel="儲存中...">
           <Save size={16} />
           {saving ? "儲存中..." : "確定活動抽成"}
-        </button>
+        </LoadingButton>
       </div>
     </section>
   );

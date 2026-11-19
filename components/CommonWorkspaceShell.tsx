@@ -178,13 +178,13 @@ export default function CommonWorkspaceShell({ children }: { children: React.Rea
   }, [access?.isAdmin, auditOnly, loadNotificationCounts, loading, supportOnly]);
 
   if (!loading && !access) {
-    return <main className="flex min-h-screen items-center justify-center bg-slate-100">
+    return <main className="ui-motion-page flex min-h-screen items-center justify-center bg-slate-100">
       <a className="rounded-xl bg-slate-800 px-6 py-4 font-bold text-white" href={`/admin-login?department=${currentOrganization}`}>重新登入 EIP</a>
     </main>;
   }
   if (loading || !access?.isAdmin || !allowedPath) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-slate-100">
+      <main className="ui-motion-page flex min-h-screen items-center justify-center bg-slate-100">
         <p className="rounded-2xl bg-white px-6 py-4 text-sm font-bold text-slate-500 shadow-sm">
           正在驗證共同 EIP 權限…
         </p>

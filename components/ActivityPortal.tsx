@@ -1,5 +1,7 @@
 "use client";
+import { LoadingButton } from "@/components/InteractionUI";
 
+import { notify } from "@/components/MotionUI";
 import { useCallback, useEffect, useEffectEvent, useState } from "react";
 import { CalendarDays, Loader2, MapPin, Plus, Trash2, Users } from "lucide-react";
 import { supabase } from "@/lib/supabase";
@@ -57,7 +59,7 @@ export default function ActivityPortal({ organization = "qiunai" }: { organizati
       if (!response.ok) throw new Error(payload.message || "讀取活動失敗");
       setActivities(payload.activities || []);
     } catch (error) {
-      alert(error instanceof Error ? error.message : "讀取活動失敗");
+      notify(error instanceof Error ? error.message : "讀取活動失敗");
     } finally {
       setLoading(false);
     }
@@ -134,7 +136,7 @@ function ActivityForm({ activity, onSaved, organization }: { activity: Activity;
   async function submit() {
     if (!canSubmit) return;
     if (guests.some((guest) => !guest.name.trim() || !guest.phone.trim()))
-      return alert("親友姓名與電話都必須填寫");
+      return notify("親友姓名與電話都必須填寫");
     setBusy(true);
     try {
       const response = await fetch(`/api/${organization}/activities`, {
@@ -158,9 +160,9 @@ function ActivityForm({ activity, onSaved, organization }: { activity: Activity;
         throw new Error(payload.message || "送出活動回覆失敗");
       }
       await onSaved();
-      alert("活動回覆已儲存");
+      notify("活動回覆已儲存");
     } catch (error) {
-      alert(error instanceof Error ? error.message : "送出活動回覆失敗");
+      notify(error instanceof Error ? error.message : "送出活動回覆失敗");
     } finally {
       setBusy(false);
     }
@@ -333,15 +335,10 @@ function ActivityForm({ activity, onSaved, organization }: { activity: Activity;
           </div>
         </div>
       ) : null}
-      <button
-        type="button"
-        disabled={!canSubmit || busy}
-        onClick={() => void submit()}
-        className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl bg-violet-600 px-5 py-3 font-black text-white disabled:cursor-not-allowed disabled:opacity-40"
-      >
+      <LoadingButton type="button" disabled={!canSubmit || busy} onClick={() => void submit()} className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl bg-violet-600 px-5 py-3 font-black text-white disabled:cursor-not-allowed disabled:opacity-40" loading={Boolean(busy)} loadingLabel="處理中…">
         {busy ? <Loader2 size={18} className="animate-spin" /> : null}
         {activity.locked ? "已截止，無法修改" : existing ? "更新活動回覆" : "送出活動回覆"}
-      </button>
+      </LoadingButton>
     </section>
   );
 }

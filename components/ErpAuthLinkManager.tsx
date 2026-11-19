@@ -1,4 +1,5 @@
 "use client";
+import { LoadingButton } from "@/components/InteractionUI";
 
 import { FormEvent, useEffect, useEffectEvent, useState } from "react";
 import {
@@ -291,23 +292,18 @@ export default function ErpAuthLinkManager({
                 </p>
               </div>
               {status.googleReady ? <span className="hr-auth-linked-status inline-flex items-center justify-center gap-2 rounded-full border border-emerald-300 bg-emerald-50 px-4 py-2.5 text-sm font-bold text-emerald-700"><CheckCircle2 size={16} />已綁定</span> : (
-              <button
-                type="button"
-                onClick={connectGoogle}
-                disabled={Boolean(pending)}
-                className={
+              <LoadingButton type="button" onClick={connectGoogle} disabled={Boolean(pending)} className={
                   isQiunai
                     ? "inline-flex items-center justify-center gap-2 rounded-full bg-[#4b2d5a] px-4 py-2.5 text-sm font-bold text-white disabled:opacity-60"
                     : "inline-flex items-center justify-center gap-2 rounded-full bg-sky-600 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-60"
-                }
-              >
+                } loading={Boolean(pending === "google")} loadingLabel="處理中…">
                 {pending === "google" ? (
                   <LoaderCircle className="animate-spin" size={16} />
                 ) : (
                   <Link2 size={16} />
                 )}
                 連結 Google
-              </button>
+              </LoadingButton>
               )}
             </div>
           </div>
@@ -356,19 +352,14 @@ export default function ErpAuthLinkManager({
                         : "rounded-2xl border border-amber-200 bg-white px-4 py-3 text-sm outline-none focus:border-amber-400"
                     }
                   />
-                  <button
-                    type="button"
-                    onClick={sendChangeCode}
-                    disabled={Boolean(pending)}
-                    className="inline-flex items-center justify-center gap-2 rounded-full bg-amber-600 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-60"
-                  >
+                  <LoadingButton type="button" onClick={sendChangeCode} disabled={Boolean(pending)} className="inline-flex items-center justify-center gap-2 rounded-full bg-amber-600 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-60" loading={Boolean(pending === "reauth")} loadingLabel="處理中…">
                     {pending === "reauth" ? (
                       <LoaderCircle className="animate-spin" size={16} />
                     ) : (
                       <Mail size={16} />
                     )}
                     {reauthSent ? "重新寄送驗證碼" : "寄送驗證碼"}
-                  </button>
+                  </LoadingButton>
                 </div>
               </div>
             ) : null}
@@ -416,22 +407,18 @@ export default function ErpAuthLinkManager({
                 }
               />
             </div>
-            <button
-              type="submit"
-              disabled={Boolean(pending)}
-              className={
+            <LoadingButton type="submit" disabled={Boolean(pending)} className={
                 isQiunai
                   ? "mt-3 inline-flex items-center justify-center gap-2 rounded-full bg-[#4b2d5a] px-4 py-2.5 text-sm font-bold text-white disabled:opacity-60"
                   : "mt-3 inline-flex items-center justify-center gap-2 rounded-full bg-slate-900 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-60"
-              }
-            >
+              } loading={Boolean(pending === "email")} loadingLabel="處理中…">
               {pending === "email" ? (
                 <LoaderCircle className="animate-spin" size={16} />
               ) : (
                 <Mail size={16} />
               )}
               {status.emailEnabled ? "重新設定電子郵件登入" : "連結電子郵件登入"}
-            </button>
+            </LoadingButton>
           </form>
 
           {message ? (
@@ -446,16 +433,11 @@ export default function ErpAuthLinkManager({
           ) : null}
 
           {mode === "onboarding" ? (
-            <button
-              type="button"
-              onClick={finishOnboarding}
-              disabled={Boolean(pending)}
-              className={
+            <LoadingButton type="button" onClick={finishOnboarding} disabled={Boolean(pending)} className={
                 isQiunai
                   ? "qiunai-button flex w-full items-center justify-center gap-2 px-5 py-3.5 font-bold disabled:opacity-60"
                   : "flex w-full items-center justify-center gap-2 rounded-full bg-sky-600 px-5 py-3.5 text-sm font-bold text-white disabled:opacity-60"
-              }
-            >
+              } loading={Boolean(pending === "finish")} loadingLabel="處理中…">
               {pending === "finish" ? (
                 <LoaderCircle className="animate-spin" size={18} />
               ) : (
@@ -464,7 +446,7 @@ export default function ErpAuthLinkManager({
               {status.googleReady || status.emailEnabled
                 ? "完成設定並進入 HR"
                 : "暫時不要連結，進入 HR"}
-            </button>
+            </LoadingButton>
           ) : null}
         </div>
       ) : null}

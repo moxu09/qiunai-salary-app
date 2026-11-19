@@ -1,5 +1,9 @@
 "use client";
+import { LoadingButton } from "@/components/InteractionUI";
+import { MotionDialog } from "@/components/MotionUI";
 
+import { confirmUI } from "@/components/ConfirmationUI";
+import { notify } from "@/components/MotionUI";
 import { useEffect, useEffectEvent, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -325,7 +329,7 @@ export default function AdminSalaryPage() {
 
     if (orderError) {
       console.error("讀取薪資訂單失敗:", orderError);
-      alert("讀取薪資訂單失敗");
+      notify("讀取薪資訂單失敗");
     }
 
     let bonusQuery = supabase
@@ -349,7 +353,7 @@ export default function AdminSalaryPage() {
 
     if (bonusError) {
       console.error("讀取獎金失敗:", bonusError);
-      alert("讀取獎金失敗");
+      notify("讀取獎金失敗");
     }
 
     const { data: staffData, error: staffError } = await supabase
@@ -362,7 +366,7 @@ export default function AdminSalaryPage() {
 
     if (staffError) {
       console.error("讀取員工資料失敗:", staffError);
-      alert("讀取員工資料失敗");
+      notify("讀取員工資料失敗");
     }
 
     const nextStaffList = (staffData || []) as Staff[];
@@ -406,12 +410,12 @@ export default function AdminSalaryPage() {
 
   async function addOrder() {
     if (!orderForm.discord_id) {
-      alert("請選擇員工");
+      notify("請選擇員工");
       return;
     }
 
     if (!orderForm.service_name.trim()) {
-      alert("請輸入服務項目");
+      notify("請輸入服務項目");
       return;
     }
 
@@ -440,17 +444,17 @@ export default function AdminSalaryPage() {
         : orderForm.service_name;
 
     if (!orderAmount || orderAmount <= 0) {
-      alert("請輸入正確訂單金額");
+      notify("請輸入正確訂單金額");
       return;
     }
 
     if (Number.isNaN(salaryRate) || salaryRate <= 0 || salaryRate > 100) {
-      alert("請輸入 1 到 100 之間的員工抽成");
+      notify("請輸入 1 到 100 之間的員工抽成");
       return;
     }
 
     if (Number.isNaN(bonusAmount) || bonusAmount < 0) {
-      alert("請輸入正確訂單獎金");
+      notify("請輸入正確訂單獎金");
       return;
     }
 
@@ -484,7 +488,7 @@ export default function AdminSalaryPage() {
 
     if (error) {
       console.error("新增訂單失敗:", error);
-      alert("新增訂單失敗");
+      notify("新增訂單失敗");
       return;
     }
 
@@ -501,25 +505,25 @@ export default function AdminSalaryPage() {
       order_finished_at: getNowInput(),
     });
 
-    alert("訂單已新增");
+    notify("訂單已新增");
     await loadAll();
   }
 
   async function addBonus() {
     if (!bonusForm.discord_id) {
-      alert("請選擇員工");
+      notify("請選擇員工");
       return;
     }
 
     if (!bonusForm.title.trim()) {
-      alert("請輸入獎金名稱");
+      notify("請輸入獎金名稱");
       return;
     }
 
     const amount = Number(bonusForm.amount);
 
     if (!amount || amount <= 0) {
-      alert("請輸入正確獎金金額");
+      notify("請輸入正確獎金金額");
       return;
     }
 
@@ -537,7 +541,7 @@ export default function AdminSalaryPage() {
 
     if (error) {
       console.error("新增獎金失敗:", error);
-      alert("新增獎金失敗");
+      notify("新增獎金失敗");
       return;
     }
 
@@ -551,25 +555,25 @@ export default function AdminSalaryPage() {
       created_at: getNowInput(),
     });
 
-    alert("獎金已新增");
+    notify("獎金已新增");
     await loadAll();
   }
 
   async function addDeduction() {
     if (!deductionForm.discord_id) {
-      alert("請選擇員工");
+      notify("請選擇員工");
       return;
     }
 
     const amount = Number(deductionForm.amount);
 
     if (!amount || amount <= 0) {
-      alert("請輸入正確扣除金額");
+      notify("請輸入正確扣除金額");
       return;
     }
 
     if (!deductionForm.note.trim()) {
-      alert("請填寫扣除備註");
+      notify("請填寫扣除備註");
       return;
     }
 
@@ -588,7 +592,7 @@ export default function AdminSalaryPage() {
 
     if (error) {
       console.error("新增薪水扣除失敗:", error);
-      alert("新增薪水扣除失敗");
+      notify("新增薪水扣除失敗");
       return;
     }
 
@@ -601,14 +605,14 @@ export default function AdminSalaryPage() {
       created_at: getNowInput(),
     });
 
-    alert("薪水扣除已新增");
+    notify("薪水扣除已新增");
     await loadAll();
   }
 
   async function markPaid(order: SalaryOrder) {
     const paidAt = new Date().toISOString();
 
-    const ok = confirm(
+    const ok = await confirmUI(
       `確定要將「${
         order.staff_name || order.discord_id
       }」這筆訂單標記為已入帳嗎？`
@@ -626,11 +630,11 @@ export default function AdminSalaryPage() {
 
     if (error) {
       console.error("標記發薪失敗:", error);
-      alert("標記失敗");
+      notify("標記失敗");
       return;
     }
 
-    alert("已標記為已入帳");
+    notify("已標記為已入帳");
     await loadAll();
   }
 
@@ -653,17 +657,17 @@ export default function AdminSalaryPage() {
     const staffSalary = Math.round(orderAmount * (salaryRate / 100));
 
     if (!orderAmount || orderAmount <= 0) {
-      alert("訂單金額錯誤");
+      notify("訂單金額錯誤");
       return false;
     }
 
     if (Number.isNaN(salaryRate) || salaryRate <= 0 || salaryRate > 100) {
-      alert("抽成比例需介於 1 到 100 之間");
+      notify("抽成比例需介於 1 到 100 之間");
       return false;
     }
 
     if (Number.isNaN(bonusAmount) || bonusAmount < 0) {
-      alert("訂單獎金錯誤");
+      notify("訂單獎金錯誤");
       return false;
     }
 
@@ -691,18 +695,18 @@ export default function AdminSalaryPage() {
 
     if (error) {
       console.error("修改訂單失敗:", error);
-      alert("修改訂單失敗");
+      notify("修改訂單失敗");
       return false;
     }
 
-    alert("已修改訂單");
+    notify("已修改訂單");
     return true;
   }
 
   async function deleteSalaryOrder(orderId: string) {
     const reason = window.prompt("請輸入刪除原因：") || "後台刪除";
 
-    const ok = window.confirm(
+    const ok = await confirmUI(
       "確定要刪除這筆薪資訂單嗎？刪除後陪陪端不會再看到。"
     );
 
@@ -721,11 +725,11 @@ export default function AdminSalaryPage() {
 
     if (error) {
       console.error("刪除訂單失敗:", error);
-      alert("刪除訂單失敗");
+      notify("刪除訂單失敗");
       return false;
     }
 
-    alert("已刪除訂單");
+    notify("已刪除訂單");
     return true;
   }
 
@@ -735,7 +739,7 @@ export default function AdminSalaryPage() {
     const settledWarning = bonus.wallet_settled_at
       ? "\n\n這筆資料已匯入員工錢包，刪除時會同步撤銷對應的錢包明細並重新計算餘額。"
       : "";
-    const ok = window.confirm(
+    const ok = await confirmUI(
       `確定要刪除「${bonus.note || bonus.title || itemLabel}」這筆${itemLabel}嗎？${settledWarning}`
     );
     if (!ok) return;
@@ -760,11 +764,11 @@ export default function AdminSalaryPage() {
         throw new Error(payload.message || `刪除${itemLabel}失敗`);
       }
 
-      alert(`${itemLabel}已刪除`);
+      notify(`${itemLabel}已刪除`);
       await loadAll();
     } catch (error) {
       console.error("刪除薪資調整失敗:", error);
-      alert(error instanceof Error ? error.message : `刪除${itemLabel}失敗`);
+      notify(error instanceof Error ? error.message : `刪除${itemLabel}失敗`);
     } finally {
       setDeletingBonusId(null);
     }
@@ -781,11 +785,11 @@ export default function AdminSalaryPage() {
 
     if (error) {
       console.error("更新抽成檔位失敗:", error);
-      alert("更新抽成檔位失敗");
+      notify("更新抽成檔位失敗");
       return;
     }
 
-    alert("已更新抽成檔位");
+    notify("已更新抽成檔位");
     await loadAll();
   }
 
@@ -831,7 +835,7 @@ export default function AdminSalaryPage() {
 
   if (adminLoading || !isAdmin) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-[#fff7fb]">
+      <main className="ui-motion-page flex min-h-screen items-center justify-center bg-[#fff7fb]">
         <div className="rounded-[28px] border border-pink-100 bg-white px-8 py-7 text-center shadow-sm shadow-pink-100">
           <RefreshCw className="mx-auto animate-spin text-pink-500" size={34} />
           <p className="mt-4 text-sm font-semibold text-[#80647d]">
@@ -843,7 +847,7 @@ export default function AdminSalaryPage() {
   }
 
   if (access?.role === "customer_service") {
-    return <main className="min-h-screen bg-[#fff7fb] px-5 py-6 text-[#3f2947]"><div className="mx-auto max-w-7xl space-y-5"><header className="rounded-[30px] border border-pink-100 bg-white px-6 py-5 shadow-sm shadow-pink-100"><p className="text-sm font-bold text-pink-600">秋奈電競陪玩 EIP｜客服</p><h1 className="mt-1 text-2xl font-black">訂單與打賞審核</h1><p className="mt-2 text-sm text-[#80647d]">客服帳號僅能核准或駁回待審核的訂單與打賞。</p></header><WorkReportReviewPanel appKey="qiunai" accent="pink" onApprove={approveWorkReport} reviewApiPath="/api/qiunai/work-reports/review"/></div></main>;
+    return <main className="ui-motion-page min-h-screen bg-[#fff7fb] px-5 py-6 text-[#3f2947]"><div className="mx-auto max-w-7xl space-y-5"><header className="rounded-[30px] border border-pink-100 bg-white px-6 py-5 shadow-sm shadow-pink-100"><p className="text-sm font-bold text-pink-600">秋奈電競陪玩 EIP｜客服</p><h1 className="mt-1 text-2xl font-black">訂單與打賞審核</h1><p className="mt-2 text-sm text-[#80647d]">客服帳號僅能核准或駁回待審核的訂單與打賞。</p></header><WorkReportReviewPanel appKey="qiunai" accent="pink" onApprove={approveWorkReport} reviewApiPath="/api/qiunai/work-reports/review"/></div></main>;
   }
 
   const renderOrderTable = () => (
@@ -1010,7 +1014,7 @@ export default function AdminSalaryPage() {
   );
 
   return (
-    <main className="salary-overview-page min-h-screen bg-[#fff7fb] px-3 py-3 text-[#3f2947]">
+    <main className="ui-motion-page salary-overview-page min-h-screen bg-[#fff7fb] px-3 py-3 text-[#3f2947]">
       <div className="salary-overview-content mx-auto max-w-7xl space-y-5">
         <section className="space-y-3">
           <OrderDisclosure title="訂單／打賞待審核" initiallyOpen>
@@ -1068,14 +1072,10 @@ export default function AdminSalaryPage() {
                 </p>
               </div>
 
-              <button
-                onClick={() => void loadAll()}
-                disabled={loading}
-                className="inline-flex items-center justify-center gap-2 rounded-full bg-pink-500 px-5 py-2.5 text-sm font-bold text-[#3f2947] shadow-sm shadow-pink-200 hover:bg-pink-600 disabled:opacity-60"
-              >
+              <LoadingButton onClick={() => void loadAll()} disabled={loading} className="inline-flex items-center justify-center gap-2 rounded-full bg-pink-500 px-5 py-2.5 text-sm font-bold text-[#3f2947] shadow-sm shadow-pink-200 hover:bg-pink-600 disabled:opacity-60" loading={Boolean(loading)} loadingLabel="處理中…">
                 <RefreshCw size={16} className={loading ? "animate-spin" : ""} />
                 重新整理
-              </button>
+              </LoadingButton>
             </div>
           </header>
           </OrderDisclosure>
@@ -1390,7 +1390,7 @@ export default function AdminSalaryPage() {
             </div>
           </OrderDisclosure>
 
-          <details className="salary-commission-panel rounded-[28px] border border-pink-100 bg-white p-5 shadow-sm shadow-pink-100">
+          <details className="salary-commission-panel rounded-[28px] border border-pink-100 bg-white p-5 shadow-sm shadow-pink-100 ui-motion-details">
             <summary className="cursor-pointer text-lg font-black text-[#3f2947]">
               員工抽成檔位
             </summary>
@@ -1836,7 +1836,7 @@ export default function AdminSalaryPage() {
           </OrderDisclosure>
 
           {editingOrder && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+            <MotionDialog label="修改薪資訂單" onClose={() => setEditingOrder(null)} className="ui-dialog-content-shell">{closeDialog => <>
               <div className="w-full max-w-lg rounded-[28px] border border-pink-100 bg-white p-6 text-[#3f2947] shadow-2xl">
                 <h2 className="text-lg font-black text-[#3f2947]">
                   修改薪資訂單
@@ -1940,14 +1940,14 @@ export default function AdminSalaryPage() {
                   </button>
 
                   <button
-                    onClick={() => setEditingOrder(null)}
+                    onClick={closeDialog}
                     className="flex-1 rounded-xl bg-slate-200 text-slate-700 px-4 py-3 font-bold hover:bg-slate-300"
                   >
                     取消
                   </button>
                 </div>
               </div>
-            </div>
+            </>}</MotionDialog>
           )}
         </section>
       </div>

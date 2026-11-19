@@ -1,4 +1,6 @@
 "use client";
+import { LoadingButton } from "@/components/InteractionUI";
+import { Skeleton } from "@/components/MotionUI";
 /* eslint-disable @next/next/no-img-element -- private signed attachment URLs must not be sent to the public image optimizer */
 
 import { useCallback, useEffect, useState } from "react";
@@ -108,17 +110,17 @@ export default function WorkspaceDocumentFiles({ organization, documentId, admin
     <div className="eip-collab-panel-head"><h3><Paperclip size={17} /> 附件</h3><span>{shown.length}{admin ? " / 20" : ""} 個</span></div>
     {error ? <p className="eip-collab-alert" role="alert">{error}</p> : null}
     {notice ? <p className="eip-collab-notice" role="status">{notice}</p> : null}
-    {loading ? <p className="eip-collab-empty">正在讀取附件…</p> : shown.length ? <div className="eip-workspace-file-list">
-      {shown.map((file) => admin&&allowRemove?<div key={file.path} className="course-attachment-row"><button type="button" onClick={()=>void download(file)}><span><strong>{file.name}</strong><small>{fileSize(file.size)}</small></span><Download size={17}/></button><button type="button" disabled={busy} onClick={()=>void toggle(file)}>移除附件</button></div> : <div key={file.path} className={inlineImages ? "course-inline-attachment" : undefined}>
+    {loading ? <Skeleton rows={3} label="正在讀取附件…" /> : shown.length ? <div className="eip-workspace-file-list">
+      {shown.map((file) => admin&&allowRemove?<div key={file.path} className="course-attachment-row"><button type="button" onClick={()=>void download(file)}><span><strong>{file.name}</strong><small>{fileSize(file.size)}</small></span><Download size={17}/></button><LoadingButton type="button" disabled={busy} onClick={()=>void toggle(file)} loading={Boolean(busy)} loadingLabel="處理中…">移除附件</LoadingButton></div> : <div key={file.path} className={inlineImages ? "course-inline-attachment" : undefined}>
         {inlineImages && file.previewUrl && !unavailable.includes(file.path) ? <figure><img src={file.previewUrl} alt={file.name} loading="lazy" referrerPolicy="no-referrer" onError={()=>setUnavailable(old=>old.includes(file.path)?old:[...old,file.path])}/></figure> : null}
         <button type="button" onClick={()=>void download(file)}><span><strong>{file.name}</strong><small>{fileSize(file.size)}</small></span><Download size={17}/></button>
       </div>)}
     </div> : <p className="eip-collab-empty">尚未上傳附件。</p>}
     {inlineImages && shown.some(file=>unavailable.includes(file.path)) ? <button type="button" onClick={()=>void refresh()}>重新載入圖片</button> : null}
-    {admin&&allowRemove&&archivedFiles.length?<details><summary>已移除附件 · {archivedFiles.length} 個</summary>{archivedFiles.map(file=><div key={file.path}><span>{file.name}</span><button type="button" disabled={busy} onClick={()=>void toggle(file,true)}>恢復附件</button></div>)}</details>:null}
+    {admin&&allowRemove&&archivedFiles.length?<details className="ui-motion-details"><summary>已移除附件 · {archivedFiles.length} 個</summary>{archivedFiles.map(file=><div key={file.path}><span>{file.name}</span><LoadingButton type="button" disabled={busy} onClick={()=>void toggle(file,true)} loading={Boolean(busy)} loadingLabel="處理中…">恢復附件</LoadingButton></div>)}</details>:null}
     {admin ? <div className="eip-workspace-upload">
       <label>選擇檔案<input type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.ppt,.pptx,.txt,.rtf,.jpg,.jpeg,.png,.webp,.gif,.heic,.zip,.rar,.7z" onChange={(event) => setSelectedFile(event.target.files?.[0] || null)} /></label>
-      <button type="button" disabled={!selectedFile || busy || files.length >= 20} onClick={() => void upload()}><FileUp size={16} /> {busy ? "上傳中…" : "上傳附件"}</button>
+      <LoadingButton type="button" disabled={!selectedFile || busy || files.length >= 20} onClick={() => void upload()} loading={Boolean(busy)} loadingLabel="上傳中…"><FileUp size={16} /> {busy ? "上傳中…" : "上傳附件"}</LoadingButton>
       <p>支援文件、圖片及壓縮檔；單檔最多 25 MB，每篇最多 20 個。已上傳附件會保留，不因文章編輯而覆蓋。</p>
     </div> : null}
   </section>;

@@ -1,4 +1,5 @@
 "use client";
+import { LoadingButton } from "@/components/InteractionUI";
 
 import { type ReactNode, useCallback, useEffect, useState } from "react";
 import { RefreshCw, WalletCards } from "lucide-react";
@@ -128,15 +129,10 @@ export default function AdminStaffWalletCard({
             {staffName}｜Discord ID：{discordId}
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => void loadWallet()}
-          disabled={loading}
-          className="inline-flex items-center justify-center gap-2 rounded-full border border-emerald-200 bg-white px-4 py-2 text-sm font-bold text-emerald-700 transition hover:bg-emerald-100 disabled:opacity-60"
-        >
+        <LoadingButton type="button" onClick={() => void loadWallet()} disabled={loading} className="inline-flex items-center justify-center gap-2 rounded-full border border-emerald-200 bg-white px-4 py-2 text-sm font-bold text-emerald-700 transition hover:bg-emerald-100 disabled:opacity-60" loading={Boolean(loading)} loadingLabel="處理中…">
           <RefreshCw size={16} className={loading ? "animate-spin" : ""} />
           重新整理錢包
-        </button>
+        </LoadingButton>
       </div>
 
       {loading && !wallet ? (

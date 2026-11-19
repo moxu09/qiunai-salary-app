@@ -1,5 +1,7 @@
 "use client";
+import { LoadingButton } from "@/components/InteractionUI";
 
+import { Skeleton } from "@/components/MotionUI";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import Link from "next/link";
 import HrCryptoPayoutQuote from "@/components/HrCryptoPayoutQuote";
@@ -243,15 +245,15 @@ export default function HrDocumentSigning({ documentKey }: { documentKey: Key })
   }
 
   return (
-    <main className="min-h-screen bg-slate-50 p-4 text-slate-900 sm:p-8">
+    <main className="ui-motion-page min-h-screen bg-slate-50 p-4 text-slate-900 sm:p-8">
       <section className="mx-auto max-w-3xl space-y-5 rounded-2xl border border-slate-200 bg-white p-5 sm:p-8">
         <Link className="text-sm font-bold underline" href="/collaboration/workspace">返回 HR 工作台</Link>
         <h1 className="text-2xl font-black">{document.title}</h1>
         {error && !confirmed ? <p role="alert" className="rounded-lg bg-rose-50 p-3 text-rose-800">{error}</p> : null}
-        {loading ? <p role="status">正在讀取簽署待辦…</p> : null}
-        {!loading && needsLogin ? <button className={actionClass} disabled={busy} onClick={() => void login()}>使用 Discord 登入</button> : null}
+        {loading ? <Skeleton rows={3} label="正在讀取簽署待辦…" /> : null}
+        {!loading && needsLogin ? <LoadingButton className={actionClass} disabled={busy} onClick={() => void login()} loading={Boolean(busy)} loadingLabel="處理中…">使用 Discord 登入</LoadingButton> : null}
         {!loading && !needsLogin && error && !loaded ? (
-          <button className={actionClass} disabled={busy} onClick={() => void load()}>重新讀取</button>
+          <LoadingButton className={actionClass} disabled={busy} onClick={() => void load()} loading={Boolean(busy)} loadingLabel="處理中…">重新讀取</LoadingButton>
         ) : null}
         {!loading && !needsLogin && loaded ? (
           <>
@@ -278,7 +280,7 @@ export default function HrDocumentSigning({ documentKey }: { documentKey: Key })
               }}>重新選擇身分</button>
             </div> : null}
             {signedAt ? <>
-              <button type="button" className={actionClass} disabled={busy} onClick={() => void openPdf()}>開啟已簽署 PDF</button>
+              <LoadingButton type="button" className={actionClass} disabled={busy} onClick={() => void openPdf()} loading={Boolean(busy)} loadingLabel="處理中…">開啟已簽署 PDF</LoadingButton>
               {pdfUrl ? <div className="space-y-2">
                 <a className="inline-block font-bold underline" href={pdfUrl} target="_blank" rel="noreferrer">在新分頁開啟 PDF</a>
                 <iframe className="h-96 w-full rounded-lg border border-slate-200" title={document.title} src={pdfUrl} />
@@ -377,17 +379,17 @@ export default function HrDocumentSigning({ documentKey }: { documentKey: Key })
               <form id="hr-signing-signature" tabIndex={-1} onSubmit={submit} className="scroll-mt-5 space-y-5">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <h2 className="text-lg font-bold">手寫簽名</h2>
-                  <button type="button" className="text-sm font-bold underline" disabled={busy} onClick={() => {
+                  <LoadingButton type="button" className="text-sm font-bold underline" disabled={busy} onClick={() => {
                     setDetailsReady(false); setSignatureDataUrl(""); setGuardianSignatureDataUrl("");
                     setError(""); moveTo("hr-signing-details");
-                  }}>返回修改資料</button>
+                  }} loading={Boolean(busy)} loadingLabel="處理中…">返回修改資料</LoadingButton>
                 </div>
                 <SignaturePad label={nda ? "資訊接受方手寫簽名" : "乙方手寫簽名"} onChange={setSignatureDataUrl} />
                 {minor ? <SignaturePad label="法定代理人手寫簽名" onChange={setGuardianSignatureDataUrl} /> : null}
                 {error ? <p role="alert" className="text-sm text-rose-800">{error}</p> : null}
-                <button className={actionClass} disabled={busy || !confirmed || !signatureDataUrl || (minor && !guardianSignatureDataUrl)}>
+                <LoadingButton className={actionClass} disabled={busy || !confirmed || !signatureDataUrl || (minor && !guardianSignatureDataUrl)} loading={Boolean(busy)} loadingLabel="處理中…">
                   {busy ? "處理中…" : "確認送出簽署"}
-                </button>
+                </LoadingButton>
               </form>
             ) : null}
           </>

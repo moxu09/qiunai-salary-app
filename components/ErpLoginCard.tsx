@@ -1,4 +1,6 @@
 "use client";
+import { LoadingButton } from "@/components/InteractionUI";
+import { FloatingInput } from "@/components/InteractionUI";
 
 import { FormEvent, useState } from "react";
 import {
@@ -178,41 +180,31 @@ export default function ErpLoginCard({
           </div>
 
           <div className="mt-6 grid gap-3 sm:grid-cols-2">
-            <button
-              type="button"
-              onClick={() => loginWithOAuth("discord")}
-              disabled={Boolean(pending)}
-              className={
+            <LoadingButton type="button" onClick={() => loginWithOAuth("discord")} disabled={Boolean(pending)} className={
                 isQiunai
                   ? "qiunai-button flex items-center justify-center gap-2 px-5 py-3.5 font-bold disabled:opacity-60"
                   : "flex items-center justify-center gap-2 rounded-full bg-[#5865f2] px-5 py-3.5 text-sm font-bold text-white shadow-lg shadow-indigo-100 transition hover:-translate-y-0.5 disabled:opacity-60"
-              }
-            >
+              } loading={Boolean(pending === "discord")} loadingLabel="處理中…">
               {pending === "discord" ? (
                 <LoaderCircle className="animate-spin" size={18} />
               ) : (
                 <MessageCircle size={18} />
               )}
               使用 Discord
-            </button>
+            </LoadingButton>
 
-            <button
-              type="button"
-              onClick={() => loginWithOAuth("google")}
-              disabled={Boolean(pending)}
-              className={
+            <LoadingButton type="button" onClick={() => loginWithOAuth("google")} disabled={Boolean(pending)} className={
                 isQiunai
                   ? "flex items-center justify-center gap-2 rounded-full border border-pink-200 bg-white px-5 py-3.5 text-sm font-bold text-[#5b3768] transition hover:bg-pink-50 disabled:opacity-60"
                   : "flex items-center justify-center gap-2 rounded-full border border-sky-200 bg-white px-5 py-3.5 text-sm font-bold text-slate-700 transition hover:bg-sky-50 disabled:opacity-60"
-              }
-            >
+              } loading={Boolean(pending === "google")} loadingLabel="處理中…">
               {pending === "google" ? (
                 <LoaderCircle className="animate-spin" size={18} />
               ) : (
                 <span aria-hidden="true" className="text-base font-black text-[#4285f4]">G</span>
               )}
               使用 Google / Gmail
-            </button>
+            </LoadingButton>
           </div>
 
           <div className="my-6 flex items-center gap-3 text-xs font-bold text-slate-400">
@@ -222,66 +214,20 @@ export default function ErpLoginCard({
           </div>
 
           <form onSubmit={loginWithEmail} className="space-y-3">
-            <label className="block">
-              <span className="text-sm font-bold">電子郵件</span>
-              <div className="relative mt-2">
-                <Mail
-                  className="erp-login-field-icon absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
-                  size={18}
-                />
-                <input
-                  type="email"
-                  autoComplete="email"
-                  required
-                  value={email}
-                  onChange={(event) => setEmail(event.target.value)}
-                  className={
-                    isQiunai
-                      ? "erp-login-icon-input qiunai-input"
-                      : "erp-login-icon-input w-full rounded-2xl border border-sky-200 bg-white py-3 text-sm outline-none focus:border-sky-400"
-                  }
-                  placeholder="name@example.com"
-                />
-              </div>
-            </label>
-            <label className="block">
-              <span className="text-sm font-bold">密碼</span>
-              <div className="relative mt-2">
-                <LockKeyhole
-                  className="erp-login-field-icon absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
-                  size={18}
-                />
-                <input
-                  type="password"
-                  autoComplete="current-password"
-                  required
-                  value={password}
-                  onChange={(event) => setPassword(event.target.value)}
-                  className={
-                    isQiunai
-                      ? "erp-login-icon-input qiunai-input"
-                      : "erp-login-icon-input w-full rounded-2xl border border-sky-200 bg-white py-3 text-sm outline-none focus:border-sky-400"
-                  }
-                  placeholder="已連結電子郵件時設定的密碼"
-                />
-              </div>
-            </label>
-            <button
-              type="submit"
-              disabled={Boolean(pending)}
-              className={
+            <FloatingInput id="login-email" label="電子郵件" aria-invalid={Boolean(message)} type="email" autoComplete="email" required value={email} onChange={(event) => setEmail(event.target.value)} />
+            <FloatingInput id="login-password" label="密碼" aria-invalid={Boolean(message)} type="password" autoComplete="current-password" required value={password} onChange={(event) => setPassword(event.target.value)} />
+            <LoadingButton type="submit" disabled={Boolean(pending)} className={
                 isQiunai
                   ? "flex w-full items-center justify-center gap-2 rounded-full bg-[#4b2d5a] px-5 py-3.5 text-sm font-bold text-white disabled:opacity-60"
                   : "flex w-full items-center justify-center gap-2 rounded-full bg-slate-900 px-5 py-3.5 text-sm font-bold text-white disabled:opacity-60"
-              }
-            >
+              } loading={Boolean(pending === "email")} loadingLabel="處理中…">
               {pending === "email" ? (
                 <LoaderCircle className="animate-spin" size={18} />
               ) : (
                 <Mail size={18} />
               )}
               使用電子郵件登入
-            </button>
+            </LoadingButton>
           </form>
 
           {message ? (

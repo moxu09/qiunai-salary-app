@@ -1,5 +1,8 @@
 "use client";
+import { LoadingButton } from "@/components/InteractionUI";
 
+import { confirmUI } from "@/components/ConfirmationUI";
+import { Skeleton } from "@/components/MotionUI";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { ArrowRight, BookOpenText, CalendarDays, ClipboardCheck, FileText, FileUp, GraduationCap, LayoutDashboard, Plus, Save } from "lucide-react";
 import { supabase } from "@/lib/supabase";
@@ -148,7 +151,7 @@ export default function AdminWorkspaceManager({ organization, initialSection = "
     if (!response.ok) throw new Error(result.message || `上傳 ${file.name} 失敗`);
   }
   async function archive(kind: Kind, item: Item) {
-    if (!window.confirm(`將「${String(item.title || item.name)}」從工作台移除？歷史版本及申請紀錄會保留。`)) return;
+    if (!await confirmUI(`將「${String(item.title || item.name)}」從工作台移除？歷史版本及申請紀錄會保留。`)) return;
     try {
       setBusy(true); setError(""); setNotice("");
       await call("DELETE", { kind, id: item.id, version: item.version });
@@ -280,7 +283,7 @@ export default function AdminWorkspaceManager({ organization, initialSection = "
       )}
     </nav> : null}
     {section==='course'?<AdminCourseManager key={organization} organization={organization}/>:null}
-    {loading && section!=='course' ? <p className="eip-collab-empty">正在讀取管理資料…</p> : null}
+    {loading && section!=='course' ? <Skeleton rows={3} label="正在讀取管理資料…" /> : null}
     {!loading && section === "overview" ? <>
       <div className="eip-admin-overview-stats">
         <button onClick={() => choose("decision")}><ClipboardCheck size={21} /><strong>{requestSummary.pending}</strong><span>待處理流程申請</span><ArrowRight size={16} /></button>
@@ -341,12 +344,12 @@ export default function AdminWorkspaceManager({ organization, initialSection = "
           </> : null}
           <label className="eip-collab-check"><input type="checkbox" checked={Boolean(form.isActive)} onChange={(event) => update("isActive", event.target.checked)} /> 開放員工申請</label>
         </>}
-        <div className="eip-collab-form-actions">{editing ? <button type="button" onClick={() => choose(section)}>取消編輯</button> : null}<button disabled={busy} type="submit"><Save size={15} /> {busy ? "儲存中…" : section === "document" && pendingFiles.length ? `儲存並上傳 ${pendingFiles.length} 個附件` : "儲存"}</button></div>
+        <div className="eip-collab-form-actions">{editing ? <button type="button" onClick={() => choose(section)}>取消編輯</button> : null}<LoadingButton disabled={busy} type="submit" loading={Boolean(busy)} loadingLabel="儲存中…"><Save size={15} /> {busy ? "儲存中…" : section === "document" && pendingFiles.length ? `儲存並上傳 ${pendingFiles.length} 個附件` : "儲存"}</LoadingButton></div>
       </form>
       <div className="eip-collab-panel"><div className="eip-collab-panel-head"><h2>已建立項目</h2></div>
         {(section === "event" ? data.events : section === "document" ? data.documents : data.templates).map((item) =>
-          <div className="eip-collab-admin-item" key={item.id}><span>{section === "event" ? String(item.starts_at || "") : section === "document" ? `${item.document_type === "knowledge" ? "知識" : "文件"} · v${item.version}` : Array.isArray(item.approval_steps) && item.approval_steps.length === 2 ? "Manager 初核 → PIC 覆核" : String(item.approver_role === "owner" ? "最高管理員簽核" : "經理簽核")}</span><strong>{String(item.title || item.name || "")}</strong><small>{item.is_published || item.is_active ? "已發布" : "草稿／停用"}</small><div><button onClick={() => edit(section, item)}>{section === "document" ? "編輯／上傳附件" : "編輯"}</button>{section === "document" ? <button onClick={() => void showRevisions(item)}>歷史版本</button> : null}<button type="button" disabled={busy} onClick={() => void archive(section, item)}>移除</button></div></div>)}
-        {revisions.length ? <div className="eip-collab-revisions"><h3>歷史版本</h3>{revisions.map((item) => <details key={String(item.version)}><summary>v{String(item.version)} · {String(item.title)} · {String(item.changed_at)}</summary><pre>{String(item.body)}</pre></details>)}</div> : null}
+          <div className="eip-collab-admin-item" key={item.id}><span>{section === "event" ? String(item.starts_at || "") : section === "document" ? `${item.document_type === "knowledge" ? "知識" : "文件"} · v${item.version}` : Array.isArray(item.approval_steps) && item.approval_steps.length === 2 ? "Manager 初核 → PIC 覆核" : String(item.approver_role === "owner" ? "最高管理員簽核" : "經理簽核")}</span><strong>{String(item.title || item.name || "")}</strong><small>{item.is_published || item.is_active ? "已發布" : "草稿／停用"}</small><div><button onClick={() => edit(section, item)}>{section === "document" ? "編輯／上傳附件" : "編輯"}</button>{section === "document" ? <button onClick={() => void showRevisions(item)}>歷史版本</button> : null}<LoadingButton type="button" disabled={busy} onClick={() => void archive(section, item)} loading={Boolean(busy)} loadingLabel="處理中…">移除</LoadingButton></div></div>)}
+        {revisions.length ? <div className="eip-collab-revisions"><h3>歷史版本</h3>{revisions.map((item) => <details className="ui-motion-details" key={String(item.version)}><summary>v{String(item.version)} · {String(item.title)} · {String(item.changed_at)}</summary><pre>{String(item.body)}</pre></details>)}</div> : null}
         {section === "document" ? editing ? <WorkspaceDocumentFiles key={`${editing.id}:${fileRefreshKey}`} organization={organization} documentId={editing.id} admin /> : <p className="eip-collab-helper">左側可直接選擇檔案，填妥標題後按「儲存並上傳」。</p> : null}
       </div>
     </div> : null}
@@ -368,11 +371,11 @@ export default function AdminWorkspaceManager({ organization, initialSection = "
           <div className="eip-collab-answers">{values.map(([key, value]) => <p key={key}><b>{String((template?.fields as Field[] || []).find((field) => field.key === key)?.label || key)}：</b>{String(value)}</p>)}</div>
           {item.decision_note ? <p>簽核備註：{String(item.decision_note)}</p> : null}
           <div><button type="button" onClick={() => void showHistory(item)}>處理歷程</button>{item.status === "pending" && canAct ? <>
-            <button type="button" disabled={busy} onClick={() => { setDecisionTarget({ id: item.id, status: "approved" }); setDecisionNote(""); }}>核准</button>
-            <button type="button" disabled={busy} onClick={() => { setDecisionTarget({ id: item.id, status: "rejected" }); setDecisionNote(""); }}>退回</button>
+            <LoadingButton type="button" disabled={busy} onClick={() => { setDecisionTarget({ id: item.id, status: "approved" }); setDecisionNote(""); }} loading={Boolean(busy)} loadingLabel="處理中…">核准</LoadingButton>
+            <LoadingButton type="button" disabled={busy} onClick={() => { setDecisionTarget({ id: item.id, status: "rejected" }); setDecisionNote(""); }} loading={Boolean(busy)} loadingLabel="處理中…">退回</LoadingButton>
           </> : null}</div>
           {item.status === "pending" && !canAct ? <p className="eip-collab-helper">目前關卡由{stepRole === "owner" ? "最高管理員" : "店經理"}處理。</p> : null}
-          {decisionTarget?.id === item.id ? <div className="eip-admin-decision-editor"><label>{decisionTarget.status === "rejected" ? "退回原因（必填）" : "簽核備註（選填）"}<textarea maxLength={2000} value={decisionNote} onChange={(event) => setDecisionNote(event.target.value)} /></label><div><button type="button" disabled={busy} onClick={() => setDecisionTarget(null)}>取消</button><button type="button" disabled={busy} onClick={() => void decide(item, decisionTarget.status)}>{busy ? "處理中…" : decisionTarget.status === "approved" && steps.length === 2 && currentStep === 0 ? "初核通過並送交 PIC" : "確認送出"}</button></div></div> : null}
+          {decisionTarget?.id === item.id ? <div className="eip-admin-decision-editor"><label>{decisionTarget.status === "rejected" ? "退回原因（必填）" : "簽核備註（選填）"}<textarea maxLength={2000} value={decisionNote} onChange={(event) => setDecisionNote(event.target.value)} /></label><div><LoadingButton type="button" disabled={busy} onClick={() => setDecisionTarget(null)} loading={Boolean(busy)} loadingLabel="處理中…">取消</LoadingButton><LoadingButton type="button" disabled={busy} onClick={() => void decide(item, decisionTarget.status)} loading={Boolean(busy)} loadingLabel="處理中…">{busy ? "處理中…" : decisionTarget.status === "approved" && steps.length === 2 && currentStep === 0 ? "初核通過並送交 PIC" : "確認送出"}</LoadingButton></div></div> : null}
         </article>;
       })}
       {!data.requests.length ? <p className="eip-collab-empty">{assignedOnly ? "目前沒有輪到你簽核的流程申請。" : "此篩選條件目前沒有申請。"}</p> : null}

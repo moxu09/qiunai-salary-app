@@ -1,4 +1,7 @@
 "use client";
+import { LoadingButton } from "@/components/InteractionUI";
+import { confirmUI } from "@/components/ConfirmationUI";
+import { Skeleton } from "@/components/MotionUI";
 /* eslint-disable @next/next/no-img-element */
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
@@ -290,14 +293,11 @@ export default function UnifiedHrPortal() {
   }
   if (loading)
     return (
-      <main className="qiunai-page hr-loading hr-unified">
-        <RefreshCw className="animate-spin" />
-        正在整合員工資料…
-      </main>
+      <main className="ui-motion-loading"><Skeleton rows={6} cards label="正在整合員工資料…" /></main>
     );
   if (error || !session)
     return (
-      <main className="qiunai-page hr-loading hr-unified">
+      <main className="ui-motion-page qiunai-page hr-loading hr-unified">
         <Card title="無法進入員工 HR">
           <Notice>{error || "讀取員工資料失敗"}</Notice>
           <button className="qiunai-button" onClick={() => void init()}>
@@ -332,7 +332,7 @@ export default function UnifiedHrPortal() {
     activeTab === "welfare" ||
     (activeTab.startsWith("approval-") && activeTab !== "approval-pending");
   return (
-    <main className="qiunai-page staff-workspace hr-unified">
+    <main className="ui-motion-page qiunai-page staff-workspace hr-unified">
       <HrThemeDecorations />
       <header className="staff-workspace-header">
         <div className="hr-header-inner">
@@ -372,7 +372,7 @@ export default function UnifiedHrPortal() {
             <HrThemeBanner />
             {activeTab === "workspace" && session.canManageHrMembers ? (
               <Card title="HR 成員管理">
-                <details>
+                <details className="ui-motion-details">
                   <summary>新增／移除 Manager</summary>
                   <HrMemberManager departments={departments} request={hrFetch} />
                 </details>
@@ -617,10 +617,10 @@ function ProfilePanel({ session, onSaved }: { session: Session; onSaved: () => P
             })}
           </div>
           {error ? <Notice>{error}</Notice> : null}
-          <button className="qiunai-button hr-submit" disabled={busy}>
+          <LoadingButton className="qiunai-button hr-submit" disabled={busy} loading={Boolean(busy)} loadingLabel="儲存中…">
             <Save size={17} />
             {busy ? "儲存中…" : "儲存至所有所屬部門"}
-          </button>
+          </LoadingButton>
         </form>
       </Card>
       <DepartmentStatus departments={session.departments} />
@@ -662,13 +662,9 @@ function DepartmentStatus({ departments }: { departments: Department[] }) {
             <span className={d.staff.is_online ? "hr-online" : "hr-note"}>
               {d.staff.is_online ? "上線中" : "目前離線"}
             </span>
-            <button
-              className="qiunai-soft-button"
-              disabled={busy !== null}
-              onClick={() => void online(d.key, !d.staff.is_online)}
-            >
+            <LoadingButton className="qiunai-soft-button" disabled={busy !== null} onClick={() => void online(d.key, !d.staff.is_online)} loading={Boolean(busy === d.key)} loadingLabel="更新中…">
               {busy === d.key ? "更新中…" : d.staff.is_online ? "切換為下線" : "切換為上線"}
-            </button>
+            </LoadingButton>
             <DepartmentProfileEditor department={d} />
           </div>
         ))}
@@ -699,10 +695,10 @@ function AccountLinksPanel({ primary, onChanged }: { primary: string; onChanged:
   const incoming = links.filter((link) => link.alternate_id === primary);
   const linkedAsAlternate = incoming.some((link) => link.verified_at);
   async function update(action: "request" | "confirm" | "remove", otherId: string) {
-    if (action === "confirm" && !window.confirm(
+    if (action === "confirm" && !await confirmUI(
       `確定 ${otherId} 是你本人的主帳號？綁定後，該帳號可以查看這個帳號的訂單、打賞、薪資與提領紀錄，也能代為申請提領或轉入 ASD。綁定期間，銀行提領會匯到主帳號的銀行帳戶。`,
     )) return;
-    if (action === "remove" && !window.confirm("確定取消這筆綁定或申請？已入帳與已送出的提領紀錄會保留。")) return;
+    if (action === "remove" && !await confirmUI("確定取消這筆綁定或申請？已入帳與已送出的提領紀錄會保留。")) return;
     setBusy(true);
     setError("");
     setNotice("");
@@ -729,13 +725,13 @@ function AccountLinksPanel({ primary, onChanged }: { primary: string; onChanged:
             <strong>{link.verified_at ? "已綁定的主帳號" : "收到小號綁定申請"}</strong>
             <span>{link.primary_id}</span>
             {!link.verified_at ? (
-              <button className="qiunai-button" disabled={busy} onClick={() => void update("confirm", link.primary_id)}>
+              <LoadingButton className="qiunai-button" disabled={busy} onClick={() => void update("confirm", link.primary_id)} loading={Boolean(busy)} loadingLabel="處理中…">
                 確認是我的主帳號
-              </button>
+              </LoadingButton>
             ) : null}
-            <button className="qiunai-soft-button" disabled={busy} onClick={() => void update("remove", link.primary_id)}>
+            <LoadingButton className="qiunai-soft-button" disabled={busy} onClick={() => void update("remove", link.primary_id)} loading={Boolean(busy)} loadingLabel="處理中…">
               {link.verified_at ? "解除綁定" : "拒絕"}
-            </button>
+            </LoadingButton>
           </div>
         </div>
       ))}
@@ -744,9 +740,9 @@ function AccountLinksPanel({ primary, onChanged }: { primary: string; onChanged:
           <div>
             <strong>{link.alternate_id}</strong>
             <span>{link.verified_at ? "已綁定" : "等待小號登入確認"}</span>
-            <button className="qiunai-soft-button" disabled={busy} onClick={() => void update("remove", link.alternate_id)}>
+            <LoadingButton className="qiunai-soft-button" disabled={busy} onClick={() => void update("remove", link.alternate_id)} loading={Boolean(busy)} loadingLabel="處理中…">
               {link.verified_at ? "解除綁定" : "取消申請"}
-            </button>
+            </LoadingButton>
           </div>
         </div>
       ))}
@@ -852,7 +848,7 @@ export function WalletPanel({ departments, primary }: { departments: Department[
         `${nameOf(source.department)}・${accountOf(source.owner, primary)}：${money(source.amount)}${destination === "bank" ? `，手續費 ${money(source.serviceFee)}` : ""}`,
       ).join("\n");
     if (
-      !window.confirm(
+      !await confirmUI(
         `${destination === "bank" ? (usesPrimaryBank ? "確認將這筆提領匯到主帳號的銀行帳戶？" : "確認送出銀行提領申請？") : "確認轉入各來源帳號的 ASD 錢包？"}\n${summary}\n合計 ${money(total)}，${destination === "bank" ? "預計實領" : "轉入"} ${money(total - fees)}`,
       )
     )
@@ -936,7 +932,7 @@ export function WalletPanel({ departments, primary }: { departments: Department[
         <p className="hr-note">已合併小號餘額。轉入 ASD 會入到各來源帳號。</p>
       ) : null}
       {usesPrimaryBank ? <p className="hr-note">銀行提領一律匯到主帳號的銀行帳戶。</p> : null}
-      {loading ? <p className="hr-note">同步錢包中…</p> : null}
+      {loading ? <Skeleton rows={3} label="同步錢包中…" /> : null}
       {error ? (
         <Notice>
           {error}
@@ -1055,17 +1051,13 @@ export function WalletPanel({ departments, primary }: { departments: Department[
               : "合併提領總額須高於 1,000 元。"}
           </p>
         ) : null}
-        <button
-          className="qiunai-button hr-submit"
-          disabled={!canSubmit}
-          onClick={() => void submit()}
-        >
+        <LoadingButton className="qiunai-button hr-submit" disabled={!canSubmit} onClick={() => void submit()} loading={Boolean(busy)} loadingLabel="處理中…">
           {!canSubmit && !busy ? <LockKeyhole size={18} /> : <WalletCards size={18} />}
           {busy ? "處理中…" : loading ? "同步錢包中…" : destination === "bank" && !windowOpen ? "尚未開放提領" : destination === "bank" ? "送出提領申請" : "轉入 ASD 錢包"}
-        </button>
+        </LoadingButton>
       </div>
       <WithdrawalStatements departments={departments} />
-      <details className="hr-history">
+      <details className="hr-history ui-motion-details">
         <summary>提領紀錄（兩家店合併）</summary>
         <div className="hr-table-scroll">
           <table>
@@ -1105,7 +1097,7 @@ export function WalletPanel({ departments, primary }: { departments: Department[
           {!requests.length ? <p className="hr-note">尚無提領紀錄</p> : null}
         </div>
       </details>
-      <details className="hr-history">
+      <details className="hr-history ui-motion-details">
         <summary>最近入帳紀錄（兩家店合併）</summary>
         <div className="hr-table-scroll">
           <table>
@@ -1348,7 +1340,7 @@ function DepartmentProfileEditor({ department }: { department: Department }) {
     }
   }
   return (
-    <details className="hr-service-editor">
+    <details className="hr-service-editor ui-motion-details">
       <summary>官網與部門專屬資料</summary>
       <form onSubmit={save}>
         <div className="hr-form-grid">
@@ -1390,9 +1382,9 @@ function DepartmentProfileEditor({ department }: { department: Department }) {
             {notice}
           </p>
         ) : null}
-        <button className="qiunai-button hr-submit" disabled={busy}>
+        <LoadingButton className="qiunai-button hr-submit" disabled={busy} loading={Boolean(busy)} loadingLabel="儲存中…">
           {busy ? "儲存中…" : `只儲存${nameOf(department.key)}的專屬資料`}
-        </button>
+        </LoadingButton>
       </form>
     </details>
   );
@@ -1431,7 +1423,7 @@ function WithdrawalStatements({ departments }: { departments: Department[] }) {
     }
   }
   return (
-    <details className="hr-history">
+    <details className="hr-history ui-motion-details">
       <summary>下載提領薪資單</summary>
       <div className="hr-form-grid">
         <label>
@@ -1445,14 +1437,9 @@ function WithdrawalStatements({ departments }: { departments: Department[] }) {
       </div>
       <div className="hr-header-actions">
         {departments.map((d) => (
-          <button
-            key={d.key}
-            disabled={Boolean(busy) || !from || !to || from > to}
-            className="qiunai-soft-button"
-            onClick={() => void download(d.key)}
-          >
+          <LoadingButton key={d.key} disabled={Boolean(busy) || !from || !to || from > to} className="qiunai-soft-button" onClick={() => void download(d.key)} loading={Boolean(busy === d.key)} loadingLabel="下載中…">
             {busy === d.key ? "下載中…" : `下載${nameOf(d.key)}薪資單`}
-          </button>
+          </LoadingButton>
         ))}
       </div>
       {error ? <Notice>{error}</Notice> : null}

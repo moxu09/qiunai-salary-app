@@ -1,4 +1,5 @@
 "use client";
+import { LoadingButton } from "@/components/InteractionUI";
 
 import { useEffect, useState, type FormEvent } from "react";
 import Link from "next/link";
@@ -124,8 +125,7 @@ export default function HrContractDeposit({
     {state && !state.methods.length && !payment ? <p role="status">目前付款服務尚未開放，請聯繫客服。</p> : null}
     {payment?.url ? <a href={payment.url} className={button}>開啟街口付款</a> : null}
     {payment?.method === "jkopay" && state?.methods.includes("jkopay") ? (
-      <button type="button" className="ml-2 font-bold underline disabled:opacity-50" disabled={busy}
-        onClick={() => void run({ action: "start", method: "jkopay" })}>更新街口付款連結</button>
+      <LoadingButton type="button" className="ml-2 font-bold underline disabled:opacity-50" disabled={busy} onClick={() => void run({ action: "start", method: "jkopay" })} loading={Boolean(busy)} loadingLabel="處理中…">更新街口付款連結</LoadingButton>
     ) : null}
     {token ? <>
       <div id="ECPayPayment" />
@@ -153,7 +153,6 @@ export default function HrContractDeposit({
         <button className={button} disabled={!confirmed || busy}>建立{names[selected]}付款</button>
       </form>
     ) : null}
-    <button type="button" className="font-bold underline disabled:opacity-50" disabled={busy}
-      onClick={() => void run({ action: "check" })}>查詢付款結果</button>
+    <LoadingButton type="button" className="font-bold underline disabled:opacity-50" disabled={busy} onClick={() => void run({ action: "check" })} loading={Boolean(busy)} loadingLabel="處理中…">查詢付款結果</LoadingButton>
   </section>;
 }

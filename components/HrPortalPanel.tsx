@@ -1,5 +1,8 @@
 "use client";
+import { StatusProgress } from "@/components/InteractionUI";
+import { LoadingButton } from "@/components/InteractionUI";
 
+import { notify, Skeleton } from "@/components/MotionUI";
 import { useCallback, useEffect, useEffectEvent, useMemo, useState } from "react";
 import { CheckCircle2, Clock3, FileImage, FilePenLine, Megaphone, X } from "lucide-react";
 import { supabase } from "@/lib/supabase";
@@ -25,6 +28,7 @@ export default function HrPortalPanel({ activeTab, apiPath, department, staffNam
   const [birthdayEligible, setBirthdayEligible] = useState(false);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [submissionState, setSubmissionState] = useState<"idle" | "sending" | "success" | "error">("idle");
   const [type, setType] = useState(ADMIN_TYPES[0]);
   const [urgency, setUrgency] = useState("general");
   const [neededDate, setNeededDate] = useState(today());
@@ -64,12 +68,13 @@ export default function HrPortalPanel({ activeTab, apiPath, department, staffNam
 
   async function submit(group: "administrative" | "welfare") {
     try {
-      setSubmitting(true);
+      setSubmissionState("sending");
+    setSubmitting(true);
       const { data } = await supabase.auth.getSession();
       const options = group === "welfare" ? WELFARE_TYPES : ADMIN_TYPES;
       const requestType = options.includes(type) ? type : options[0];
       if (["查掛津貼", "代支報銷"].includes(requestType) && images.length === 0) {
-        alert(requestType === "查掛津貼" ? "查掛津貼必須上傳付款證明" : "代支報銷必須上傳發票或付款證明");
+        notify(requestType === "查掛津貼" ? "查掛津貼必須上傳付款證明" : "代支報銷必須上傳發票或付款證明");
         return;
       }
       const body = new FormData();
@@ -87,17 +92,20 @@ export default function HrPortalPanel({ activeTab, apiPath, department, staffNam
       });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) {
-        alert(payload.message || "送出申請失敗");
+        setSubmissionState("error");
+        notify(payload.message || "送出申請失敗", "error");
         return;
       }
       setDetails("");
       setImages([]);
       setFileInputKey((value) => value + 1);
-      alert("申請已送出，請至簽核分類查看結果");
+      setSubmissionState("success");
+      notify("申請已送出，請至簽核分類查看結果", "success");
       await load();
     } catch (error) {
+      setSubmissionState("error");
       console.error("submit HR request failed", error);
-      alert("送出申請失敗，請稍後重試");
+      notify("送出申請失敗，請稍後重試");
     } finally {
       setSubmitting(false);
     }
@@ -106,7 +114,7 @@ export default function HrPortalPanel({ activeTab, apiPath, department, staffNam
   function selectImages(files: FileList | null) {
     const selected = Array.from(files || []);
     if (selected.length > 5) {
-      alert("最多只能上傳 5 張圖片");
+      notify("最多只能上傳 5 張圖片");
       setFileInputKey((value) => value + 1);
       return;
     }
@@ -114,7 +122,7 @@ export default function HrPortalPanel({ activeTab, apiPath, department, staffNam
       (file) => !file.type.startsWith("image/") || file.size > 5 * 1024 * 1024
     );
     if (invalid) {
-      alert("僅能上傳圖片，且每張不得超過 5 MB");
+      notify("僅能上傳圖片，且每張不得超過 5 MB");
       setFileInputKey((value) => value + 1);
       return;
     }
@@ -150,13 +158,14 @@ export default function HrPortalPanel({ activeTab, apiPath, department, staffNam
           {images.length ? <div className="mt-3 grid gap-2 sm:grid-cols-2">{images.map((image, index) => <div key={`${image.name}-${image.lastModified}`} className="flex items-center gap-2 rounded-xl bg-white px-3 py-2 text-xs text-slate-600"><FileImage size={16} className="shrink-0 text-violet-500"/><span className="min-w-0 flex-1 truncate">{image.name}</span><button type="button" aria-label={`移除 ${image.name}`} title={`移除 ${image.name}`} onClick={() => setImages((current) => current.filter((_, itemIndex) => itemIndex !== index))} className="hr-icon-button rounded-full p-1 text-slate-400 hover:bg-rose-50 hover:text-rose-500"><X size={14}/></button></div>)}</div> : null}
         </div>
       </Field>
-      <button type="button" onClick={() => submit(welfare ? "welfare" : "administrative")} disabled={submitting || (welfare && (!eligible || (birthdayGift && !birthdayEligible))) || (requiresPaymentProof && images.length === 0)} className="mt-5 w-full rounded-2xl bg-violet-600 px-5 py-3 font-black text-white hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-40">{submitting ? "送出中…" : "送出申請"}</button>
+      <StatusProgress state={submissionState} label={submissionState === "success" ? "簽核申請已送出" : "發送簽核申請"} />
+      <LoadingButton type="button" onClick={() => submit(welfare ? "welfare" : "administrative")} disabled={submitting || (welfare && (!eligible || (birthdayGift && !birthdayEligible))) || (requiresPaymentProof && images.length === 0)} className="mt-5 w-full rounded-2xl bg-violet-600 px-5 py-3 font-black text-white hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-40" loading={Boolean(submitting)} loadingLabel="送出中…">{submitting ? "送出中…" : "送出申請"}</LoadingButton>
     </section>;
   }
 
   if (category) return <section className="rounded-[28px] border border-violet-100 bg-white shadow-sm shadow-violet-100">
     <div className="flex flex-col gap-3 border-b border-violet-100 p-5 sm:flex-row sm:items-end sm:justify-between"><div><h2 className="flex items-center gap-2 text-xl font-black"><CheckCircle2 size={21} className="text-violet-500"/>簽核紀錄</h2><p className="mt-1 text-sm text-slate-500">依月份顯示申請日期、申請項目與簽核結果。</p></div><Field label="顯示月份"><MonthSelect value={selectedMonth} onChange={onMonthChange} /></Field></div>
-    {loading ? <p className="p-10 text-center text-sm text-slate-400">讀取中…</p> : visibleRequests.length ? <div className="overflow-x-auto"><table><thead><tr><th>部門</th><th>申請日期</th><th>申請項目</th><th>需求日期</th><th>附件</th><th>簽核結果</th></tr></thead><tbody>{visibleRequests.map((item) => <tr key={item.id}><td>{item.organization === "deepnight" ? "深夜不關燈" : item.organization === "qiunai" ? "秋奈電競" : department}</td><td>{item.application_date}</td><td>{item.request_type}</td><td>{item.needed_date || "-"}</td><td><AttachmentLinks attachments={item.form_data?.attachments}/></td><td><Status status={item.status}/><p className="mt-1 text-xs text-slate-500">{item.review_result || "-"}</p></td></tr>)}</tbody></table></div> : <p className="p-10 text-center text-sm text-slate-400">這個月份沒有申請紀錄</p>}
+    {loading ? <Skeleton rows={3} label="讀取中…" /> : visibleRequests.length ? <div className="overflow-x-auto"><table><thead><tr><th>部門</th><th>申請日期</th><th>申請項目</th><th>需求日期</th><th>附件</th><th>簽核結果</th></tr></thead><tbody>{visibleRequests.map((item) => <tr key={item.id}><td>{item.organization === "deepnight" ? "深夜不關燈" : item.organization === "qiunai" ? "秋奈電競" : department}</td><td>{item.application_date}</td><td>{item.request_type}</td><td>{item.needed_date || "-"}</td><td><AttachmentLinks attachments={item.form_data?.attachments}/></td><td><Status status={item.status}/><p className="mt-1 text-xs text-slate-500">{item.review_result || "-"}</p></td></tr>)}</tbody></table></div> : <p className="p-10 text-center text-sm text-slate-400">這個月份沒有申請紀錄</p>}
   </section>;
   return null;
 }

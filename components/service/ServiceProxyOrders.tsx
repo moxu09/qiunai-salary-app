@@ -1,4 +1,6 @@
 "use client";
+import { LoadingButton } from "@/components/InteractionUI";
+import { Skeleton } from "@/components/MotionUI";
 import {ArrowUpRight,ClipboardPlus,RefreshCw} from 'lucide-react';
 import {useCallback,useEffect,useState,type FormEvent} from 'react';
 import {serviceRequest} from './client';
@@ -41,10 +43,10 @@ export default function ServiceProxyOrders({department}:{department:Department})
   <form className="svc-panel svc-form svc-proxy-form" onSubmit={event=>void submit(event)}><h2>{storeName(department)} · 新增訂單</h2>
    <label>老闆 Discord ID<input required inputMode="numeric" pattern="[0-9]{17,20}" maxLength={20} value={customerId} onChange={event=>{setCustomerId(event.target.value);setRequestId('');}} placeholder="輸入老闆的 Discord ID"/></label>
    <fieldset><legend>訂單類型</legend><div className="svc-proxy-kinds">{choices.map(choice=><label key={choice.value} className={kind===choice.value?'is-selected':''}><input type="radio" name="order-kind" value={choice.value} checked={kind===choice.value} onChange={()=>{setKind(choice.value);setRequestId('');}}/><span><strong>{choice.label}</strong><small>{choice.detail}</small></span></label>)}</div></fieldset>
-   <div className="svc-actions"><button type="submit" disabled={busy}>{busy?'送出中…':'建立私人訂單頻道'}</button><span className="svc-muted">建單不會扣款，也不會代老闆選付款方式。</span></div>
+   <div className="svc-actions"><LoadingButton type="submit" disabled={busy} loading={Boolean(busy)} loadingLabel="送出中…">{busy?'送出中…':'建立私人訂單頻道'}</LoadingButton><span className="svc-muted">建單不會扣款，也不會代老闆選付款方式。</span></div>
   </form>
   {error?<p className="svc-error" role="alert">{error}</p>:null}{notice?<p className="svc-notice" role="status">{notice}</p>:null}
   <div className="svc-section-title"><h2>我代建的訂單</h2><button type="button" className="svc-secondary" onClick={()=>void refresh()}><RefreshCw size={16}/> 重新整理</button></div>
-  {loading?<p className="svc-empty" role="status">正在讀取代建紀錄…</p>:rows.length?<div className="svc-desk-grid">{rows.map(row=><article key={row.requestId} className="svc-panel svc-desk-card"><div className="svc-section-title"><h3>{choices.find(choice=>choice.value===row.kind)?.label||'訂單'}</h3><span className="svc-badge">{labels[row.status]||row.status}</span></div><p>老闆：{row.customerId}</p><small className="svc-muted">{date(row.createdAt)}</small>{row.channelUrl?<a href={row.channelUrl} target="_blank" rel="noreferrer">前往 Discord 訂單頻道 <ArrowUpRight size={15}/></a>:null}</article>)}</div>:<p className="svc-empty">目前沒有代建紀錄。</p>}
+  {loading?<Skeleton rows={3} label="正在讀取代建紀錄…" />:rows.length?<div className="svc-desk-grid">{rows.map(row=><article key={row.requestId} className="svc-panel svc-desk-card"><div className="svc-section-title"><h3>{choices.find(choice=>choice.value===row.kind)?.label||'訂單'}</h3><span className="svc-badge">{labels[row.status]||row.status}</span></div><p>老闆：{row.customerId}</p><small className="svc-muted">{date(row.createdAt)}</small>{row.channelUrl?<a href={row.channelUrl} target="_blank" rel="noreferrer">前往 Discord 訂單頻道 <ArrowUpRight size={15}/></a>:null}</article>)}</div>:<p className="svc-empty">目前沒有代建紀錄。</p>}
  </section>;
 }

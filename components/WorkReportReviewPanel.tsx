@@ -1,5 +1,7 @@
 "use client";
 
+import { confirmUI } from "@/components/ConfirmationUI";
+import { notify } from "@/components/MotionUI";
 import { useCallback, useEffect, useState } from "react";
 import { Check, Clock3, RefreshCw, X } from "lucide-react";
 import { supabase } from "@/lib/supabase";
@@ -140,7 +142,7 @@ export default function WorkReportReviewPanel({
 
   async function approve(report: WorkReport) {
     if (
-      !confirm(`確定通過 ${report.staff_name || report.staff_id} 的工時申報？`)
+      !await confirmUI(`確定通過 ${report.staff_name || report.staff_id} 的工時申報？`)
     )
       return;
     setWorkingId(report.id);
@@ -149,7 +151,7 @@ export default function WorkReportReviewPanel({
       else await onApprove(report);
       await load();
     } catch (error: unknown) {
-      alert(`審核失敗：${error instanceof Error ? error.message : "未知錯誤"}`);
+      notify(`審核失敗：${error instanceof Error ? error.message : "未知錯誤"}`);
     } finally {
       setWorkingId("");
     }
@@ -167,7 +169,7 @@ export default function WorkReportReviewPanel({
         if (error) throw error;
       }
       await load();
-    } catch (error) { alert(`駁回失敗：${error instanceof Error ? error.message : "未知錯誤"}`); } finally { setWorkingId(""); }
+    } catch (error) { notify(`駁回失敗：${error instanceof Error ? error.message : "未知錯誤"}`); } finally { setWorkingId(""); }
   }
 
   return (

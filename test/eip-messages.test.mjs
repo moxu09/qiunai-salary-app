@@ -1,3 +1,4 @@
+import { createTypingPresence } from "../lib/typingPresence.mjs";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -47,7 +48,7 @@ function handlers(organization = "qiunai") {
     .replace(/^import .*;\s*$/gm, "")
     .replace("export function createEipMessageHandlers", "function createEipMessageHandlers");
   const context = {
-    supabaseAdmin,
+    supabaseAdmin, createTypingPresence,
     getAuthUserFromRequest: async (_db, request) => {
       if (!request.discordId) throw new Error("not authenticated");
       return { discordId: request.discordId };
@@ -144,4 +145,30 @@ test("new Qiunai messages are atomically queued for Xiao Nai without exposing th
   assert.match(sql, /new\.organization_code = 'qiunai'/i);
   assert.match(sql, /on conflict \(message_id\) do nothing/i);
   assert.match(sql, /revoke all on public\.qiunai_eip_message_notifications from public, anon, authenticated/i);
+});
+
+test("typing presence stays within the authenticated conversation and never creates a message", async () => {
+  const { route, calls } = handlers();
+  const denied = await route.POST(postRequest(null, qiunaiPeer, { typing: true }));
+  assert.equal(denied.status, 401);
+  const outside = await route.POST(postRequest(selfId, deepnightPeer, { typing: true }));
+  assert.equal(outside.status, 404);
+  const started = await route.POST(postRequest(selfId, qiunaiPeer, { typing: true }));
+  assert.equal(started.status, 200);
+  const shown = await route.GET({ discordId: qiunaiPeer, url: "https://test.invalid/messages?peer=" + selfId });
+  assert.equal(shown.body.typing, true);
+  assert.equal(calls.filter(call => call.inserted).length, 0);
+  await route.POST(postRequest(selfId, qiunaiPeer, { typing: false }));
+  const stopped = await route.GET({ discordId: qiunaiPeer, url: "https://test.invalid/messages?peer=" + selfId });
+  assert.equal(stopped.body.typing, false);
+});
+
+test("typing expires after eight seconds and cannot cross store scope", () => {
+  let now = 1000;
+  const presence = createTypingPresence(() => now);
+  presence.set("qiunai", selfId, qiunaiPeer, true);
+  assert.equal(presence.has("qiunai", selfId, qiunaiPeer), true);
+  assert.equal(presence.has("deepnight", selfId, qiunaiPeer), false);
+  now += 8000;
+  assert.equal(presence.has("qiunai", selfId, qiunaiPeer), false);
 });

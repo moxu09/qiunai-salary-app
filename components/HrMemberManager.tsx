@@ -1,5 +1,7 @@
 "use client";
+import { LoadingButton } from "@/components/InteractionUI";
 
+import { Skeleton } from "@/components/MotionUI";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 
 type Department = { key: "qiunai" | "deepnight"; name: string };
@@ -58,12 +60,12 @@ export default function HrMemberManager({ departments, request }: Props) {
       </form>
       {error && <p role="alert">{error}</p>}
       {notice && <p role="status">{notice}</p>}
-      {loading ? <p>正在讀取成員…</p> : members.length ? members.map((member) => (
+      {loading ? <Skeleton rows={3} label="正在讀取成員…" /> : members.length ? members.map((member) => (
         <div className="eip-collab-row" key={member.id}>
           <span>{member.name} · {member.id}{member.active ? "" : "（停用）"}</span>
-          <button type="button" className="qiunai-soft-button" disabled={busy} onClick={() => {
+          <LoadingButton type="button" className="qiunai-soft-button" disabled={busy} onClick={() => {
             if (window.confirm(`移除「${member.name}」的 Manager 職等？`)) void changeMember("DELETE", member.id);
-          }}>移除 Manager</button>
+          }} loading={Boolean(busy)} loadingLabel="處理中…">移除 Manager</LoadingButton>
         </div>
       )) : <p>此部門目前沒有 Manager。</p>}
     </div>

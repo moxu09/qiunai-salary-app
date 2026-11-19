@@ -1,4 +1,5 @@
 "use client";
+import { LoadingButton } from "@/components/InteractionUI";
 
 import { useEffect, useEffectEvent, useMemo, useState } from "react";
 import Link from "next/link";
@@ -184,7 +185,7 @@ export default function AccountingPage() {
   }
 
   return (
-    <main className="admin-page min-h-screen bg-[#fff7fb] text-[#3f2947]">
+    <main className="ui-motion-page admin-page min-h-screen bg-[#fff7fb] text-[#3f2947]">
       <div className="mx-auto max-w-7xl space-y-6">
         <header className="admin-page-header rounded-[32px] border border-pink-100 bg-white p-7">
           <Link
@@ -211,18 +212,14 @@ export default function AccountingPage() {
                 onChange={(event) => setMonth(event.target.value)}
                 className="rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-sm font-bold text-white outline-none focus:border-violet-300"
               />
-              <button
-                onClick={loadReport}
-                className="inline-flex items-center gap-2 rounded-2xl bg-violet-500 px-4 py-3 text-sm font-black text-white disabled:opacity-60"
-                disabled={loading}
-              >
+              <LoadingButton onClick={loadReport} className="inline-flex items-center gap-2 rounded-2xl bg-violet-500 px-4 py-3 text-sm font-black text-white disabled:opacity-60" disabled={loading} loading={Boolean(loading)} loadingLabel="處理中…">
                 {loading ? (
                   <Loader2 className="animate-spin" size={16} />
                 ) : (
                   <RefreshCw size={16} />
                 )}
                 重新整理
-              </button>
+              </LoadingButton>
               <button
                 onClick={exportCsv}
                 disabled={rows.length === 0}

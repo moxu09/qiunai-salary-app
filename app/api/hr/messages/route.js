@@ -33,12 +33,14 @@ export async function GET(request) {
       return Response.json({ ok: true, contacts }, { headers: { "Cache-Control": "no-store" } });
     if (!sources.length) throw Object.assign(Error("無權讀取此對話"), { status: 403 });
     const messages = [];
+    let typing = false;
     for (const key of sources) {
       const data = await hrSource(request, key, `messages?peer=${encodeURIComponent(peer)}`);
+      typing ||= Boolean(data.typing);
       messages.push(...(data.messages || []).map((m) => ({ ...m, organization: key })));
     }
     messages.sort((a, b) => a.created_at.localeCompare(b.created_at));
-    return Response.json({ ok: true, messages }, { headers: { "Cache-Control": "no-store" } });
+    return Response.json({ ok: true, messages, typing }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     return hrFail(error);
   }
@@ -57,6 +59,10 @@ async function mutate(request) {
       for (const key of sources)
         await hrSource(request, key, "messages", { method: "PATCH", body });
       return Response.json({ ok: true });
+    }
+    if (typeof body.typing === "boolean") {
+      for (const key of sources) await hrSource(request, key, "messages", { method: "POST", body });
+      return Response.json({ ok: true }, { headers: { "Cache-Control": "no-store" } });
     }
     // Replies follow the department of the most recent message, preserving its original scope.
     let destination = sources[0],

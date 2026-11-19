@@ -1,4 +1,5 @@
 "use client";
+import { LoadingButton } from "@/components/InteractionUI";
 
 import { useState } from "react";
 import { HR_CRYPTO_PAYOUT_TERMS } from "@/lib/hrCryptoPayout.mjs";
@@ -44,7 +45,7 @@ export default function HrCryptoPayoutQuote({ asset, endpoint, request }: {
 
   return <div className="rounded-xl border border-slate-200 p-4 sm:col-span-2">
     <p className="text-sm leading-relaxed text-slate-700">{HR_CRYPTO_PAYOUT_TERMS}</p>
-    <details className="mt-2">
+    <details className="mt-2 ui-motion-details">
       <summary className="cursor-pointer text-sm font-bold">試算收款金額</summary>
       <div className="mt-3 flex flex-wrap items-end gap-2">
         <label className="text-sm">結算金額（NT$）
@@ -52,10 +53,9 @@ export default function HrCryptoPayoutQuote({ asset, endpoint, request }: {
             onChange={(event) => { setAmount(event.target.value); setQuote(null); setError(""); }}
             className="mt-1 block w-44 rounded-lg border border-slate-300 p-2" />
         </label>
-        <button type="button" onClick={() => void calculate()} disabled={busy || !asset || !/^[1-9][0-9]{0,14}$/.test(amount)}
-          className="rounded-lg bg-slate-900 px-3 py-2 text-sm font-bold text-white disabled:opacity-50">
+        <LoadingButton type="button" onClick={() => void calculate()} disabled={busy || !asset || !/^[1-9][0-9]{0,14}$/.test(amount)} className="rounded-lg bg-slate-900 px-3 py-2 text-sm font-bold text-white disabled:opacity-50" loading={Boolean(busy)} loadingLabel="查詢中…">
           {busy ? "查詢中…" : "以即時匯率試算"}
-        </button>
+        </LoadingButton>
       </div>
       {error ? <p className="mt-2 text-sm text-rose-800" role="alert">{error}</p> : null}
       {quote ? <div className="mt-3 space-y-1 text-sm" role="status">

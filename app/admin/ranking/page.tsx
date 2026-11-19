@@ -1,5 +1,7 @@
 "use client";
+import { LoadingButton } from "@/components/InteractionUI";
 
+import { notify } from "@/components/MotionUI";
 /* eslint-disable @next/next/no-img-element */
 
 import { useEffect, useEffectEvent, useMemo, useState } from "react";
@@ -292,26 +294,26 @@ export default function AdminRankingPage() {
 
     if (staffRes.error) {
       console.error("讀取員工失敗:", staffRes.error);
-      alert("讀取員工失敗");
+      notify("讀取員工失敗");
       return;
     }
 
     if (orderRes.error) {
       console.error("讀取薪資訂單失敗:", orderRes.error);
-      alert("讀取薪資訂單失敗");
+      notify("讀取薪資訂單失敗");
       return;
     }
 
     if (bonusRes.error) {
       console.error("讀取獎金失敗:", bonusRes.error);
-      alert("讀取獎金失敗");
+      notify("讀取獎金失敗");
       return;
     }
 
     const pointPayload = await pointRes.json().catch(() => ({}));
     if (!pointRes.ok || !pointPayload.ok) {
       console.error("讀取客服接待單數失敗:", pointPayload);
-      alert("讀取客服接待單數失敗");
+      notify("讀取客服接待單數失敗");
       return;
     }
 
@@ -330,14 +332,14 @@ export default function AdminRankingPage() {
 
   if (adminLoading || !isAdmin) {
     return (
-      <main className="min-h-screen bg-[#0f0b1f] text-white flex items-center justify-center">
+      <main className="ui-motion-page min-h-screen bg-[#0f0b1f] text-white flex items-center justify-center">
         <p className="text-sm text-zinc-300">檢查後台權限中...</p>
       </main>
     );
   }
 
   return (
-    <main className="admin-page min-h-screen bg-[#fff7fb] text-[#3f2947]">
+    <main className="ui-motion-page admin-page min-h-screen bg-[#fff7fb] text-[#3f2947]">
       <header className="admin-page-header border border-pink-100 bg-white">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-5">
           <div>
@@ -353,14 +355,10 @@ export default function AdminRankingPage() {
             <h1 className="text-2xl font-bold">秋奈電競｜排行榜</h1>
           </div>
 
-          <button
-            onClick={loadAll}
-            disabled={loading}
-            className="flex items-center gap-2 rounded-xl border border-white/10 px-4 py-2 text-sm hover:bg-white/10 disabled:opacity-60"
-          >
+          <LoadingButton onClick={loadAll} disabled={loading} className="flex items-center gap-2 rounded-xl border border-white/10 px-4 py-2 text-sm hover:bg-white/10 disabled:opacity-60" loading={Boolean(loading)} loadingLabel="處理中…">
             <RefreshCw size={16} className={loading ? "animate-spin" : ""} />
             重新整理
-          </button>
+          </LoadingButton>
         </div>
       </header>
 
@@ -421,13 +419,9 @@ export default function AdminRankingPage() {
               </div>
             </label>
 
-            <button
-              onClick={loadAll}
-              disabled={loading}
-              className="mt-6 rounded-xl bg-violet-500 px-4 py-3 font-semibold hover:bg-violet-400 disabled:opacity-60"
-            >
+            <LoadingButton onClick={loadAll} disabled={loading} className="mt-6 rounded-xl bg-violet-500 px-4 py-3 font-semibold hover:bg-violet-400 disabled:opacity-60" loading={Boolean(loading)} loadingLabel="處理中…">
               套用查詢
-            </button>
+            </LoadingButton>
           </div>
         </div>
 

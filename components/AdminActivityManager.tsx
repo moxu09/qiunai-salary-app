@@ -1,5 +1,8 @@
 "use client";
+import { LoadingButton } from "@/components/InteractionUI";
 
+import { confirmUI } from "@/components/ConfirmationUI";
+import { notify } from "@/components/MotionUI";
 import { useCallback, useEffect, useEffectEvent, useState } from "react";
 import { CalendarHeart, Download, Loader2, Pencil, Plus, Printer, RefreshCw, Trash2 } from "lucide-react";
 import { groupActivityResponses } from "@/lib/qiunaiActivityGroups";
@@ -95,7 +98,7 @@ export default function AdminActivityManager({ organization = "qiunai" }: { orga
       setCanManageActivity(payload.canManageActivity === true);
       setActivities(payload.activities || []);
     } catch (error) {
-      alert(error instanceof Error ? error.message : "讀取活動失敗");
+      notify(error instanceof Error ? error.message : "讀取活動失敗");
     } finally {
       setLoading(false);
     }
@@ -147,7 +150,7 @@ export default function AdminActivityManager({ organization = "qiunai" }: { orga
     setForm(blank());
   }
   async function save() {
-    if (!form.title.trim() || !form.startsAt) return alert("請填寫活動名稱與開始時間");
+    if (!form.title.trim() || !form.startsAt) return notify("請填寫活動名稱與開始時間");
     const starts = new Date(form.startsAt);
     const deadline = form.responseDeadline
       ? new Date(form.responseDeadline)
@@ -163,9 +166,9 @@ export default function AdminActivityManager({ organization = "qiunai" }: { orga
       });
       cancelEdit();
       await load();
-      alert(editingId ? "活動已更新" : "活動已發布");
+      notify(editingId ? "活動已更新" : "活動已發布");
     } catch (error) {
-      alert(error instanceof Error ? error.message : "儲存活動失敗");
+      notify(error instanceof Error ? error.message : "儲存活動失敗");
     } finally {
       setBusy(false);
     }
@@ -180,19 +183,19 @@ export default function AdminActivityManager({ organization = "qiunai" }: { orga
       });
       await load();
     } catch (error) {
-      alert(error instanceof Error ? error.message : "更新活動失敗");
+      notify(error instanceof Error ? error.message : "更新活動失敗");
     } finally {
       setBusy(false);
     }
   }
   async function remove(activity: Activity) {
-    if (!confirm(`確定刪除「${activity.title}」？`)) return;
+    if (!await confirmUI(`確定刪除「${activity.title}」？`)) return;
     setBusy(true);
     try {
       await request("DELETE", { id: activity.id });
       await load();
     } catch (error) {
-      alert(error instanceof Error ? error.message : "刪除活動失敗");
+      notify(error instanceof Error ? error.message : "刪除活動失敗");
     } finally {
       setBusy(false);
     }
@@ -204,7 +207,7 @@ export default function AdminActivityManager({ organization = "qiunai" }: { orga
     });
     if (!response.ok) {
       const payload = await response.json().catch(() => ({}));
-      return alert(payload.message || "下載 Excel 失敗");
+      return notify(payload.message || "下載 Excel 失敗");
     }
     const blob = await response.blob();
     const url = URL.createObjectURL(blob);
@@ -377,19 +380,14 @@ export default function AdminActivityManager({ organization = "qiunai" }: { orga
         </label>}
         <div className="mt-5 flex gap-3">
           {editingId && (
-            <button type="button" disabled={busy} onClick={cancelEdit} className="rounded-2xl bg-slate-100 px-5 py-3 font-black text-slate-700 disabled:opacity-40">
+            <LoadingButton type="button" disabled={busy} onClick={cancelEdit} className="rounded-2xl bg-slate-100 px-5 py-3 font-black text-slate-700 disabled:opacity-40" loading={Boolean(busy)} loadingLabel="處理中…">
               取消編輯
-            </button>
+            </LoadingButton>
           )}
-          <button
-            type="button"
-            disabled={busy}
-            onClick={() => void save()}
-            className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-pink-500 px-5 py-3 font-black text-white disabled:opacity-40"
-          >
+          <LoadingButton type="button" disabled={busy} onClick={() => void save()} className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-pink-500 px-5 py-3 font-black text-white disabled:opacity-40" loading={Boolean(busy)} loadingLabel="處理中…">
             {busy ? <Loader2 className="animate-spin" size={18} /> : editingId ? <Pencil size={18} /> : <Plus size={18} />}
             {editingId ? "儲存活動變更" : "發布活動"}
-          </button>
+          </LoadingButton>
         </div>
       </section>}
       <section className="rounded-[30px] border border-pink-100 bg-white p-5 shadow-sm sm:p-6">
@@ -421,14 +419,9 @@ export default function AdminActivityManager({ organization = "qiunai" }: { orga
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    disabled={busy}
-                    onClick={() => edit(activity)}
-                    className="inline-flex items-center gap-1 rounded-xl bg-pink-50 px-3 py-2 text-xs font-black text-pink-700 disabled:opacity-40"
-                  >
+                  <LoadingButton type="button" disabled={busy} onClick={() => edit(activity)} className="inline-flex items-center gap-1 rounded-xl bg-pink-50 px-3 py-2 text-xs font-black text-pink-700 disabled:opacity-40" loading={Boolean(busy)} loadingLabel="處理中…">
                     <Pencil size={14} />編輯
-                  </button>
+                  </LoadingButton>
                   {canManageActivity && <>
                   {organization === "qiunai" ? <button
                     type="button"
