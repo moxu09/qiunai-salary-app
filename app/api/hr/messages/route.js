@@ -40,7 +40,7 @@ export async function GET(request) {
       messages.push(...(data.messages || []).map((m) => ({ ...m, organization: key })));
     }
     messages.sort((a, b) => a.created_at.localeCompare(b.created_at));
-    return Response.json({ ok: true, messages, typing }, { headers: { "Cache-Control": "no-store" } });
+    return Response.json({ ok: true, messages, typing, typingDepartment: messages.at(-1)?.organization || sources[0] }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     return hrFail(error);
   }
@@ -49,6 +49,11 @@ async function mutate(request) {
   try {
     const { departments } = await hrAuth(request);
     const body = await request.json();
+    if (request.method === "POST" && typeof body.typing === "boolean") {
+      if (!departments.some(({key}) => key === body.department)) throw Object.assign(Error("無權存取此部門"), {status:403});
+      await hrSource(request, body.department, "messages", {method:"POST",body});
+      return Response.json({ok:true},{headers:{"Cache-Control":"no-store"}});
+    }
     const { sources } = await contactSources(
       request,
       departments,
@@ -59,10 +64,6 @@ async function mutate(request) {
       for (const key of sources)
         await hrSource(request, key, "messages", { method: "PATCH", body });
       return Response.json({ ok: true });
-    }
-    if (typeof body.typing === "boolean") {
-      for (const key of sources) await hrSource(request, key, "messages", { method: "POST", body });
-      return Response.json({ ok: true }, { headers: { "Cache-Control": "no-store" } });
     }
     // Replies follow the department of the most recent message, preserving its original scope.
     let destination = sources[0],

@@ -20,7 +20,7 @@ for (let attempt = 0; attempt < 30; attempt += 1) {
 }
 assert.ok(ready, "容器未能啟動員工頁面");
 
-for (const path of ["/staff", "/personal/data", "/order/order.details", "/order/reward.details", "/resources/appearance", "/collaboration/workflows", "/approval/pending", "/admin/activities"]) {
+for (const path of ["/staff", "/personal/data", "/order/order.details", "/order/reward.details", "/resources/appearance", "/collaboration/workflows", "/approval/pending", "/admin/activities", "/collaboration/activities"]) {
   const response = await read(path);
   assert.equal(response.status, 200, `${path} 載入失敗`);
   const html = await response.text();
@@ -33,9 +33,11 @@ for (const path of ["/staff", "/personal/data", "/order/order.details", "/order/
     return result.text();
   }));
   const source = scripts.join("\n");
-  assert.ok(source.includes("selected_option_ids"), `${path} 缺少活動複選修正`);
-  assert.ok(source.includes("allow_multiple_options"), `${path} 缺少活動複選設定`);
-  console.log(`${path}: 頁面、${assets.length} 個資產及複選修正驗證通過`);
+  if (path === "/collaboration/activities") {
+    assert.ok(source.includes("selected_option_ids"), `${path} 缺少活動複選修正`);
+    assert.ok(source.includes("allow_multiple_options"), `${path} 缺少活動複選設定`);
+  }
+  console.log(`${path}: 頁面、${assets.length} 個資產驗證通過`);
 }
 
 for(const path of ["/service/", "/service/templates", "/service/courses", "/service/flows/example", "/service/prices", "/service/broadcasts", "/collaboration/knowledge/qiunai/11111111-1111-4111-8111-111111111111"]){

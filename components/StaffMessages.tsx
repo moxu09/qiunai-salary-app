@@ -50,7 +50,9 @@ export default function StaffMessages({ organization, myDiscordId, open, onOpenC
   const [loadingThread, setLoadingThread] = useState(false);
   const [sending, setSending] = useState(false);
   const [typingUntil, setTypingUntil] = useState(0);
-  const typingSent = useRef({ peer: "", at: 0, active: false });
+  const typingSent = useRef({ peer: "", at: 0, active: false, department: null as string | null });
+  const typingQueue = useRef<Promise<unknown>>(Promise.resolve());
+  const typingDepartment = useRef<string | null>(null);
   const [error, setError] = useState("");
   const retryRef = useRef<{ peerId: string; body: string; nonce: string } | null>(null);
   const currentPeerRef = useRef<string | null>(null);
@@ -83,14 +85,18 @@ export default function StaffMessages({ organization, myDiscordId, open, onOpenC
 
   const reportTyping = useCallback(async (active: boolean, peer = currentPeerRef.current) => {
     if (!peer) return;
+    const scope = !active && typingSent.current.peer === peer ? typingSent.current.department : typingDepartment.current;
+    if (organization === "hr" && !scope) return;
     const now = Date.now();
     const previous = typingSent.current;
     if (previous.peer === peer && previous.active === active && (!active || now - previous.at < 5000)) return;
-    typingSent.current = { peer, at: now, active };
+    typingSent.current = { peer, at: now, active, department: scope };
     try {
-      await authorizedFetch(apiPath, { method: "POST", body: JSON.stringify({ recipientId: peer, typing: active }) });
+      const request = () => authorizedFetch(apiPath, { method: "POST", body: JSON.stringify({ recipientId: peer, typing: active, department: scope }) });
+      typingQueue.current = typingQueue.current.catch(()=>undefined).then(request);
+      await typingQueue.current;
     } catch { /* Presence expires automatically when the connection is unavailable. */ }
-  }, [apiPath, authorizedFetch]);
+  }, [apiPath, authorizedFetch, organization]);
 
   useEffect(() => {
     if (!typingUntil) return;
@@ -132,6 +138,7 @@ export default function StaffMessages({ organization, myDiscordId, open, onOpenC
     const peerId = url.searchParams.get("chat");
     if (!peerId || !contacts.some((contact) => contact.discordId === peerId)) return;
     currentPeerRef.current = peerId;
+    typingDepartment.current = null;
     initialScrollRef.current = true;
     setSelectedPeerId(peerId);
     setLoadingThread(true);
@@ -148,6 +155,7 @@ export default function StaffMessages({ organization, myDiscordId, open, onOpenC
       try {
         const payload = await authorizedFetch(`${apiPath}?peer=${encodeURIComponent(selectedPeerId!)}`);
         if (cancelled) return;
+        typingDepartment.current = payload.typingDepartment || null;
         setMessages(Array.isArray(payload.messages) ? payload.messages : []);
         setTypingUntil(payload.typing ? Date.now() + 8000 : 0);
         setError("");
@@ -258,7 +266,7 @@ export default function StaffMessages({ organization, myDiscordId, open, onOpenC
             <div className="eip-messages-history" ref={threadRef} aria-live="polite">
               {loadingThread ? <Skeleton rows={3} label="載入對話中…" /> : messages.length ? messages.map((message) => (
                 <div key={message.id} className={`eip-messages-bubble-row ${message.sender_discord_id === myDiscordId ? "is-mine" : ""}`}>
-                  <LongPressMenu label="訊息操作" items={[{label:"複製訊息",onSelect:()=>{void navigator.clipboard.writeText(message.body).then(()=>notify("訊息已複製", "success")).catch(()=>notify("無法複製訊息", "error"));}}]}><div className="eip-messages-bubble"><p>{message.body}</p><div className="eip-messages-bubble-meta"><time dateTime={message.created_at}>{dateText(message.created_at)}</time>{message.sender_discord_id === myDiscordId ? <span className="eip-messages-receipt" title={message.read_at ? `對方於 ${dateText(message.read_at)} 閱讀` : "對方尚未閱讀"}>{message.read_at ? "已讀" : "未讀"}</span> : null}</div></div></LongPressMenu>
+                  <LongPressMenu label="訊息操作" items={[{label:"複製訊息",onSelect:()=>{void Promise.resolve().then(()=>navigator.clipboard.writeText(message.body)).then(()=>notify("訊息已複製", "success")).catch(()=>notify("無法複製訊息", "error"));}}]}><div className="eip-messages-bubble"><p>{message.body}</p><div className="eip-messages-bubble-meta"><time dateTime={message.created_at}>{dateText(message.created_at)}</time>{message.sender_discord_id === myDiscordId ? <span className="eip-messages-receipt" title={message.read_at ? `對方於 ${dateText(message.read_at)} 閱讀` : "對方尚未閱讀"}>{message.read_at ? "已讀" : "未讀"}</span> : null}</div></div></LongPressMenu>
                 </div>
               )) : <p className="eip-messages-empty">還沒有訊息，打聲招呼吧。</p>}
             </div>

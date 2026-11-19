@@ -22,6 +22,10 @@ const EASE_OUT = "cubic-bezier(0.2, 0.8, 0.2, 1)";
 
 const GESTURE_EXCLUDE = [
   "input",
+  ".ui-sort",
+  ".ui-interaction-swipe",
+  ".ui-interaction-longpress",
+  ".eip-messages-panel",
   "textarea",
   "select",
   '[contenteditable=""]',
@@ -144,24 +148,25 @@ const STATUS_TEXT: Record<StatusProgressState, string> = {
   error: "發生錯誤，已停止",
 };
 
-export function StatusProgress({ state, label = "送出進度" }: StatusProgressProps): ReactElement {
-  const text = STATUS_TEXT[state];
+export function StatusProgress({ state, label = "送出進度" }: StatusProgressProps): ReactElement | null {
+  if (state === "idle") return null;
+  const text = state === "sending" ? "正在送出" : state === "success" ? "已成功送出" : "送出未完成";
+  const detail = state === "sending" ? "正在傳送資料，請稍候一下" : state === "success" ? "資料已送達，您可以繼續操作" : "請查看錯誤提示，確認後再試一次";
   return (
     <div className="ui-interaction-status" data-state={state}>
-      {/* No aria-valuenow while sending: indeterminate, never a fake percentage. */}
-      <div
-        className="ui-interaction-progress"
-        role="progressbar"
-        aria-label={label}
-        aria-valuemin={0}
-        aria-valuemax={100}
-        aria-valuenow={state === "success" ? 100 : state === "idle" ? 0 : undefined}
-        aria-valuetext={text}
-        aria-busy={state === "sending" || undefined}
-      >
+      <div className="ui-progress-heading">
+        <span className="ui-progress-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            {state === "success" ? <path d="m5 12 4 4L19 6" /> : state === "error" ? <><path d="M12 7v6M12 17h.01"/><circle cx="12" cy="12" r="9"/></> : <><path d="m21 3-7 18-4-7-7-4L21 3ZM10 14 21 3"/></>}
+          </svg>
+        </span>
+        <span className="ui-progress-copy"><small>{label}</small><strong role="status">{text}<span className="ui-progress-dots" aria-hidden="true"><i/><i/><i/></span></strong></span>
+        <span className="ui-progress-badge">{state === "sending" ? "處理中" : state === "success" ? "完成" : "請重試"}</span>
+      </div>
+      <div className="ui-interaction-progress" role="progressbar" aria-label={label} aria-valuemin={0} aria-valuemax={100} aria-valuenow={state === "success" ? 100 : undefined} aria-valuetext={text} aria-busy={state === "sending" || undefined}>
         <span className="ui-interaction-progress-bar" />
       </div>
-      <span className="ui-interaction-status-text" role="status">{state === "idle" ? "" : text}</span>
+      <span className="ui-interaction-status-text">{detail}</span>
     </div>
   );
 }
@@ -517,6 +522,7 @@ export function LongPressMenu({ children, items, label }: LongPressMenuProps): R
   };
 
   const onContextMenu = (event: ReactMouseEvent<HTMLDivElement>) => {
+    if (window.getSelection()?.toString()) return;
     event.preventDefault();
     clearPress();
     // Keyboard-triggered contextmenu reports 0,0: anchor to the element instead.
@@ -588,6 +594,9 @@ export function LongPressMenu({ children, items, label }: LongPressMenuProps): R
     <div
       ref={rootRef}
       className="ui-interaction-longpress"
+      tabIndex={0}
+      role="group"
+      aria-label={label}
       aria-haspopup="menu"
       aria-expanded={menu ? true : undefined}
       aria-controls={menu ? menuId : undefined}
@@ -679,6 +688,8 @@ export function SortableList<T>({ items, getId, onReorder, renderItem, label, di
   const [dragId, setDragId] = useState<string | null>(null);
   const [announcement, setAnnouncement] = useState("");
   const hintId = useId();
+  const restoreControl = useRef<HTMLElement | null>(null);
+  useLayoutEffect(() => { const control = restoreControl.current; restoreControl.current = null; if (control?.isConnected) control.focus({preventScroll:true}); }, [items]);
 
   const list = draft ?? items;
   const orderKey = list.map(getId).join("\n");
@@ -730,6 +741,8 @@ export function SortableList<T>({ items, getId, onReorder, renderItem, label, di
     setDraft(null);
     setDragId(null);
     if (disabled || !commit || !next || next.length !== items.length || next.every((item, i) => getId(item) === getId(items[i]))) return;
+    restoreControl.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    document.dispatchEvent(new Event("ui:edited"));
     onReorder(next);
     announce(next.findIndex((item) => getId(item) === id), next.length);
   };
@@ -739,13 +752,15 @@ export function SortableList<T>({ items, getId, onReorder, renderItem, label, di
     const from = items.findIndex((item) => getId(item) === id);
     const to = from + delta;
     if (from < 0 || to < 0 || to >= items.length) return;
+    restoreControl.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    document.dispatchEvent(new Event("ui:edited"));
     onReorder(moveItem(items, from, to));
     announce(to, items.length);
   };
 
   /* Touch / pen: pointer capture on the handle only. Mouse: arm native drag on the <li>. */
 
-  const onHandlePointerDown = (event: ReactPointerEvent<HTMLSpanElement>, id: string) => {
+  const onHandlePointerDown = (event: ReactPointerEvent<HTMLElement>, id: string) => {
     const li = nodes.current.get(id);
     if (disabled || !li) return;
     if (event.pointerType === "mouse") {
@@ -754,12 +769,12 @@ export function SortableList<T>({ items, getId, onReorder, renderItem, label, di
     }
     if (!event.isPrimary || touch.current) return;
     event.preventDefault();
-    event.currentTarget.setPointerCapture(event.pointerId);
+    listRef.current?.setPointerCapture(event.pointerId);
     touch.current = { id, pointerId: event.pointerId, startY: event.clientY, lastY: event.clientY, startTop: li.offsetTop };
     setDragId(id);
   };
 
-  const onHandlePointerMove = (event: ReactPointerEvent<HTMLSpanElement>) => {
+  const onHandlePointerMove = (event: ReactPointerEvent<HTMLElement>) => {
     const drag = touch.current;
     if (!drag || event.pointerId !== drag.pointerId) return;
     drag.lastY = event.clientY;
@@ -767,7 +782,7 @@ export function SortableList<T>({ items, getId, onReorder, renderItem, label, di
     followPointer();
   };
 
-  const endTouch = (event: ReactPointerEvent<HTMLSpanElement>, commit: boolean) => {
+  const endTouch = (event: ReactPointerEvent<HTMLElement>, commit: boolean) => {
     const drag = touch.current;
     if (!drag || event.pointerId !== drag.pointerId) return;
     touch.current = null;
@@ -821,7 +836,7 @@ export function SortableList<T>({ items, getId, onReorder, renderItem, label, di
   return (
     <div className="ui-sort">
       <span id={hintId} className="ui-interaction-sr-only">可用 Alt+上下鍵或上移、下移按鈕調整順序</span>
-      <ul ref={listRef} className="ui-sort-list" aria-label={label} aria-describedby={hintId} onDragOver={onDragOver} onDrop={onDrop}>
+      <ul ref={listRef} className="ui-sort-list" aria-label={label} aria-describedby={hintId} onDragOver={onDragOver} onDrop={onDrop} onPointerMove={onHandlePointerMove} onPointerUp={event=>endTouch(event,true)} onPointerCancel={event=>endTouch(event,false)} onLostPointerCapture={event=>endTouch(event,false)}>
         {list.map((item, index) => {
           const id = getId(item);
           const first = index === 0;
@@ -849,10 +864,6 @@ export function SortableList<T>({ items, getId, onReorder, renderItem, label, di
                 className="ui-sort-handle"
                 aria-hidden="true"
                 onPointerDown={(event) => onHandlePointerDown(event, id)}
-                onPointerMove={onHandlePointerMove}
-                onPointerUp={(event) => endTouch(event, true)}
-                onPointerCancel={(event) => endTouch(event, false)}
-                onLostPointerCapture={(event) => endTouch(event, false)}
               >
                 <svg viewBox="0 0 24 24" width="1em" height="1em" focusable="false">
                   <path d="M9 6h.01M15 6h.01M9 12h.01M15 12h.01M9 18h.01M15 18h.01" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />

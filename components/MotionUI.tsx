@@ -35,7 +35,7 @@ type ViewTransitionDocument = {
 const TOAST_EVENT = "ui-motion:toast";
 const TOAST_MAX = 4;
 const TOAST_KEEP = TOAST_MAX * 2;
-const TOAST_DURATION: Record<ToastKind, number> = { success: 4000, error: 8000, info: 4000 };
+const TOAST_DURATION: Record<ToastKind, number> = { success: 4000, error: 0, info: 4000 };
 const TOAST_FALLBACK: Record<ToastKind, string> = { success: "完成", error: "發生錯誤", info: "通知" };
 const TOAST_EXIT_MS = 220;
 const DIALOG_EXIT_FALLBACK_MS = 320;
@@ -121,7 +121,8 @@ function normalizeToast(message: unknown, kind: unknown): ToastPayload {
 /** Show a toast. Safe to call anywhere; no-op on the server, queued until <MotionUI /> mounts. */
 export function notify(message: unknown, kind: ToastKind = "info"): void {
   if (typeof window === "undefined") return;
-  const payload = normalizeToast(message, kind);
+  const inferred = kind === "info" && (message instanceof Error || /失敗|錯誤|無法|登入已過期|請重新登入|連線異常/.test(toMessage(message))) ? "error" : kind;
+  const payload = normalizeToast(message, inferred);
   if (!toastOwner) {
     pendingToasts = [...pendingToasts, payload].slice(-TOAST_MAX);
     return;
@@ -160,7 +161,7 @@ function ToastItem({ toast, onDismiss, onRemove }: ToastItemProps): ReactElement
   const { id, leaving } = toast;
 
   useEffect(() => {
-    if (leaving || paused) return undefined;
+    if (leaving || paused || toast.duration === 0) return undefined;
     const startedAt = Date.now();
     const timer = window.setTimeout(() => onDismiss(id), remainingRef.current);
     return () => {

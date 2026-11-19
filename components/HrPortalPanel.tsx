@@ -67,6 +67,7 @@ export default function HrPortalPanel({ activeTab, apiPath, department, staffNam
   const visibleRequests = useMemo(() => category ? requests.filter((item) => item.approval_category === category) : requests, [category, requests]);
 
   async function submit(group: "administrative" | "welfare") {
+    if (submitting) return;
     try {
       setSubmissionState("sending");
     setSubmitting(true);
@@ -74,6 +75,7 @@ export default function HrPortalPanel({ activeTab, apiPath, department, staffNam
       const options = group === "welfare" ? WELFARE_TYPES : ADMIN_TYPES;
       const requestType = options.includes(type) ? type : options[0];
       if (["查掛津貼", "代支報銷"].includes(requestType) && images.length === 0) {
+        setSubmissionState("error");
         notify(requestType === "查掛津貼" ? "查掛津貼必須上傳付款證明" : "代支報銷必須上傳發票或付款證明");
         return;
       }
